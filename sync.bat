@@ -7,9 +7,9 @@ echo.
 git add .
 set timestamp=%date% %time:~0,8%
 git commit -m "Auto-sync: %timestamp%"
-git push origin main
+git push -u origin main
 echo.
 echo ============================================
-echo   Modifiche caricate su GitHub con successo!
+echo   Operazione completata!
 echo ============================================
-timeout /t 3
+pause
