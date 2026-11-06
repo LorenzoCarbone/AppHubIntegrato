@@ -53,20 +53,30 @@
     <!-- MOBILE QUICK ADD MODAL (Task Manager) -->
     <div id="mobileQuickAddModal" class="fixed inset-0 z-[100] hidden flex-col justify-end">
         <div class="absolute inset-0 bg-slate-900/50 animate-fade-in-add backdrop-blur-sm" onclick="closeMobileQuickAdd()"></div>
-        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-5 shadow-2xl flex flex-col gap-4 animate-slide-up-add border-t border-slate-200 dark:border-slate-700">
+        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-slide-up-add border-t border-slate-200 dark:border-slate-700 pb-8">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-1 md:hidden"></div>
             <div class="flex justify-between items-center mb-1">
                 <h3 class="font-bold text-slate-800 dark:text-white text-lg">Nuova Task</h3>
-                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition active:scale-95"><i class="fas fa-times"></i></button>
             </div>
             <div class="relative">
-                <input type="text" id="gtInMobile" class="input-base text-base py-3.5 font-semibold bg-slate-50 dark:bg-slate-800/50 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition" placeholder="Cosa devi fare? (es. Task p2 @oggi #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+                <input type="text" id="gtInMobile" class="input-base text-base py-3.5 font-semibold bg-slate-50 dark:bg-slate-800/50 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition" placeholder="Cosa devi fare? (es. Studiare p2 @oggi #Diritto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+            </div>
+            <!-- Quick Chips Bar sopra la tastiera -->
+            <div class="flex overflow-x-auto no-scrollbar gap-2 py-0.5 text-xs">
+                <button type="button" onclick="insertMobileChip('@oggi')" class="px-3 py-1.5 rounded-full font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
+                <button type="button" onclick="insertMobileChip('@domani')" class="px-3 py-1.5 rounded-full font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
+                <button type="button" onclick="insertMobileChip('p3')" class="px-3 py-1.5 rounded-full font-bold bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0 active:scale-95 transition">🔴 p3 Alta</button>
+                <button type="button" onclick="insertMobileChip('p2')" class="px-3 py-1.5 rounded-full font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2 Media</button>
+                <button type="button" onclick="insertMobileChip('p1')" class="px-3 py-1.5 rounded-full font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1 Bassa</button>
+                <button type="button" onclick="insertMobileChip('#')" class="px-3 py-1.5 rounded-full font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0 active:scale-95 transition"># Progetto</button>
             </div>
             <div class="flex gap-3">
                  <select id="gtPriMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg"><option value="0">Nessuna Prio</option><option value="1">Bassa Prio</option><option value="2">Media Prio</option><option value="3">Alta Prio</option></select>
                  <input type="date" id="gtDateMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg">
             </div>
             <div id="mobileCtxContainer"></div>
-            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98]"><i class="fas fa-arrow-up mr-2"></i> Aggiungi</button>
+            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98]"><i class="fas fa-arrow-up mr-2"></i> Aggiungi Task</button>
         </div>
     </div>
 
@@ -157,8 +167,15 @@
                             <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">API Key Google Calendar</label>
                             <input type="password" id="gcalApiSettings" class="input-base" placeholder="AIzaSy...">
                         </div>
+                        <div class="flex flex-wrap items-center gap-2 pt-1">
+                            <button type="button" onclick="testGCalSettings()" id="testGcalBtn" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition flex items-center gap-2 active:scale-95">
+                                <i class="fas fa-plug"></i> Testa Connessione Google Calendar
+                            </button>
+                            <span id="gcalTestStatus" class="text-xs font-semibold"></span>
+                        </div>
+                        <div id="gcalTestDetails" class="hidden text-xs p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 leading-relaxed"></div>
                     </div>
-                    <p class="text-[10px] text-slate-500 mt-3 leading-tight bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700"><i class="fas fa-info-circle mr-1"></i> Puoi assegnare un colore custom aggiungendo |#colore dopo l'ID (es: tua.email@gmail.com|#8e24aa). Per la API Key: Google Cloud Console > API e Servizi > Credenziali > Crea API Key.</p>
+                    <p class="text-[10px] text-slate-500 mt-3 leading-tight bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700"><i class="fas fa-info-circle mr-1 text-blue-500"></i> Puoi assegnare un colore custom aggiungendo |#colore dopo l'ID (es: tua.email@gmail.com|#8e24aa). Per l'API Key: Google Cloud Console &gt; Libreria &gt; Abilita <b>Google Calendar API</b> &gt; Credenziali &gt; Crea API Key.</p>
                 </div>
             </div>
             
@@ -240,7 +257,9 @@
     <!-- Modale Time Block (Calendario) -->
     <div id="blockModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-start pt-10 md:items-center md:pt-0 backdrop-blur-sm z-50 p-4 overflow-y-auto">
         <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-5 w-full max-w-md modal-animate my-auto">
-            <h2 id="bmTitle" class="text-lg font-bold mb-4 flex items-center"><i class="fas fa-clock text-blue-500 mr-2"></i> Programma Blocco</h2>
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-3 md:hidden"></div>
+            <h2 id="bmTitle" class="text-lg font-bold mb-3 flex items-center"><i class="fas fa-clock text-blue-500 mr-2"></i> Programma Blocco</h2>
+            <div id="bmRecurringNotice" class="hidden mb-3"></div>
             
             <div class="space-y-4">
                 <div class="flex gap-3">
@@ -465,8 +484,143 @@
         </div>
     </div>
 
+    <!-- MODALE SCELTA RICORRENZA (Modifica / Elimina singola occorrenza o serie) -->
+    <div id="recurringChoiceModal" class="modal-overlay hidden" onclick="if(event.target === this) closeRecurringChoiceModal()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-md modal-animate">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3 md:hidden"></div>
+            <div class="flex items-center gap-3 mb-4">
+                <div id="rcmIconContainer" class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <i id="rcmIcon" class="fas fa-sync-alt text-base"></i>
+                </div>
+                <div>
+                    <h3 id="rcmTitle" class="text-base font-bold text-slate-800 dark:text-slate-100">Evento Ricorrente</h3>
+                    <p id="rcmSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Scegli come applicare l'azione</p>
+                </div>
+            </div>
+            <p id="rcmMessage" class="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                Questo evento si ripete nel calendario. Vuoi applicare le modifiche solo alla data selezionata o all'intera serie?
+            </p>
+            <div class="space-y-2.5">
+                <button id="rcmSingleBtn" class="w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition flex items-center justify-center gap-2 active:scale-98">
+                    <i class="fas fa-calendar-day"></i> <span id="rcmSingleBtnText">Solo per questa data</span>
+                </button>
+                <button id="rcmSeriesBtn" class="w-full py-3 px-4 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center justify-center gap-2 active:scale-98">
+                    <i class="fas fa-sync-alt"></i> <span id="rcmSeriesBtnText">Per tutta la serie ciclica</span>
+                </button>
+                <button onclick="closeRecurringChoiceModal()" class="w-full py-2.5 px-4 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+                    Annulla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM SHEET: Selezione Azione Rapida Mobile (+) -->
+    <div id="mobileUniversalAddModal" class="modal-overlay hidden" onclick="if(event.target === this) closeMobileUniversalAdd()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-t-3xl shadow-2xl p-5 w-full max-w-sm modal-animate pb-8">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4"></div>
+            <h3 class="font-bold text-base text-slate-800 dark:text-white mb-4 text-center">Cosa vuoi creare?</h3>
+            <div class="space-y-3">
+                <button onclick="closeMobileUniversalAdd(); openMobileQuickAdd()" class="w-full p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg shrink-0 shadow-sm"><i class="fas fa-check"></i></div>
+                    <div>
+                        <div class="text-sm font-bold text-slate-800 dark:text-white">Nuova Task</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">Aggiungi un'attività con priorità, data e contesto</div>
+                    </div>
+                </button>
+                <button onclick="closeMobileUniversalAdd(); openBlockModal(null, state.ui.calSelectedDate || getISODate(new Date()))" class="w-full p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center text-lg shrink-0 shadow-sm"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="text-sm font-bold text-slate-800 dark:text-white">Nuovo Blocco Calendario</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">Pianifica una sessione di focus, routine o pausa</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM SHEET: Menu Funzioni Mobile -->
+    <div id="mobileMoreSheet" class="modal-overlay hidden" onclick="if(event.target === this) closeMobileMoreSheet()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-t-3xl shadow-2xl p-5 w-full max-w-lg modal-animate pb-8">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4"></div>
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-200 dark:border-darkborder">
+                <h3 class="font-bold text-base text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-th-large text-blue-500"></i> Menu & Strumenti
+                </h3>
+                <button onclick="closeMobileMoreSheet()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-95">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="closeMobileMoreSheet(); navigate('global_contacts')" class="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <i class="fas fa-address-book text-xl text-purple-600 dark:text-purple-400"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-white">Rubrica</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">Contatti & note</div>
+                    </div>
+                </button>
+                <button onclick="closeMobileMoreSheet(); forceSync()" class="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <i class="fas fa-cloud-sync text-xl text-blue-600 dark:text-blue-400"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-white">Sincronizza</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">Supabase Cloud</div>
+                    </div>
+                </button>
+                <button onclick="toggleTheme()" class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <i class="fas fa-moon text-xl text-amber-600 dark:text-amber-400 dark:hidden"></i>
+                    <i class="fas fa-sun text-xl text-amber-400 hidden dark:block"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-white">Tema</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">Chiaro / Scuro</div>
+                    </div>
+                </button>
+                <button onclick="closeMobileMoreSheet(); toggleSettings(true)" class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left flex items-center gap-3 transition active:scale-95">
+                    <i class="fas fa-cog text-xl text-slate-600 dark:text-slate-300"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-white">Impostazioni</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">Cloud & GCal</div>
+                    </div>
+                </button>
+            </div>
+            <div class="pt-2 border-t border-slate-200 dark:border-darkborder flex gap-2">
+                <button onclick="closeMobileMoreSheet(); AppData.exportJSON()" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 active:scale-95"><i class="fas fa-file-export"></i> Backup JSON</button>
+                <button onclick="closeMobileMoreSheet(); openImportModal()" class="flex-1 py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 active:scale-95"><i class="fas fa-file-import"></i> Ripristina</button>
+                <button onclick="closeMobileMoreSheet(); toggleShortcutsModal(true)" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center active:scale-95" title="Scorciatoie"><i class="fas fa-keyboard"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR (Fissa in basso per schermi < 768px) -->
+    <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-darkpanel/95 backdrop-blur-lg border-t border-slate-200 dark:border-darkborder md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]">
+        <div class="flex items-center justify-around h-16 px-2">
+            <button onclick="navigate('home')" id="bottomNavHome" class="flex flex-col items-center justify-center flex-1 py-1 text-blue-600 dark:text-blue-400 transition active:scale-95">
+                <i class="fas fa-home text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            <button onclick="navigate('global_calendar')" id="bottomNavCal" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition active:scale-95">
+                <i class="fas fa-calendar-alt text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold">Calendario</span>
+            </button>
+            
+            <!-- Quick Add FAB in centro -->
+            <div class="relative flex-1 flex justify-center -top-3">
+                <button onclick="openMobileUniversalAdd()" class="w-13 h-13 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/40 flex items-center justify-center text-xl hover:scale-105 active:scale-90 transition border-2 border-white dark:border-darkpanel">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <button onclick="navigate('global_tasks')" id="bottomNavTasks" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition active:scale-95">
+                <i class="fas fa-check-double text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold">Tasks</span>
+            </button>
+            <button onclick="openMobileMoreSheet()" id="bottomNavMore" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition active:scale-95">
+                <i class="fas fa-bars text-lg mb-0.5"></i>
+                <span class="text-[10px] font-bold">Menu</span>
+            </button>
+        </div>
+    </nav>
+
     <!-- Moduli Applicativi Life Hub OS (Zero Setup - Funzionamento nativo via doppio clic) -->
-    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+    <script src="js/touchManager.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/data.js"></script>
     <script src="js/state.js"></script>

@@ -17,6 +17,7 @@ function render() {
             else if(state.view === 'global_calendar') c.innerHTML = renderCalendar(); 
             
             initQuillEditors(); 
+            if(typeof updateMobileBottomNav === 'function') updateMobileBottomNav();
         }
 
 // --- WIDGET AGENDA & GOOGLE CALENDAR IN DASHBOARD ---
@@ -1208,15 +1209,8 @@ function renderAdvancedTaskManager() {
                         </div>
 
                         <!-- LISTA TASKS SCROLLABILE -->
-                        <div id="tmTasksListContainer" class="flex-1 overflow-y-auto px-4 md:px-8 pb-24 pt-4 md:pt-0">
+                        <div id="tmTasksListContainer" class="flex-1 overflow-y-auto px-4 md:px-8 pb-28 pt-4 md:pt-0">
                             ${tasksHtml}
-                        </div>
-
-                        <!-- FLOATING ACTION BUTTON (Mobile) -->
-                        <div class="fixed bottom-8 right-6 md:hidden z-[35]">
-                            <button onclick="openMobileQuickAdd()" class="w-14 h-14 bg-blue-600 hover:bg-blue-700 rounded-full text-white text-2xl shadow-[0_4px_20px_rgba(37,99,235,0.5)] flex items-center justify-center transition-transform active:scale-90">
-                                <i class="fas fa-plus"></i>
-                            </button>
                         </div>
                     </div>
                 </div>`;

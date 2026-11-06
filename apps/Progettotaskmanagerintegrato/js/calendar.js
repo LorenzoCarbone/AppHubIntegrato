@@ -1,5 +1,79 @@
 // --- GESTIONE CALENDARIO & TIME BLOCKING ---
 
+// Navigazione a scorrimento giorno per giorno (supporta swipe su mobile)
+function stepCalDay(direction) {
+    let curr = state.ui.calSelectedDate ? new Date(state.ui.calSelectedDate) : new Date();
+    curr.setDate(curr.getDate() + direction);
+    state.ui.calSelectedDate = getISODate(curr);
+    
+    // Controlla se la nuova data è all'interno della finestra di giorni caricata
+    let baseDate = state.ui.calAnchorDate ? new Date(state.ui.calAnchorDate) : new Date();
+    let minD = new Date(baseDate); minD.setDate(baseDate.getDate() - 1);
+    let maxD = new Date(baseDate); maxD.setDate(baseDate.getDate() + 5);
+    
+    if (curr < minD || curr > maxD) {
+        state.ui.calAnchorDate = state.ui.calSelectedDate;
+    }
+    render();
+}
+
+// Dialog modale/bottom-sheet per eventi ciclici (Modifica/Elimina istanza singola vs intera serie)
+function openRecurringActionDialog({ title, message, isDelete = false, singleLabel, seriesLabel, onSingle, onSeries }) {
+    const modal = document.getElementById('recurringChoiceModal');
+    if (!modal) {
+        if (confirm(`${title}\n\n${message}\n\nPremi OK per: ${singleLabel}\nPremi ANNULLA per: ${seriesLabel}`)) {
+            if (typeof onSingle === 'function') onSingle();
+        } else {
+            if (typeof onSeries === 'function') onSeries();
+        }
+        return;
+    }
+    
+    document.getElementById('rcmTitle').innerText = title || "Evento Ricorrente";
+    document.getElementById('rcmMessage').innerText = message || "";
+    document.getElementById('rcmSingleBtnText').innerText = singleLabel || "Solo per questa data";
+    document.getElementById('rcmSeriesBtnText').innerText = seriesLabel || "Per tutta la serie";
+    
+    const iconEl = document.getElementById('rcmIcon');
+    const iconCont = document.getElementById('rcmIconContainer');
+    const singleBtn = document.getElementById('rcmSingleBtn');
+    
+    if (isDelete) {
+        if (iconEl) iconEl.className = "fas fa-trash-alt text-base";
+        if (iconCont) iconCont.className = "w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0";
+        if (singleBtn) singleBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-sm transition flex items-center justify-center gap-2 active:scale-98";
+    } else {
+        if (iconEl) iconEl.className = "fas fa-sync-alt text-base";
+        if (iconCont) iconCont.className = "w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0";
+        if (singleBtn) singleBtn.className = "w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition flex items-center justify-center gap-2 active:scale-98";
+    }
+    
+    if (singleBtn) {
+        singleBtn.onclick = () => {
+            closeRecurringChoiceModal();
+            if (typeof onSingle === 'function') onSingle();
+        };
+    }
+    const seriesBtn = document.getElementById('rcmSeriesBtn');
+    if (seriesBtn) {
+        seriesBtn.onclick = () => {
+            closeRecurringChoiceModal();
+            if (typeof onSeries === 'function') onSeries();
+        };
+    }
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeRecurringChoiceModal() {
+    const modal = document.getElementById('recurringChoiceModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
 // Drag & Drop Calendario tra giorni
 let draggedCalBlockId = null;
 let draggedCalBlockDate = null;
@@ -167,28 +241,33 @@ function getBlockOverlaps(block, dayBlocks) {
 }
 
 function isBlockOnDate(block, dateStr) {
-            if (block.isGcal) return block.date === dateStr; 
-            
-            if (!block.isRecurring) {
-                return block.date === dateStr;
-            }
-            // Recurring logic
-            if (dateStr < block.date) return false; 
-            
-            const targetDate = new Date(dateStr);
-            const startDate = new Date(block.date);
+    if (block.isGcal) return block.date === dateStr; 
+    
+    // Controlla se questa specifica data è stata esclusa / modificata singolarmente
+    if (block.excludedDates && Array.isArray(block.excludedDates) && block.excludedDates.includes(dateStr)) {
+        return false;
+    }
+    
+    if (!block.isRecurring) {
+        return block.date === dateStr;
+    }
+    // Recurring logic
+    if (dateStr < block.date) return false; 
+    
+    const targetDate = new Date(dateStr);
+    const startDate = new Date(block.date);
 
-            if (block.recurrence.type === 'daily') return true;
-            if (block.recurrence.type === 'weekly') {
-                return block.recurrence.days.includes(targetDate.getDay());
-            }
-            if (block.recurrence.type === 'interval') {
-                const diffTime = Math.abs(targetDate - startDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                return diffDays % block.recurrence.interval === 0;
-            }
-            return false;
-        }
+    if (block.recurrence.type === 'daily') return true;
+    if (block.recurrence.type === 'weekly') {
+        return block.recurrence.days.includes(targetDate.getDay());
+    }
+    if (block.recurrence.type === 'interval') {
+        const diffTime = Math.abs(targetDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        return diffDays % block.recurrence.interval === 0;
+    }
+    return false;
+}
 
         function toggleBlockTypeFields() {
             const type = document.getElementById('bmType').value;
@@ -301,6 +380,8 @@ function renderBlockModalTaskList(searchQuery = '') {
             const modal = document.getElementById('blockModal');
             modal.classList.remove('hidden'); modal.classList.add('flex');
 
+            const recNotice = document.getElementById('bmRecurringNotice');
+
             if (id) {
                 const b = state.data.calendarBlocks.find(x => x.id === id);
                 if(!b) return;
@@ -310,7 +391,7 @@ function renderBlockModalTaskList(searchQuery = '') {
                 document.getElementById('bmCat').value = b.category || 'focus';
                 document.getElementById('bmStart').value = b.startTime;
                 document.getElementById('bmEnd').value = b.endTime;
-                document.getElementById('bmDate').value = b.date; 
+                document.getElementById('bmDate').value = b.isRecurring ? blockEditDate : b.date; 
                 document.getElementById('bmNotes').value = b.notes || '';
                 
                 if (b.type === 'simple') {
@@ -327,6 +408,19 @@ function renderBlockModalTaskList(searchQuery = '') {
                     }
                     if(b.recurrence.type === 'interval') document.getElementById('bmIntervalNum').value = b.recurrence.interval;
                 }
+
+                if (recNotice) {
+                    if (b.isRecurring) {
+                        recNotice.innerHTML = `
+                            <div class="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><i class="fas fa-sync-alt text-blue-500"></i> Evento ciclico — Data selezionata: <b>${formatDisplayDate(blockEditDate)}</b></span>
+                            </div>`;
+                        recNotice.classList.remove('hidden');
+                    } else {
+                        recNotice.classList.add('hidden');
+                    }
+                }
+
                 document.getElementById('bmDeleteBtn').classList.remove('hidden');
                 const dupBtn = document.getElementById('bmDuplicateBtn'); if (dupBtn) dupBtn.classList.remove('hidden');
             } else {
@@ -345,6 +439,8 @@ function renderBlockModalTaskList(searchQuery = '') {
                 document.querySelectorAll('.bm-day-chk').forEach(c => c.checked = false);
                 document.getElementById('bmIntervalNum').value = '2';
                 
+                if (recNotice) recNotice.classList.add('hidden');
+
                 document.getElementById('bmDeleteBtn').classList.add('hidden');
                 const dupBtn = document.getElementById('bmDuplicateBtn'); if (dupBtn) dupBtn.classList.add('hidden');
             }
@@ -410,10 +506,50 @@ function renderBlockModalTaskList(searchQuery = '') {
 
             if(blockEditId) {
                 let b = state.data.calendarBlocks.find(x => x.id === blockEditId);
-                if(b) Object.assign(b, payload);
-                showToast("Blocco modificato", "success");
+                if(b) {
+                    if (b.isRecurring) {
+                        openRecurringActionDialog({
+                            title: "Modifica Blocco Ciclico",
+                            message: `Questo blocco si ripete nel calendario. Vuoi applicare le modifiche solo alla data del ${formatDisplayDate(blockEditDate)} oppure a tutte le date della serie ciclica?`,
+                            singleLabel: `Solo per oggi (${formatDisplayDate(blockEditDate)})`,
+                            seriesLabel: `Per tutta la serie ciclica`,
+                            isDelete: false,
+                            onSingle: () => {
+                                if (!b.excludedDates) b.excludedDates = [];
+                                if (!b.excludedDates.includes(blockEditDate)) {
+                                    b.excludedDates.push(blockEditDate);
+                                }
+                                const singleBlock = {
+                                    id: 'cb_' + Date.now(),
+                                    ...payload,
+                                    date: blockEditDate,
+                                    isRecurring: false,
+                                    recurrence: null,
+                                    completedDates: [],
+                                    excludedDates: []
+                                };
+                                state.data.calendarBlocks.push(singleBlock);
+                                closeBlockModal();
+                                AppData.triggerSave();
+                                render();
+                                showToast(`Occorrenza del ${formatDisplayDate(blockEditDate)} salvata come blocco singolo`, "success");
+                            },
+                            onSeries: () => {
+                                Object.assign(b, payload);
+                                closeBlockModal();
+                                AppData.triggerSave();
+                                render();
+                                showToast("Intera serie ciclica modificata con successo", "success");
+                            }
+                        });
+                        return;
+                    } else {
+                        Object.assign(b, payload);
+                        showToast("Blocco modificato", "success");
+                    }
+                }
             } else {
-                state.data.calendarBlocks.push({ id: 'cb_'+Date.now(), ...payload, completedDates: [] });
+                state.data.calendarBlocks.push({ id: 'cb_'+Date.now(), ...payload, completedDates: [], excludedDates: [] });
                 showToast("Blocco aggiunto", "success");
             }
 
@@ -425,6 +561,42 @@ let lastDeletedBlockIndex = -1;
 
 function deleteBlock() {
     if(!blockEditId) return;
+    const b = state.data.calendarBlocks.find(x => x.id === blockEditId);
+    if (!b) return;
+
+    if (b.isRecurring) {
+        openRecurringActionDialog({
+            title: "Elimina Blocco Ciclico",
+            message: `Questo blocco fa parte di una serie ciclica. Vuoi eliminare solo l'occorrenza del ${formatDisplayDate(blockEditDate)} oppure eliminare l'intera serie ciclica?`,
+            singleLabel: `Elimina solo per il ${formatDisplayDate(blockEditDate)}`,
+            seriesLabel: `Elimina l'intera serie ciclica`,
+            isDelete: true,
+            onSingle: () => {
+                if (!b.excludedDates) b.excludedDates = [];
+                if (!b.excludedDates.includes(blockEditDate)) {
+                    b.excludedDates.push(blockEditDate);
+                }
+                closeBlockModal();
+                AppData.triggerSave();
+                render();
+                showToast(`Occorrenza del ${formatDisplayDate(blockEditDate)} rimossa dalla serie`, "info");
+            },
+            onSeries: () => {
+                const idx = state.data.calendarBlocks.findIndex(x => x.id === blockEditId);
+                if (idx !== -1) {
+                    lastDeletedBlock = JSON.parse(JSON.stringify(state.data.calendarBlocks[idx]));
+                    lastDeletedBlockIndex = idx;
+                    state.data.calendarBlocks.splice(idx, 1);
+                    closeBlockModal();
+                    AppData.triggerSave();
+                    render();
+                    showToast(`Intera serie ciclica eliminata <button onclick="undoDeleteBlock()" class="ml-2 font-bold underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs transition">Annulla</button>`, "info");
+                }
+            }
+        });
+        return;
+    }
+
     const idx = state.data.calendarBlocks.findIndex(b => b.id === blockEditId);
     if (idx === -1) return;
     lastDeletedBlock = JSON.parse(JSON.stringify(state.data.calendarBlocks[idx]));
@@ -551,13 +723,19 @@ function duplicateBlock(id = null) {
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between px-4 py-2 md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-darkborder rounded-t-xl">
-                    <button onclick="changeCalWeek(-7)" class="p-1.5 px-3 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Settimana precedente"><i class="fas fa-chevron-left text-xs"></i></button>
-                    <div class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        <span>${weekRangeLabel}</span>
-                        ${state.ui.calAnchorDate ? `<button onclick="resetCalWeek()" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold underline ml-1">Oggi</button>` : ''}
+                <div class="flex items-center justify-between px-3 py-2 md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-darkborder rounded-t-xl">
+                    <div class="flex items-center gap-0.5">
+                        <button onclick="changeCalWeek(-7)" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Settimana precedente"><i class="fas fa-angles-left text-xs"></i></button>
+                        <button onclick="stepCalDay(-1)" class="p-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Giorno precedente"><i class="fas fa-chevron-left text-xs"></i></button>
                     </div>
-                    <button onclick="changeCalWeek(7)" class="p-1.5 px-3 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Settimana successiva"><i class="fas fa-chevron-right text-xs"></i></button>
+                    <div class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <span>${weekRangeLabel}</span>
+                        ${state.ui.calAnchorDate ? `<button onclick="resetCalWeek()" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 ml-1">Oggi</button>` : ''}
+                    </div>
+                    <div class="flex items-center gap-0.5">
+                        <button onclick="stepCalDay(1)" class="p-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Giorno successivo"><i class="fas fa-chevron-right text-xs"></i></button>
+                        <button onclick="changeCalWeek(7)" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Settimana successiva"><i class="fas fa-angles-right text-xs"></i></button>
+                    </div>
                 </div>
                 <div class="flex overflow-x-auto no-scrollbar gap-2 px-4 py-3 md:hidden border-x border-b border-slate-200 dark:border-darkborder bg-white dark:bg-slate-800 rounded-b-xl mb-3">`;
             daysArr.forEach(dStr => {
@@ -707,7 +885,7 @@ function duplicateBlock(id = null) {
                             }
 
                             blocksHtml += `
-                                <div class="absolute left-1.5 right-1.5 rounded-lg p-1.5 overflow-hidden border border-l-[4px] shadow-sm transition-all hover:z-20 ${b.isGcal ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}"
+                                <div class="absolute left-1.5 right-1.5 rounded-lg p-1.5 overflow-hidden border border-l-[4px] shadow-sm transition-all hover:z-20 cursor-pointer ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}"
                                      style="top: ${sMins}px; height: ${eMins - sMins}px; min-height: 25px; ${gcalStyle}; z-index: 10;"
                                      ${b.isGcal ? '' : `draggable="true" ondragstart="onCalBlockDragStart(event, '${b.id}', '${dateStr}')" ondragend="onCalBlockDragEnd(event)"`}
                                      onclick="${onClickAction}">
@@ -779,11 +957,12 @@ function duplicateBlock(id = null) {
                             const cursorStyle = b.isGcal ? (b.link ? 'cursor:pointer' : 'cursor:default') : 'cursor:pointer';
 
                             blocksHtml += `
-                                <div class="panel ${pClass} flex items-start transition-all relative group ${b.isGcal ? '' : 'cursor-grab active:cursor-grabbing'} ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}" 
+                                <div class="panel ${pClass} flex items-start transition-all relative group cursor-pointer ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}" 
                                      ${b.isGcal ? '' : `draggable="true" ondragstart="onCalBlockDragStart(event, '${b.id}', '${dateStr}')" ondragend="onCalBlockDragEnd(event)"`}
-                                     style="${gcalStyle}">
+                                     style="${gcalStyle}"
+                                     onclick="${onClickAction}">
                                     ${chkHtml}
-                                    <div class="flex-1 min-w-0" onclick="${onClickAction}" style="${cursorStyle}">
+                                    <div class="flex-1 min-w-0" style="${cursorStyle}">
                                         <div class="flex justify-between items-center mb-1">
                                             <span class="${headSize} font-black uppercase tracking-wider opacity-80">${b.startTime}${b.endTime ? ' - '+b.endTime : ''}</span>
                                             <div class="flex items-center gap-1.5">
@@ -809,7 +988,7 @@ function duplicateBlock(id = null) {
                          ondrop="onCalDayDrop(event, '${dateStr}')">
                         <div class="flex justify-between items-center p-3 mb-4 rounded-xl border shadow-sm ${colHeaderBg}">
                             <h3 class="font-bold text-sm ${colHeaderColor}">${displayTitle}</h3>
-                            <button onclick="openBlockModal(null, '${dateStr}')" class="text-xs w-6 h-6 rounded-full bg-white dark:bg-darkbg shadow text-slate-500 hover:text-blue-500 transition flex items-center justify-center active:scale-95"><i class="fas fa-plus"></i></button>
+                            <button onclick="openBlockModal(null, '${dateStr}')" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1 active:scale-95" title="Aggiungi Blocco a ${displayTitle}"><i class="fas fa-plus"></i> <span class="hidden sm:inline">Blocco</span></button>
                         </div>
                         <div class="${innerContainerClass}"
                              data-date="${dateStr}"
@@ -817,6 +996,9 @@ function duplicateBlock(id = null) {
                              ondragleave="onCalDayDragLeave(event)" 
                              ondrop="onCalDayDrop(event, '${dateStr}')">
                             ${blocksHtml}
+                            <button onclick="openBlockModal(null, '${dateStr}')" class="w-full mt-3 py-3 px-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 transition flex items-center justify-center gap-2 active:scale-98">
+                                <i class="fas fa-plus-circle text-blue-500"></i> Aggiungi blocco a questa data
+                            </button>
                         </div>
                     </div>`;
             };

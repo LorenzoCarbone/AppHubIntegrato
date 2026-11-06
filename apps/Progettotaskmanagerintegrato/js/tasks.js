@@ -12,6 +12,22 @@ function closeMobileQuickAdd() {
     document.getElementById('mobileQuickAddModal').classList.add('hidden');
     document.getElementById('mobileQuickAddModal').classList.remove('flex');
 }
+
+// Inserimento rapido di tag e smart-token da chip touch
+function insertMobileChip(token) {
+    const el = document.getElementById('gtInMobile');
+    if (!el) return;
+    let v = el.value.trim();
+    if (token === '#') {
+        el.value = v ? v + ' #' : '#';
+    } else {
+        el.value = v ? v + ' ' + token : token;
+    }
+    el.focus();
+    if (typeof handleSmartInput === 'function') {
+        handleSmartInput(el, '');
+    }
+}
 function addTaskFromGlobalMobile() {
     if (window._justAppliedAutocomplete) return;
     const tIn = document.getElementById('gtInMobile'), pIn = document.getElementById('gtPriMobile'), dIn = document.getElementById('gtDateMobile'), cIn = document.getElementById('gtCtxMobile');

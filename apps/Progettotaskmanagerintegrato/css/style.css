@@ -255,7 +255,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
 
         /* Stile Stampa Giornata / Export PDF */
         @media print {
-            header, .hidden-in-tm, #breadcrumbs, button, select, .tm-nav-item, #tmSidebar, #tmOverlayInner {
+            header, .hidden-in-tm, #breadcrumbs, button, select, .tm-nav-item, #tmSidebar, #tmOverlayInner, #mobileBottomNav {
                 display: none !important;
             }
             body {
@@ -266,5 +266,107 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
             .panel {
                 box-shadow: none !important;
                 border: 1px solid #e2e8f0 !important;
+            }
+        }
+
+        /* --- MOBILE OVERHAUL: BOTTOM SHEETS, TOUCH TARGETS & ERGONOMICS --- */
+        body {
+            padding-bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+        }
+        @media (min-width: 768px) {
+            body {
+                padding-bottom: 2.5rem !important;
+            }
+        }
+
+        /* Feedback visivo durante il Long-Press Drag */
+        .touch-drag-active {
+            transform: scale(1.025) !important;
+            outline: 2px solid #3b82f6 !important;
+            outline-offset: 2px !important;
+            box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.25), 0 8px 10px -6px rgba(59, 130, 246, 0.25) !important;
+            z-index: 50 !important;
+            opacity: 0.92 !important;
+            transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+        }
+
+        @media (max-width: 767px) {
+            /* Modali trasformati in Bottom Sheets nativi */
+            .modal-overlay,
+            #blockModal,
+            #mobileQuickAddModal,
+            #entityModal,
+            #contactModal,
+            #settingsModal,
+            #shortcutsModal,
+            #recurringChoiceModal,
+            #mobileUniversalAddModal,
+            #mobileMoreSheet,
+            #importModal,
+            #archiveViewModal {
+                align-items: flex-end !important;
+                padding: 0 !important;
+                justify-content: flex-end !important;
+            }
+
+            .modal-overlay > div,
+            #blockModal > div,
+            #entityModal > div,
+            #contactModal > div,
+            #settingsModal > div,
+            #shortcutsModal > div,
+            #recurringChoiceModal > div,
+            #mobileUniversalAddModal > div,
+            #mobileMoreSheet > div,
+            #importModal > div,
+            #archiveViewModal > div {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                border-top-left-radius: 1.5rem !important;
+                border-top-right-radius: 1.5rem !important;
+                max-height: 88vh !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                margin: 0 !important;
+                animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+            }
+
+            @keyframes slideUpSheet {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+
+            /* Prevenzione iOS auto-zoom su focus input (min 16px font-size) */
+            .input-base, input, select, textarea {
+                font-size: 16px !important;
+            }
+
+            /* Touch Target maggiorati su mobile */
+            button, .task-checkbox, .draggable {
+                touch-action: manipulation;
+            }
+
+            .task-checkbox {
+                width: 1.35rem !important;
+                height: 1.35rem !important;
+                min-width: 1.35rem !important;
+                min-height: 1.35rem !important;
+                flex: 0 0 1.35rem !important;
+            }
+
+            /* Barra Quill orizzontale scrollabile su mobile */
+            .ql-toolbar.ql-snow {
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                -webkit-overflow-scrolling: touch !important;
+                padding: 6px 0 !important;
+            }
+            .ql-toolbar.ql-snow .ql-formats {
+                margin-right: 8px !important;
+                flex-shrink: 0 !important;
             }
         }

@@ -8,6 +8,7 @@ class LifeHubDataManager {
         this.gcalId = localStorage.getItem('hub_gcal_id') || '';
         this.gcalApiKey = localStorage.getItem('hub_gcal_apikey') || '';
         this.gcalCache = [];
+        this.lastGCalError = null;
         
         this.saveTimeout = null;
         this.isSyncing = false;
@@ -75,6 +76,7 @@ class LifeHubDataManager {
         let maxD = new Date(); maxD.setDate(maxD.getDate() + 7); maxD.setHours(23,59,59,999);
         
         let allEvents = [];
+        this.lastGCalError = null;
         const gcalColors = { '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73', '5': '#f6c026', '6': '#f09300', '7': '#039be5', '8': '#616161', '9': '#3f51b5', '10': '#0b8043', '11': '#d60000' };
         
         for(let calEntry of cals) {
@@ -85,7 +87,13 @@ class LifeHubDataManager {
             const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?key=${this.gcalApiKey}&timeMin=${minD.toISOString()}&timeMax=${maxD.toISOString()}&singleEvents=true&orderBy=startTime`;
             try {
                 const res = await fetch(url);
-                if(!res.ok) continue;
+                if(!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    const errMsg = errData.error?.message || `Errore HTTP ${res.status}`;
+                    console.warn(`[GCal] Errore sincronizzazione calendario "${calId}":`, res.status, errMsg);
+                    this.lastGCalError = { calId, status: res.status, message: errMsg };
+                    continue;
+                }
                 const data = await res.json();
                 if(data.items) {
                     const events = data.items.map(item => {
@@ -121,9 +129,53 @@ class LifeHubDataManager {
                     });
                     allEvents.push(...events);
                 }
-            } catch(e) { console.error("Gcal sync error for cal:", calId, e); }
+            } catch(e) {
+                console.error("Gcal sync error for cal:", calId, e);
+                this.lastGCalError = { calId, status: 0, message: e.message };
+            }
         }
         this.gcalCache = allEvents;
+    }
+
+    // Metodo diagnostico per testare la connessione a Google Calendar con report dettagliato
+    async testGCalConnection(calIdsParam = null, apiKeyParam = null) {
+        const apiKey = (apiKeyParam !== null ? apiKeyParam : this.gcalApiKey).trim();
+        const calIdStr = (calIdsParam !== null ? calIdsParam : this.gcalId).trim();
+        
+        if(!apiKey) return [{ ok: false, calId: 'Generale', error: "Chiave API mancante", hint: "Inserisci la tua API Key di Google Cloud Console." }];
+        if(!calIdStr) return [{ ok: false, calId: 'Generale', error: "ID Calendario mancante", hint: "Inserisci l'ID del calendario (es. la tua email gmail)." }];
+        
+        const cals = calIdStr.split(',').map(s=>s.trim()).filter(Boolean);
+        if(cals.length === 0) return [{ ok: false, calId: 'Generale', error: "Nessun calendario valido specificato", hint: "" }];
+
+        let results = [];
+        for(let calEntry of cals) {
+            let [calId] = calEntry.split('|');
+            calId = calId.trim();
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?key=${apiKey}&maxResults=1`;
+            try {
+                const res = await fetch(url);
+                if(res.ok) {
+                    const data = await res.json();
+                    results.push({ calId, ok: true, count: data.items ? data.items.length : 0 });
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    let detail = errData.error?.message || `HTTP ${res.status}`;
+                    let hint = "";
+                    if(res.status === 403) {
+                        hint = "1) Assicurati che 'Google Calendar API' sia ABILITATA nella Google Cloud Console (Libreria API). 2) Se la chiave API ha restrizioni 'Referrer HTTP', rimuovile temporaneamente o consenti tutte le origini.";
+                    } else if(res.status === 404) {
+                        hint = "Calendario non trovato o NON pubblico! Su calendar.google.com vai su Impostazioni > [Tuo Calendario] > 'Autorizzazioni all\\'accesso' e spunta 'Rendi disponibile pubblicamente' (Vedere tutti i dettagli).";
+                    } else if(res.status === 400) {
+                        hint = "Richiesta non valida. Controlla il formato dell'ID calendario o della chiave API.";
+                    }
+                    results.push({ calId, ok: false, error: detail, hint });
+                }
+            } catch(e) {
+                results.push({ calId, ok: false, error: e.message, hint: "Impossibile contattare i server Google. Verifica la connessione di rete." });
+            }
+        }
+        return results;
     }
 
     triggerSave() {
@@ -171,7 +223,15 @@ class LifeHubDataManager {
 
     migrateData(d) {
         if (!d || Object.keys(d).length === 0) return JSON.parse(JSON.stringify(this.defaultData));
-        let n = { version: "5.1", spheres: [], projects: [], subprojects: [], tasks: d.tasks || [], contacts: d.contacts || [], calendarBlocks: d.calendarBlocks || [] };
+        let n = { 
+            version: "5.1", 
+            spheres: [], 
+            projects: [], 
+            subprojects: [], 
+            tasks: d.tasks || [], 
+            contacts: d.contacts || [], 
+            calendarBlocks: (d.calendarBlocks || []).map(b => ({ ...b, excludedDates: b.excludedDates || [] })) 
+        };
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
         n.gcalCompleted = d.gcalCompleted || [];
         

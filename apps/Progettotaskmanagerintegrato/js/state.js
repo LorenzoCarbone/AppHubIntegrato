@@ -63,6 +63,12 @@ function toggleSettings(forceOpen) {
         if (aKey) aKey.value = AppData.anonKey || '';
         if (gId) gId.value = AppData.gcalId || '';
         if (gApi) gApi.value = AppData.gcalApiKey || '';
+
+        const st = document.getElementById('gcalTestStatus');
+        const dt = document.getElementById('gcalTestDetails');
+        if (st) st.innerHTML = '';
+        if (dt) { dt.innerHTML = ''; dt.classList.add('hidden'); }
+
         m.classList.remove('hidden');
         m.style.display = 'flex';
     } else {
@@ -73,6 +79,116 @@ function toggleSettings(forceOpen) {
 
 function openSettingsModal() {
     toggleSettings(true);
+}
+
+async function testGCalSettings() {
+    const btn = document.getElementById('testGcalBtn');
+    const statusEl = document.getElementById('gcalTestStatus');
+    const detailsEl = document.getElementById('gcalTestDetails');
+    const gId = (document.getElementById('gcalIdSettings')?.value || '').trim();
+    const gKey = (document.getElementById('gcalApiSettings')?.value || '').trim();
+    
+    if (!gKey) {
+        showToast("Inserisci prima l'API Key di Google Calendar", "error");
+        return;
+    }
+    if (!gId) {
+        showToast("Inserisci almeno un ID calendario", "error");
+        return;
+    }
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Verifica in corso...';
+    btn.disabled = true;
+    if (statusEl) statusEl.innerHTML = '';
+    if (detailsEl) detailsEl.classList.add('hidden');
+    
+    try {
+        const results = await AppData.testGCalConnection(gId, gKey);
+        const allOk = results.every(r => r.ok);
+        if (allOk) {
+            if (statusEl) statusEl.innerHTML = '<span class="text-green-600 dark:text-green-400 font-bold ml-1.5 flex items-center gap-1"><i class="fas fa-check-circle"></i> Connessione riuscita!</span>';
+            if (detailsEl) {
+                detailsEl.innerHTML = `<div class="text-green-700 dark:text-green-300 font-medium">Tutti i calendari configurati (${results.length}) sono stati contattati con successo via API.</div>`;
+                detailsEl.classList.remove('hidden');
+            }
+        } else {
+            if (statusEl) statusEl.innerHTML = '<span class="text-red-500 font-bold ml-1.5 flex items-center gap-1"><i class="fas fa-times-circle"></i> Errore rilevato</span>';
+            if (detailsEl) {
+                let html = '<div class="space-y-2">';
+                results.forEach(r => {
+                    if (r.ok) {
+                        html += `<div class="text-green-600 dark:text-green-400 font-medium"><i class="fas fa-check mr-1"></i> <b>${r.calId}</b>: OK</div>`;
+                    } else {
+                        html += `<div class="text-red-600 dark:text-red-400 font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> <b>${r.calId}</b>: ${r.error}</div>`;
+                        if (r.hint) {
+                            html += `<div class="text-slate-600 dark:text-slate-400 pl-4 text-[11px] leading-tight">👉 <i>${r.hint}</i></div>`;
+                        }
+                    }
+                });
+                html += '</div>';
+                detailsEl.innerHTML = html;
+                detailsEl.classList.remove('hidden');
+            }
+        }
+    } catch(err) {
+        if (statusEl) statusEl.innerHTML = `<span class="text-red-500 font-bold ml-1.5"><i class="fas fa-times-circle"></i> ${err.message}</span>`;
+    } finally {
+        btn.innerHTML = '<i class="fas fa-plug"></i> Testa Connessione Google Calendar';
+        btn.disabled = false;
+    }
+}
+
+// Controller Bottom Sheet Mobile
+function openMobileUniversalAdd() {
+    if (state.view === 'global_calendar') {
+        openBlockModal(null, state.ui.calSelectedDate || getISODate(new Date()));
+        return;
+    }
+    if (state.view === 'global_tasks') {
+        openMobileQuickAdd();
+        return;
+    }
+    const m = document.getElementById('mobileUniversalAddModal');
+    if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+}
+function closeMobileUniversalAdd() {
+    const m = document.getElementById('mobileUniversalAddModal');
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+}
+
+function openMobileMoreSheet() {
+    const m = document.getElementById('mobileMoreSheet');
+    if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+}
+function closeMobileMoreSheet() {
+    const m = document.getElementById('mobileMoreSheet');
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+}
+
+// Aggiorna indicatore attivo nella barra di navigazione mobile
+function updateMobileBottomNav() {
+    const nav = document.getElementById('mobileBottomNav');
+    if (!nav) return;
+    const homeBtn = document.getElementById('bottomNavHome');
+    const calBtn = document.getElementById('bottomNavCal');
+    const tasksBtn = document.getElementById('bottomNavTasks');
+    const moreBtn = document.getElementById('bottomNavMore');
+    
+    [homeBtn, calBtn, tasksBtn, moreBtn].forEach(b => {
+        if (!b) return;
+        b.classList.remove('text-blue-600', 'dark:text-blue-400', 'text-emerald-600', 'dark:text-emerald-400', 'text-purple-600', 'dark:text-purple-400', 'font-black');
+        b.classList.add('text-slate-500', 'dark:text-slate-400');
+    });
+
+    if (state.view === 'home') {
+        if (homeBtn) { homeBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); homeBtn.classList.add('text-blue-600', 'dark:text-blue-400', 'font-black'); }
+    } else if (state.view === 'global_calendar') {
+        if (calBtn) { calBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); calBtn.classList.add('text-emerald-600', 'dark:text-emerald-400', 'font-black'); }
+    } else if (state.view === 'global_tasks') {
+        if (tasksBtn) { tasksBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); tasksBtn.classList.add('text-blue-600', 'dark:text-blue-400', 'font-black'); }
+    } else if (state.view === 'global_contacts') {
+        if (moreBtn) { moreBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); moreBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-black'); }
+    }
 }
 
 function saveSettings() {
@@ -137,10 +253,12 @@ async function navigate(view, sId=null, pId=null, spId=null) {
     });
     
     render(); 
+    updateMobileBottomNav();
 
     if(view === 'global_calendar' && AppData.gcalApiKey && AppData.gcalId) {
         await AppData.fetchGCalEvents();
         render();
+        updateMobileBottomNav();
     }
 }
 

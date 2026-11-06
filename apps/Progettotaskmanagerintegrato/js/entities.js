@@ -203,7 +203,7 @@ function onDragStart(e, id, type, listType) {
             const id = type === 'project' ? pId : spId;
             const icon = itemObj.icon || (type === 'project' ? 'fa-folder' : 'fa-file-alt');
             return `
-                <div draggable="true" ondragstart="onDragStart(event, '${id}', '${type}', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${id}', '${type}', '${listType}')"
+                <div draggable="true" data-drag-card="true" ondragstart="onDragStart(event, '${id}', '${type}', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${id}', '${type}', '${listType}')"
                      onclick="navigate('${type}', '${sId}', '${pId}', '${spId}')" class="panel panel-hover p-4 flex justify-between items-center relative group draggable mb-4 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm border-l-[5px]" style="border-left-color: ${colorHex}">
                     <div class="pl-1 word-wrap flex-1">
                         <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center">
@@ -211,7 +211,7 @@ function onDragStart(e, id, type, listType) {
                         </h3>
                         <p class="text-[10px] font-bold text-slate-500 mt-1.5 uppercase tracking-widest">${sub}</p>
                     </div>
-                    <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition items-center">
+                    <div class="flex gap-1.5 opacity-60 md:opacity-0 group-hover:opacity-100 transition items-center">
                         <button onclick="event.stopPropagation(); toggleArchiveEntity('${type}', '${id}')" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Archivia"><i class="fas fa-archive text-[11px]"></i></button>
                         <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-1 cursor-grab p-1"></i>
                     </div>
