@@ -467,6 +467,21 @@
         </div>
     </div>
 
+    <!-- MODAL SELETTORE PAGINE PER NOTE (WIKI) -->
+    <div id="notePagePickerModal" class="modal-overlay hidden" onclick="if(event.target === this) closeNotePagePicker()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-5 w-full max-w-md modal-animate">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3 md:hidden"></div>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-file-alt text-purple-500"></i> Collega Pagina (Wiki-Link)
+                </h3>
+                <button onclick="closeNotePagePicker()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
+            </div>
+            <input type="text" id="notePageSearchInput" oninput="renderNotePagePickerList(this.value)" placeholder="Cerca pagina per titolo o progetto..." class="input-base text-xs py-2 mb-3">
+            <div id="notePagePickerList" class="space-y-1.5 max-h-64 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
     <!-- MODALE CESTINO DI RECUPERO -->
     <div id="trashModal" class="modal-overlay hidden" onclick="if(event.target === this) closeTrashModal()">
         <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-5 md:p-6 w-full max-w-lg modal-animate flex flex-col max-h-[85vh]">
@@ -742,6 +757,10 @@
             </button>
         </div>
     </nav>
+
+    <!-- FLOATING SLASH MENU & WIKI LINK DROPDOWN -->
+    <div id="quillSlashMenu" class="slash-command-menu hidden"></div>
+    <div id="wikiLinkDropdown" class="wiki-link-dropdown hidden"></div>
 
     <!-- Moduli Applicativi Life Hub OS (Zero Setup - Funzionamento nativo via doppio clic) -->
     <script src="js/touchManager.js"></script>

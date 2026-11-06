@@ -407,18 +407,98 @@ function showToast(message, type = 'default') {
 window.alert = function(msg) { showToast(msg, 'error'); };
 
 function toggleFocusMode(editorId) {
-    const container = document.getElementById(editorId).parentElement;
-    container.classList.toggle('focus-mode-active');
-    if(container.classList.contains('focus-mode-active')) {
-        showToast("Zen Mode attivato. Premi Esc per uscire.", "success");
-        const escHandler = function(e) {
-            if(e.key === 'Escape') {
-                container.classList.remove('focus-mode-active');
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
+    let el = null;
+    if (editorId) el = document.getElementById(editorId);
+    if (!el && typeof getActiveNotebookQuill === 'function') {
+        const q = getActiveNotebookQuill();
+        if (q) el = q.container;
     }
+    if (!el) {
+        showToast("Editor non trovato per la modalità Zen", "default");
+        return;
+    }
+    const container = el.classList.contains('project-notebook-editor') ? el : (el.closest('.project-notebook-editor') || el.parentElement);
+    if (!container) return;
+
+    if (container.classList.contains('focus-mode-active')) {
+        exitFocusMode();
+    } else {
+        enterFocusMode(container);
+    }
+}
+
+function enterFocusMode(container) {
+    container.classList.add('focus-mode-active');
+    
+    // Rimuove eventuale barra precedente
+    let bar = document.getElementById('zenFloatingBar');
+    if (bar) bar.remove();
+
+    bar = document.createElement('div');
+    bar.id = 'zenFloatingBar';
+    bar.className = 'zen-floating-bar flex items-center justify-between px-5 py-2.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-md fixed top-0 left-0 right-0 z-[10000]';
+    bar.innerHTML = `
+        <div class="flex items-center gap-2.5">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <i class="fas fa-feather-alt text-blue-500"></i> Modalità Zen
+            </span>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">• Ambiente di scrittura privo di distrazioni</span>
+        </div>
+        <button onclick="exitFocusMode()" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 transition flex items-center gap-2 shadow-sm active:scale-95">
+            <i class="fas fa-compress text-xs"></i> <span>Esci dallo Zen</span> <kbd class="hidden md:inline bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-slate-300 dark:border-slate-600">Esc</kbd>
+        </button>
+    `;
+    document.body.appendChild(bar);
+
+    try {
+        history.pushState({ zenActive: true }, '');
+    } catch(e) {}
+
+    showToast("Modalità Zen attiva. Clicca 'Esci dallo Zen' o premi Esc per tornare.", "success");
+}
+
+function exitFocusMode() {
+    let wasActive = false;
+    document.querySelectorAll('.focus-mode-active').forEach(el => {
+        el.classList.remove('focus-mode-active');
+        wasActive = true;
+    });
+    const bar = document.getElementById('zenFloatingBar');
+    if (bar) {
+        bar.remove();
+        wasActive = true;
+    }
+    
+    if (wasActive) {
+        try {
+            if (history.state && history.state.zenActive) {
+                history.back();
+            }
+        } catch(e) {}
+        showToast("Uscito dalla modalità Zen", "default");
+    }
+}
+
+// Intercetta il tasto "Indietro" del browser e gesture mobile per chiudere lo Zen senza cambiare schermata
+if (typeof window !== 'undefined' && !window.__zenPopstateAttached) {
+    window.__zenPopstateAttached = true;
+    window.addEventListener('popstate', function(e) {
+        const active = document.querySelector('.focus-mode-active');
+        const bar = document.getElementById('zenFloatingBar');
+        if (active || bar) {
+            if (active) active.classList.remove('focus-mode-active');
+            if (bar) bar.remove();
+            showToast("Uscito dalla modalità Zen", "default");
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const active = document.querySelector('.focus-mode-active');
+            if (active) exitFocusMode();
+        }
+    });
 }
 
 function applyTheme() {

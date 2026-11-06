@@ -19,6 +19,7 @@ class LifeHubDataManager {
             calendarBlocks: [],
             gcalCompleted: [],
             trash: [],
+            pages: [],
             pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}]
         };
         
@@ -97,15 +98,8 @@ class LifeHubDataManager {
                 }
                 const data = await res.json();
                 if(data.items) {
-                    const events = data.items.map(item => {
-                        let start = item.start.dateTime || item.start.date;
-                        let end = item.end.dateTime || item.end.date;
-                        let isAllDay = !item.start.dateTime;
-                        
-                        let startDateStr = start.split('T')[0];
-                        let startTime = isAllDay ? "Tutto il giorno" : start.split('T')[1].substring(0,5);
-                        let endTime = isAllDay ? "" : end.split('T')[1].substring(0,5);
-                        
+                    data.items.forEach(item => {
+                        let isAllDay = !item.start.dateTime || (item.start.date && !item.start.dateTime);
                         let eventTitle = item.summary;
                         let noteStr = item.description ? item.description.replace(/<[^>]*>?/gm, '').substring(0,250) + (item.description.length > 250 ? '...' : '') : '';
                         
@@ -114,21 +108,52 @@ class LifeHubDataManager {
                             noteStr = 'I dettagli sono nascosti da Google. Vai su Google Calendar > Impostazioni > Clicca il calendario > "Autorizzazioni all\'accesso" e imposta il menu a tendina pubblico su "Vedere tutti i dettagli dell\'evento".';
                         }
 
-                        return {
-                            id: 'gcal_' + item.id,
-                            isGcal: true,
-                            title: eventTitle,
-                            date: startDateStr,
-                            startTime: startTime,
-                            endTime: endTime,
-                            category: 'gcal',
-                            isAllDay: isAllDay,
-                            link: item.htmlLink,
-                            notes: noteStr,
-                            color: item.colorId ? gcalColors[item.colorId] : calColor
-                        };
+                        if (isAllDay) {
+                            let curr = new Date(item.start.date);
+                            const endLimit = item.end && item.end.date ? new Date(item.end.date) : new Date(curr.getTime() + 86400000);
+                            if (endLimit <= curr) endLimit.setDate(curr.getDate() + 1);
+                            
+                            while (curr < endLimit) {
+                                const dStr = getISODate(curr);
+                                allEvents.push({
+                                    id: 'gcal_' + item.id + '_' + dStr,
+                                    origId: item.id,
+                                    isGcal: true,
+                                    title: eventTitle,
+                                    date: dStr,
+                                    startTime: "Tutto il giorno",
+                                    endTime: "",
+                                    category: 'gcal',
+                                    isAllDay: true,
+                                    link: item.htmlLink,
+                                    notes: noteStr,
+                                    color: item.colorId ? gcalColors[item.colorId] : calColor
+                                });
+                                curr.setDate(curr.getDate() + 1);
+                            }
+                        } else {
+                            let start = item.start.dateTime;
+                            let end = item.end.dateTime || start;
+                            let startDateStr = start.split('T')[0];
+                            let startTime = start.split('T')[1].substring(0,5);
+                            let endTime = end.split('T')[1].substring(0,5);
+                            const isFullDayTimed = (startTime === "00:00" && (endTime === "00:00" || endTime === "23:59" || !endTime));
+
+                            allEvents.push({
+                                id: 'gcal_' + item.id,
+                                isGcal: true,
+                                title: eventTitle,
+                                date: startDateStr,
+                                startTime: isFullDayTimed ? "Tutto il giorno" : startTime,
+                                endTime: isFullDayTimed ? "" : endTime,
+                                category: 'gcal',
+                                isAllDay: isFullDayTimed,
+                                link: item.htmlLink,
+                                notes: noteStr,
+                                color: item.colorId ? gcalColors[item.colorId] : calColor
+                            });
+                        }
                     });
-                    allEvents.push(...events);
                 }
             } catch(e) {
                 console.error("Gcal sync error for cal:", calId, e);
@@ -236,6 +261,27 @@ class LifeHubDataManager {
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
         n.gcalCompleted = d.gcalCompleted || [];
         n.trash = d.trash || [];
+        n.pages = d.pages || [];
+
+        // Migra eventuali vecchi aggiornamenti/archivio a pagine dedicate se non già presenti
+        const migrateUpdatesToPages = (items) => {
+            (items || []).forEach(item => {
+                if (item.updates && Array.isArray(item.updates)) {
+                    item.updates.forEach(u => {
+                        if (u.content && !n.pages.some(pg => pg.id === u.id)) {
+                            n.pages.push({
+                                id: u.id,
+                                contextId: item.id,
+                                title: `Archivio (${u.date || 'Storico'})`,
+                                content: u.content,
+                                createdAt: u.date || '2025-01-01',
+                                updatedAt: u.date || '2025-01-01'
+                            });
+                        }
+                    });
+                }
+            });
+        };
         
         if (d.version !== "4.5" && d.version !== "5.0" && d.version !== "5.1" && d.spheres && d.spheres.length > 0 && d.spheres[0].projects !== undefined) {
             d.spheres.forEach((s, sIdx) => {
@@ -256,6 +302,8 @@ class LifeHubDataManager {
             n.projects = (d.projects || []);
             n.subprojects = (d.subprojects || []);
         }
+        migrateUpdatesToPages(n.projects);
+        migrateUpdatesToPages(n.subprojects);
         return n;
     }
     

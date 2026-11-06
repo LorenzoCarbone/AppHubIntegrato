@@ -482,6 +482,8 @@ function saveTaskEdit(id, contextElementId) {
     if(priInput) t.priority = parseInt(priInput.value);
     const dateInput = document.getElementById('etDate_' + id);
     if(dateInput) t.dueDate = dateInput.value;
+    const startDateInput = document.getElementById('etStartDate_' + id);
+    if(startDateInput) t.startDate = startDateInput.value || '';
     if(contextElementId) { 
         const ctxEl = document.getElementById(contextElementId);
         if(ctxEl) t.contextId = ctxEl.value; 
@@ -742,6 +744,13 @@ function renderTaskBadges(t) {
         };
         badges += `<span class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${qColors[t.eisenhower] || ''}" title="Eisenhower: ${t.eisenhower.toUpperCase()}">
             ${t.eisenhower.toUpperCase()}
+        </span>`;
+    }
+    if (t.startDate) {
+        const isFuture = t.startDate > getISODate(new Date());
+        badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${isFuture ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'}" title="Attiva dal: ${formatDisplayDate(t.startDate)}">
+            <i class="fas fa-hourglass-start text-[8px]"></i>
+            <span>${isFuture ? 'Attiva dal ' : 'Dal '}${formatDisplayDate(t.startDate)}</span>
         </span>`;
     }
     return badges;

@@ -640,6 +640,7 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
             }
 
             const hasCompleted = tasks.some(t => t.completed);
+            tasks = tasks.filter(t => !(t.startDate && t.startDate > getISODate(new Date()) && !t.completed));
             if(!state.ui.showCompletedTasks) tasks = tasks.filter(t => !t.completed);
             tasks.sort((a,b) => a.completed - b.completed || b.priority - a.priority);
 
@@ -681,7 +682,11 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                             <input type="text" id="etTitle_${t.id}" value="${t.title}" class="input-base font-bold text-sm py-1.5">
                             <div class="flex flex-wrap gap-2">
                                 <select id="etPri_${t.id}" class="input-base w-24 text-xs font-bold py-1.5"><option value="0" ${t.priority===0?'selected':''}>No Prio</option><option value="1" ${t.priority===1?'selected':''}>Bassa</option><option value="2" ${t.priority===2?'selected':''}>Media</option><option value="3" ${t.priority===3?'selected':''}>Alta</option></select>
-                                <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-1.5">
+                                <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-1.5" title="Data Scadenza">
+                                <div class="flex items-center gap-1 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800/40">
+                                    <span class="text-[9px] text-indigo-500 font-bold uppercase" title="Visibile solo a partire da questa data">Attiva dal:</span>
+                                    <input type="date" id="etStartDate_${t.id}" value="${t.startDate||''}" class="bg-transparent text-xs font-bold py-1 border-none outline-none text-indigo-600 dark:text-indigo-400">
+                                </div>
                                 <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-1.5">${generateCtxOpts(t.contextId)}</select>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
@@ -812,6 +817,10 @@ function getFilteredAdvancedTasksData() {
         listTitle = "Catena dei Vincoli (Workflow Pipeline)";
     }
     else if(state.ui.tmView === 'prereq') { tasks = tasks.filter(t => getTasksDependentOn(t.id).length > 0); listTitle = "Prerequisiti (Sbloccano altre task)"; }
+    else if(state.ui.tmView === 'future') {
+        tasks = tasks.filter(t => t.startDate && t.startDate > todayStr && !t.completed);
+        listTitle = "In Attesa di Attivazione (Future)";
+    }
     else if(state.ui.tmView === 'all') { listTitle = "Tutte le task"; }
     else if(state.ui.tmView.startsWith('s_')) { 
         const id = state.ui.tmView.replace('s_',''); 
@@ -834,6 +843,11 @@ function getFilteredAdvancedTasksData() {
         const id = state.ui.tmView.replace('sp_',''); 
         tasks = tasks.filter(t => t.contextId === id); 
         let spObj = getEntity('subproject', id); listTitle = spObj ? spObj.name : 'Lista'; 
+    }
+
+    // Escludi le task future non ancora attive dalle viste standard
+    if (state.ui.tmView !== 'future') {
+        tasks = tasks.filter(t => !(t.startDate && t.startDate > todayStr && !t.completed));
     }
 
     // Filtro Ricerca Live (Cerca per titolo, contesto o sottotask)
@@ -993,7 +1007,11 @@ function generateAdvancedTasksHtml() {
                             <input type="text" id="etTitle_${t.id}" value="${t.title}" class="input-base font-bold text-base py-2">
                             <div class="flex flex-wrap items-center gap-3">
                                 <select id="etPri_${t.id}" class="input-base w-28 text-xs font-bold py-2"><option value="0" ${t.priority===0?'selected':''}>No Prio</option><option value="1" ${t.priority===1?'selected':''}>Bassa</option><option value="2" ${t.priority===2?'selected':''}>Media</option><option value="3" ${t.priority===3?'selected':''}>Alta</option></select>
-                                <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-2">
+                                <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-2" title="Data Scadenza">
+                                <div class="flex items-center gap-1.5 bg-indigo-50/50 dark:bg-indigo-950/20 px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/40">
+                                    <span class="text-[10px] text-indigo-500 font-bold uppercase" title="Visibile solo a partire da questa data">Attiva dal:</span>
+                                    <input type="date" id="etStartDate_${t.id}" value="${t.startDate||''}" class="bg-transparent text-xs font-bold border-none outline-none text-indigo-600 dark:text-indigo-400">
+                                </div>
                                 <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-2">${generateCtxOpts(t.contextId)}</select>
                                 <select id="etRec_${t.id}" class="input-base w-36 text-xs font-bold py-2">
                                     <option value="none" ${(!t.recurrence||t.recurrence.frequency==='none')?'selected':''}>No Ricorrenza</option>
@@ -1146,8 +1164,9 @@ function renderAdvancedTaskManager() {
                         const todayIso = getISODate(new Date());
                         const overdueCount = (state.data.tasks || []).filter(t => t.dueDate && t.dueDate < todayIso && !t.completed).length;
                         const readyCount = (state.data.tasks || []).filter(t => t.dependsOn && t.dependsOn.length > 0 && !isTaskBlocked(t) && !t.completed).length;
+                        const futureCount = (state.data.tasks || []).filter(t => t.startDate && t.startDate > todayIso && !t.completed).length;
                         
-                        const advancedViews = ['overdue', 'ready_to_start', 'locked', 'pipeline', 'prereq'];
+                        const advancedViews = ['overdue', 'ready_to_start', 'future', 'locked', 'pipeline', 'prereq'];
                         const isAdvancedActive = advancedViews.includes(state.ui.tmView);
                         const isExpanded = state.ui.tmAdvancedViewsExpanded !== undefined ? state.ui.tmAdvancedViewsExpanded : isAdvancedActive;
 
@@ -1179,6 +1198,11 @@ function renderAdvancedTaskManager() {
                                         <i class="fas fa-play-circle w-5 text-emerald-500 text-center"></i>
                                         <span class="flex-1">Pronte da Avviare</span>
                                         ${readyCount > 0 ? `<span class="text-[9px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full shrink-0">${readyCount}</span>` : ''}
+                                    </div>
+                                    <div class="tm-nav-item ${state.ui.tmView==='future'?'active':''}" onclick="state.ui.tmView='future'; toggleTmSidebar(); render();">
+                                        <i class="fas fa-hourglass-start w-5 text-indigo-500 text-center"></i>
+                                        <span class="flex-1">In Attesa di Attivazione</span>
+                                        ${futureCount > 0 ? `<span class="text-[9px] font-bold bg-indigo-500 text-white px-1.5 py-0.5 rounded-full shrink-0">${futureCount}</span>` : ''}
                                     </div>
                                     <div class="tm-nav-item ${state.ui.tmView==='locked'?'active':''}" onclick="state.ui.tmView='locked'; toggleTmSidebar(); render();"><i class="fas fa-lock w-5 text-amber-500 text-center"></i> Task Vincolate</div>
                                     <div class="tm-nav-item ${state.ui.tmView==='pipeline'?'active':''}" onclick="state.ui.tmView='pipeline'; toggleTmSidebar(); render();"><i class="fas fa-project-diagram w-5 text-indigo-500 text-center"></i> Catena Vincoli</div>

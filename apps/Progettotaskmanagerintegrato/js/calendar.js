@@ -838,14 +838,20 @@ function duplicateBlock(id = null) {
                                 <span class="text-[9px] bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-1.5 py-0.2 rounded-full font-bold">${dueTasksToday.length + allDayBlocks.length}</span>
                             </div>
                             <div class="space-y-1">
-                                ${allDayBlocks.map(b => `
-                                    <div onclick="openBlockModal('${b.id}', '${dateStr}')" class="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate">
-                                        <span class="truncate flex items-center gap-1.5"><i class="fas fa-bookmark text-blue-500 text-[10px]"></i> ${escapeHtml(b.title)}</span>
-                                        <span class="text-[9px] text-slate-400 font-normal shrink-0">Evento</span>
-                                    </div>
-                                `).join('')}
+                                ${allDayBlocks.map(b => {
+                                    const isDone = b.isGcal ? (state.data.gcalCompleted && state.data.gcalCompleted.includes(b.id + '_' + dateStr)) : (b.completedDates && b.completedDates.includes(dateStr));
+                                    const onClick = b.isGcal ? (b.link ? `window.open('${b.link}', '_blank')` : '') : `openBlockModal('${b.id}', '${dateStr}')`;
+                                    const icon = b.isGcal ? 'fab fa-google text-red-500' : 'fas fa-bookmark text-blue-500';
+                                    const tag = b.isGcal ? 'Google' : 'Evento';
+                                    return `
+                                        <div onclick="${onClick}" class="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate ${isDone ? 'opacity-50 line-through' : ''}">
+                                            <span class="truncate flex items-center gap-1.5"><i class="${icon} text-[10px]"></i> ${escapeHtml(b.title)}</span>
+                                            <span class="text-[9px] text-slate-400 font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 shrink-0">${tag}</span>
+                                        </div>
+                                    `;
+                                }).join('')}
                                 ${dueTasksToday.map(t => `
-                                    <div class="flex items-center gap-2 px-2 py-1 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                                    <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                                         <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox min-w-[12px] min-h-[12px] w-3 h-3 shrink-0">
                                         <span class="truncate cursor-pointer hover:text-blue-500 transition flex-1" onclick="editTask('${t.id}')">${escapeHtml(t.title)}</span>
                                         <span class="text-[9px] text-slate-400 font-normal shrink-0">Scadenza</span>
@@ -936,7 +942,6 @@ function duplicateBlock(id = null) {
                                      onclick="${onClickAction}">
                                     <div class="flex items-start gap-1.5 h-full flex-col">
                                         <div class="flex items-start gap-1.5 w-full">
-                                            ${chkHtml}
                                             <div class="flex-1 min-w-0 flex flex-col justify-start">
                                                 <div class="font-bold text-[11px] truncate flex items-center justify-between">
                                                     <span class="truncate"><i class="${icon} text-[9px] mr-1 opacity-80"></i>${b.title}</span>
@@ -960,8 +965,9 @@ function duplicateBlock(id = null) {
                         blocksHtml += `</div>`;
                     } else {
                         // Modalità Normale
+                        const normalBlocks = blocks.filter(b => !b.isAllDay && b.startTime !== "Tutto il giorno");
                         blocksHtml += `<div class="space-y-2">`;
-                        blocks.forEach(b => {
+                        normalBlocks.forEach(b => {
                             let isDone = b.isGcal ? (state.data.gcalCompleted && state.data.gcalCompleted.includes(b.id + '_' + dateStr)) : (b.completedDates && b.completedDates.includes(dateStr));
                             const catClass = b.isGcal ? '' : "block-" + (b.category || 'routine');
                             const gcalStyle = b.isGcal ? `border-left: 4px solid ${b.color}; background-color: ${b.color}15; color: ${b.color};` : '';
@@ -978,9 +984,6 @@ function duplicateBlock(id = null) {
                             const headSize = isBreak ? 'text-[9px]' : 'text-[10px]';
                             
                             const hasLinkedTasks = b.type === 'task' && b.taskIds && b.taskIds.length > 0;
-                            const isNonTaskSimple = b.type === 'simple' && (isBreak || isRoutine);
-                            const hideMainCheckbox = b.isGcal || isNonTaskSimple || hasLinkedTasks;
-                            const chkHtml = hideMainCheckbox ? '' : `<input type="checkbox" class="task-checkbox shrink-0 mt-0.5 mr-2 border-current checked:!bg-current checked:!border-current" style="color:inherit" ${isDone ? 'checked' : ''} onclick="event.stopPropagation(); toggleBlockCompleted('${b.id}', '${dateStr}')">`;
 
                             let extraHtml = '';
                             if(!isBreak) { 
@@ -1015,7 +1018,6 @@ function duplicateBlock(id = null) {
                                      ${b.isGcal ? '' : `draggable="true" ondragstart="onCalBlockDragStart(event, '${b.id}', '${dateStr}')" ondragend="onCalBlockDragEnd(event)"`}
                                      style="${gcalStyle}"
                                      onclick="${onClickAction}">
-                                    ${chkHtml}
                                     <div class="flex-1 min-w-0" style="${cursorStyle}">
                                         <div class="flex justify-between items-center mb-1">
                                             <span class="${headSize} font-black uppercase tracking-wider opacity-80">${b.startTime}${b.endTime ? ' - '+b.endTime : ''}</span>
