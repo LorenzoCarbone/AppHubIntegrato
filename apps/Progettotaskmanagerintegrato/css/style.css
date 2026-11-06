@@ -1,0 +1,270 @@
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s; }
+        .panel { border-radius: 12px; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+        .panel-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); cursor: pointer; }
+        
+        /* Animazioni Globali */
+        .page-fade { animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes pageFadeIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+        
+        .modal-animate { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        /* --- OVERLAY MODALI CON Z-INDEX E VISIBILITA' RIGOROSA --- */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            background-color: rgba(0, 0, 0, 0.65) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            z-index: 9999 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 1rem !important;
+        }
+        .modal-overlay.hidden {
+            display: none !important;
+        }
+
+        @keyframes modalPop { 0% { opacity: 0; transform: scale(0.95) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* --- NOTIFICHE TOAST --- */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #3b82f6; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; pointer-events: auto; }
+        .toast.error { background: #ef4444; }
+        .toast.success { background: #10b981; }
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+        /* --- FOCUS MODE APPUNTI (ZEN MODE) --- */
+        .focus-mode-active { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 9999; background: var(--bg-color, #f8fafc) !important; padding: 40px !important; margin: 0 !important; border-radius: 0 !important; overflow-y: auto; }
+        .dark .focus-mode-active { --bg-color: #0f172a; }
+        .focus-mode-active .ql-container { height: calc(100vh - 150px) !important; max-width: 900px; margin: 0 auto; font-size: 18px !important; border: none !important; }
+        .focus-mode-active .ql-toolbar { max-width: 900px; margin: 0 auto 20px auto; border-bottom: 2px solid #e2e8f0 !important; background: transparent; }
+
+        /* Animazione Check Task Completata */
+        .task-completing-anim { animation: taskComplete 0.3s ease-out forwards; }
+        @keyframes taskComplete { 
+            0% { transform: scale(1); filter: brightness(1); } 
+            50% { transform: scale(0.97); filter: brightness(1.1); } 
+            100% { transform: scale(1); filter: brightness(0.9) grayscale(0.5); opacity: 0.5; } 
+        }
+
+        /* Checkbox circolare geometricamente perfetta per tasks & blocchi (aspetto 1:1 rigoroso) */
+        .task-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            aspect-ratio: 1 / 1 !important;
+            width: 1.25rem !important;
+            height: 1.25rem !important;
+            min-width: 1.25rem !important;
+            min-height: 1.25rem !important;
+            max-width: 1.25rem !important;
+            max-height: 1.25rem !important;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            flex: 0 0 1.25rem !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+            border: 2px solid #cbd5e1 !important;
+            border-radius: 9999px !important;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: transparent;
+            display: inline-grid;
+            place-items: center;
+        }
+        .task-checkbox.task-checkbox-sm {
+            width: 0.95rem !important;
+            height: 0.95rem !important;
+            min-width: 0.95rem !important;
+            min-height: 0.95rem !important;
+            max-width: 0.95rem !important;
+            max-height: 0.95rem !important;
+            flex: 0 0 0.95rem !important;
+            border-width: 1.5px !important;
+        }
+        .dark .task-checkbox:not([class*="border-"]) { border-color: #64748b !important; }
+        .task-checkbox:checked { background-color: #f59e0b !important; border-color: #f59e0b !important; transform: scale(1.06); }
+        .task-checkbox:checked::after { content: '\2714'; position: absolute; color: white; font-size: 10px; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; line-height: 1; }
+        .task-checkbox.task-checkbox-sm:checked::after { font-size: 8px; }
+        /* Indicatore visivo Subtasks */
+        .has-subtasks { background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor); background-size: 9px 1.5px; background-repeat: no-repeat; background-position: center 35%, center 50%, center 65%; }
+        .task-checkbox:checked.has-subtasks { background-image: none; }
+        /* Autocomplete Smart Input */
+        .smart-feedback-container { border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); overflow: hidden; }
+        .autocomplete-item { padding: 8px 12px; font-size: 11px; font-weight: bold; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; }
+        .autocomplete-item:hover { background: #f1f5f9; }
+        .dark .autocomplete-item:hover { background: #334155; }
+        .subtask-drag-handle { cursor: grab; color: #94a3b8; padding: 0 4px; }
+        .subtask-drag-handle:active { cursor: grabbing; }
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .drop-zone { border: 2px dashed transparent; transition: all 0.2s ease; }
+        body.is-dragging .drop-zone { border-color: #cbd5e1; background-color: rgba(0,0,0,0.015); }
+        .dark body.is-dragging .drop-zone { border-color: #475569; background-color: rgba(255,255,255,0.015); }
+        .drag-over { border-color: #3b82f6 !important; background-color: rgba(59, 130, 246, 0.08) !important; border-radius: 12px; opacity: 1 !important;}
+
+        .word-wrap { overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .input-base { width: 100%; border-radius: 8px; padding: 0.6rem 0.85rem; font-size: 0.875rem; transition: all 0.2s; outline: none; border: 1px solid; }
+        .dark .input-base { background-color: #1e293b; border-color: #475569; color: #f8fafc; }
+        .input-base { background-color: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
+        .dark .input-base:focus { border-color: #60a5fa; box-shadow: 0 0 0 1px #60a5fa; }
+        .input-base:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+        
+        .tm-nav-item { padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; font-weight: 600; color: #475569; margin-bottom: 0.2rem; }
+        .dark .tm-nav-item { color: #cbd5e1; }
+        .dark .tm-nav-item:hover { background-color: rgba(255,255,255,0.05); transform: translateX(3px); }
+        .tm-nav-item:hover { background-color: rgba(0,0,0,0.03); transform: translateX(3px); }
+        .dark .tm-nav-item.active { background-color: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+        .tm-nav-item.active { background-color: #e0f2fe; color: #0284c7; }
+
+        .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #e2e8f0 !important; background: transparent; padding: 8px 0 !important; }
+        .dark .ql-toolbar.ql-snow { border-bottom-color: #475569 !important; }
+        .ql-container.ql-snow { border: none !important; font-family: inherit; font-size: 14px; padding: 0.5rem 0; line-height: 1.6; }
+        .dark .ql-snow .ql-stroke { stroke: #cbd5e1; }
+        .dark .ql-snow .ql-fill, .dark .ql-snow .ql-stroke.ql-fill { fill: #cbd5e1; }
+        .dark .ql-snow .ql-picker { color: #cbd5e1; }
+        
+        .glass-header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .dark .glass-header { background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .glass-header { background: rgba(255, 255, 255, 0.8); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        
+        .tm-sidebar-mobile { position: fixed; top: 0; left: 0; bottom: 0; width: 85%; max-width: 320px; z-index: 60; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 4px 0 25px rgba(0,0,0,0.15); }
+        .tm-sidebar-mobile.open { transform: translateX(0); }
+        .tm-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; backdrop-filter: blur(2px); }
+        .tm-overlay.open { opacity: 1; pointer-events: auto; }
+
+        @media (min-width: 768px) {
+            .tm-sidebar-mobile { position: static; transform: none; width: 17rem; box-shadow: none; z-index: auto; transition: none; }
+            .tm-overlay { display: none; }
+            .tm-nav-item { padding: 0.6rem 0.8rem; } 
+        }
+
+        #mobileNotesModal { z-index: 60; }
+        .mobile-ql-container { height: calc(100vh - 140px); overflow-y: auto; }
+        .ql-toolbar { display: flex; flex-wrap: wrap; }
+        .ql-editor { min-height: 120px; max-height: 35vh; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        @media (min-width: 768px) { .ql-editor { max-height: 60vh; } }
+        
+        @keyframes slideUpAdd { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up-add { animation: slideUpAdd 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        @keyframes fadeInAdd { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in-add { animation: fadeInAdd 0.25s ease-out forwards; }
+
+        /* Stili specifici Calendario / Blocchi */
+        .block-focus { border-left: 4px solid #6366f1; background: #eef2ff; color: #312e81; }
+        .dark .block-focus { background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border-left-color: #818cf8; }
+        
+        .block-routine { border-left: 4px solid #94a3b8; background: #f8fafc; color: #334155; }
+        .dark .block-routine { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; border-left-color: #64748b; }
+        
+        /* Pausa Arancione */
+        .block-break { border-left: 4px solid #f97316; background: #fff7ed; color: #7c2d12; }
+        .dark .block-break { background: rgba(249, 115, 22, 0.15); color: #fdba74; border-left-color: #fb923c; }
+        
+        .calendar-col { min-width: 280px; width: calc(100vw - 2rem); scroll-snap-align: start; flex-shrink: 0; }
+        @media (min-width: 768px) { .calendar-col { width: 320px; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animazione Shake per task bloccata */
+        @keyframes shakeTask {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .shake-anim { animation: shakeTask 0.4s ease-in-out; }
+
+        /* Drag & Drop Calendario tra giorni */
+        .cal-day-over {
+            outline: 3px dashed #3b82f6 !important;
+            outline-offset: -3px !important;
+            background-color: rgba(59, 130, 246, 0.14) !important;
+            border-radius: 1rem !important;
+            transition: all 0.15s ease !important;
+        }
+
+        /* Checkbox Task Vincolata/Bloccata */
+        .task-checkbox-locked {
+            cursor: not-allowed !important;
+            border-color: #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.1) !important;
+            position: relative;
+        }
+        .task-checkbox-locked::after {
+            content: '🔒';
+            font-size: 8px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Micro-animazioni e rifiniture UI */
+        .subtask-progress-fill {
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cal-week-nav-btn:hover {
+            transform: scale(1.05);
+        }
+        .cal-week-nav-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        /* Animazione Jump & Glow per task vincolate */
+        @keyframes taskGlow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); transform: scale(1); }
+            50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35); transform: scale(1.01); background-color: rgba(59, 130, 246, 0.08); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); transform: scale(1); }
+        }
+        .task-highlight-glow {
+            animation: taskGlow 1.6s ease-out forwards;
+            border-color: #3b82f6 !important;
+        }
+
+        /* Ramo ad albero per task vincolata subordinata */
+        .task-tree-branch {
+            position: relative;
+            margin-left: 1.25rem;
+        }
+        .task-tree-branch::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -14px;
+            width: 12px;
+            height: 22px;
+            border-left: 2px dashed #94a3b8;
+            border-bottom: 2px dashed #94a3b8;
+            border-bottom-left-radius: 6px;
+        }
+        .dark .task-tree-branch::before {
+            border-left-color: #475569;
+            border-bottom-color: #475569;
+        }
+
+        /* Stile Stampa Giornata / Export PDF */
+        @media print {
+            header, .hidden-in-tm, #breadcrumbs, button, select, .tm-nav-item, #tmSidebar, #tmOverlayInner {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .panel {
+                box-shadow: none !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+        }

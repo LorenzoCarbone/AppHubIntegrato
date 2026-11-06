@@ -1,0 +1,401 @@
+{
+  "portogallo_breve": {
+    "name": "🇵🇹 Breve termine (1-2 sett)",
+    "sections": [
+      {
+        "title": "🧳 Cabina",
+        "hidden": true,
+        "subsections": [
+          {
+            "name": "Fondo",
+            "collapsed": false,
+            "items": [
+              {
+                "name": "Scarpe",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": true,
+                "toBuy": false
+              },
+              {
+                "name": "Ciabatte",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Pantaloni tuta",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Pantaloni da lavoro",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Bermuda",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Pantaloni",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Telo mare",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Costume",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Felpa",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Accappatoio",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Pigiama",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Asciugamani",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Lenzuola",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Federa",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              }
+            ]
+          },
+          {
+            "name": "Lato",
+            "collapsed": true,
+            "items": [
+              {
+                "name": "Cintura",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Mutande",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Calze",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              }
+            ]
+          },
+          {
+            "name": "Sopra",
+            "collapsed": true,
+            "items": [
+              {
+                "name": "Maglie",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Polo/camicia",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              }
+            ]
+          },
+          {
+            "name": "Tasca (Beauty)",
+            "collapsed": true,
+            "items": [
+              {
+                "name": "Crema solare",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Deodorante",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Shampoo",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Phon",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Spazzolino",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Dentifricio",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "🎒 Zaino Sotto Sedile",
+        "hidden": true,
+        "subsections": [
+          {
+            "name": "Scomparto Principale",
+            "collapsed": false,
+            "items": [
+              {
+                "name": "Gavetta",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Libro",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Cuffiette",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Caricabatterie",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Borraccia",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Occhiali da sole",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Portafogli",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Documenti",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Medicine",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Powerbank",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Occhiali",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Chiavi",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Sacco a pelo",
+                "mise": false,
+                "valigia": false,
+                "skip": true,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Materassino",
+                "mise": false,
+                "valigia": false,
+                "skip": true,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Rasoio",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Ombrello",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Fazzoletti",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Quaderno e penna",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              },
+              {
+                "name": "Snack per viaggio",
+                "mise": false,
+                "valigia": false,
+                "skip": false,
+                "forse": false,
+                "toBuy": false
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

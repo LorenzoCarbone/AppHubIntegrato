@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Vault</title>
+    <!-- Elegant SVG Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Vis-Network for Graph View -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Lucide Icons (Elegant Vector Icons) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #f8fafc; --surface: #ffffff; --surface-hover: #f1f5f9;
+            --primary: #2563eb; --primary-hover: #1d4ed8;
+            --text-main: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+            --status-bg: #dcfce7; --status-text: #166534;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --radius-lg: 16px; --radius-md: 10px; --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); padding: 2rem; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .icon-sm { width: 18px; height: 18px; }
+        .icon-xs { width: 14px; height: 14px; }
+
+        /* HEADER & NAV */
+        header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 1rem; }
+        .title-area h1 { font-size: 2.25rem; font-weight: 700; letter-spacing: -0.03em; color: #0f172a;}
+        .title-area p { color: var(--text-muted); font-size: 1rem; margin-top: 0.25rem; font-weight: 400;}
+        
+        .main-nav { display: flex; gap: 0.75rem; background: var(--surface); padding: 0.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); margin-bottom: 1rem;}
+        .nav-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: none; background: transparent; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); }
+        .nav-tab.active { background: var(--bg); color: var(--primary); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .nav-tab:hover:not(.active) { background: var(--surface-hover); color: var(--text-main); }
+        #tab-categories, #tab-graph { flex: 0 1 auto; }
+
+        .controls-area { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;}
+        .icon-btn { background: var(--surface); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; color: var(--text-main); box-shadow: var(--shadow-sm); transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;}
+        .icon-btn:hover { background: var(--surface-hover); border-color: var(--primary); color: var(--primary);}
+        .icon-btn.danger:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+        
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm);}
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .btn-secondary { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 500; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;}
+        .btn-secondary:hover:not(:disabled) { border-color: var(--text-muted); background: var(--surface-hover); }
+
+        .view-controls { display: flex; gap: 0.25rem; background: var(--bg); padding: 0.25rem; border-radius: var(--radius-md); border: 1px solid var(--border); }
+        .view-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
+        .view-btn.active { background: var(--surface); color: var(--text-main); box-shadow: var(--shadow-sm); }
+        
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+        .btn-secondary .spinner { border-color: rgba(0,0,0,0.1); border-top-color: var(--text-main); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* LAYOUT & SIDEBAR */
+        .layout { display: grid; grid-template-columns: 280px 1fr; gap: 2.5rem; align-items: start; }
+        .sidebar { display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 2rem; z-index: 10; max-height: calc(100vh - 4rem); overflow-y: auto; padding-right: 0.5rem;}
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .panel { background: var(--surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        .panel h2 { font-size: 1.125rem; margin-bottom: 1.25rem; font-weight: 700; color: var(--text-main);}
+        
+        .filter-group { margin-bottom: 1.5rem; }
+        .filter-group h3 { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;}
+        .checkbox-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 250px; overflow-y: auto; }
+        .checkbox-label { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; cursor: pointer; color: var(--text-main); font-weight: 500;}
+        
+        .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .view-section.active { display: block; }
+        .sidebar-section { display: none; animation: fadeIn 0.3s ease; }
+        .sidebar-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* SORT & GROUP CONTROLS */
+        .list-header-controls { display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap;}
+        .list-header-controls select { width: auto; padding: 0.4rem 2rem 0.4rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-md); background-color: var(--surface); border-color: var(--border); cursor: pointer;}
+        .group-header { grid-column: 1 / -1; font-size: 1.25rem; font-weight: 700; color: var(--text-main); border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem; }
+
+        /* TAGS */
+        .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+        .tag { font-size: 0.75rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; box-sizing: border-box; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; gap: 4px; }
+        .tag:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); filter: brightness(0.95); }
+        
+        .tag-field { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.1); }
+        .tag-section { color: var(--text-main); } 
+        .tag-status { background-color: var(--status-bg); color: var(--status-text); border: 1px solid #bbf7d0;}
+        .tag-source-link { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); }
+        
+        /* GRIDS & CARDS */
+        .topics-container { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+        .topic-card { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: var(--transition); display: flex; flex-direction: column; cursor: pointer; position: relative;}
+        .topic-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: #93c5fd; }
+        .topic-image { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #e2e8f0; border-bottom: 1px solid var(--border); }
+        .topic-content { padding: 1.5rem; display: flex; flex-direction: column; flex-grow: 1; }
+        .topic-title { font-size: 1.15rem; font-weight: 700; line-height: 1.3; color: var(--text-main); letter-spacing: -0.01em; pointer-events: none;}
+        .topic-sub-badge { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.35rem; pointer-events: none; display: flex; align-items: center; gap: 4px;}
+        
+        .topics-container.list-view, .sources-list { grid-template-columns: 1fr; gap: 0.75rem; }
+        .topics-container.list-view .topic-card { flex-direction: row; align-items: center; padding: 1rem 1.5rem; gap: 1.5rem; }
+        .topics-container.list-view .topic-image { display: none; }
+        .topics-container.list-view .topic-content { flex-direction: row; justify-content: space-between; align-items: center; width: 100%; padding: 0; flex-wrap: wrap;}
+        .topics-container.list-view .topic-title { font-size: 1.05rem; min-width: 200px; margin-bottom: 0;}
+        .topics-container.list-view .tags { margin-top: 0; justify-content: flex-end; }
+        .topics-container.list-view .topic-sub-badge { width: 100%; margin-bottom: 0.25rem; }
+
+        .source-card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; transition: var(--transition); cursor: pointer; gap: 1.25rem; box-shadow: var(--shadow-sm);}
+        .source-card:hover { background: var(--surface); border-color: #93c5fd; box-shadow: var(--shadow-md); transform: translateY(-2px);}
+        .source-cover-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; background: #fff;}
+        .source-info { flex-grow: 1; pointer-events: none;}
+        .source-info h4 { font-size: 1.05rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem; letter-spacing: -0.01em;}
+        .source-info p { font-size: 0.85rem; color: var(--text-muted); font-weight: 500;}
+        .source-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem; flex-shrink: 0;}
+        
+        /* CATEGORY MANAGEMENT PANEL */
+        .cat-management-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .cat-list-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 0.5rem; background: var(--surface); transition: var(--transition); box-shadow: var(--shadow-sm);}
+        .cat-list-item:hover { border-color: #93c5fd; box-shadow: var(--shadow-md); transform: translateY(-1px);}
+        
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 1rem; overflow-y: auto;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--surface); width: 100%; max-width: 750px; border-radius: 20px; position: relative; transform: translateY(20px) scale(0.98); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; margin: auto; max-height: 90vh; overflow-y: auto;}
+        .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
+        
+        .modal-controls-top { position: absolute; top: 1.25rem; right: 1.25rem; display: flex; gap: 0.5rem; z-index: 10; }
+        .modal-btn { background: var(--bg); border: 1px solid var(--border); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow-sm); transition: var(--transition); font-size: 1.1rem; }
+        .modal-btn:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); transform: translateY(-1px);}
+        .modal-btn.danger:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+
+        .modal-body { padding: 3rem 2.5rem; }
+        .modal-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem; line-height: 1.2; padding-right: 150px; color: var(--text-main); letter-spacing: -0.02em;}
+        
+        /* FORMS */
+        .form-group { margin-bottom: 1.5rem; }
+        label.input-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); letter-spacing: 0.02em;}
+        
+        input[type="text"], input[type="url"], select, input[type="password"], textarea { 
+            width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); 
+            font-family: inherit; font-size: 0.95rem; font-weight: 500; transition: var(--transition); 
+            background: var(--bg); color: var(--text-main); resize: vertical;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); background: var(--surface); }
+        
+        .inline-add-input { 
+            width: 100%; margin-top: 0.5rem; padding: 0.6rem 0.8rem !important; border: 1px dashed var(--border) !important; 
+            background: transparent !important; font-size: 0.85rem !important; font-weight: 600 !important; color: var(--text-muted) !important;
+        }
+        .inline-add-input:focus { border-style: solid !important; color: var(--text-main) !important; }
+
+        /* Discrete Color Palette */
+        .color-palette-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem; background: var(--bg); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);}
+        .color-swatch { aspect-ratio: 1; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); border: 2px solid transparent;}
+        .color-swatch:hover { transform: scale(1.1); box-shadow: var(--shadow-sm); }
+        .color-swatch.selected { border-color: var(--text-main); transform: scale(1.1); box-shadow: var(--shadow-md); }
+        .color-swatch .dot { width: 6px; height: 6px; background: rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.3);}
+
+        .chip-selector-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); min-height: 60px; }
+        .chip { padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: var(--transition); user-select: none; display: flex; align-items: center; gap: 0.35rem; box-sizing: border-box;}
+        .chip:hover { transform: translateY(-1px); }
+        
+        .chip.field-chip { color: white; filter: grayscale(70%) opacity(0.7); }
+        .chip.field-chip.active { filter: none; box-shadow: var(--shadow-sm); }
+        
+        .chip.section-chip { opacity: 0.5; }
+        .chip.section-chip.active { opacity: 1; box-shadow: var(--shadow-sm); }
+
+        .chip.inactive-ghost { background: var(--surface) !important; color: var(--text-main); border: 1px solid var(--border); }
+        .chip.inactive-ghost.active { background: var(--primary) !important; color: white; border-color: var(--primary); }
+        
+        .form-actions { display: flex; gap: 1rem; margin-top: 2.5rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 1.5rem;}
+        .btn-cancel { background: transparent; color: var(--text-muted); font-weight: 600; border: none; cursor: pointer; padding: 0.75rem 1rem; transition: var(--transition);}
+        .btn-cancel:hover { color: var(--text-main); background: var(--bg); border-radius: var(--radius-md);}
+        
+        .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; max-height: 200px; overflow-y: auto; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
+
+        /* Search Input */
+        .search-input-box { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 30px; border: 1px solid var(--border); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-4.35-4.35M16.65 16.65A7.5 7.5 0 1116.65 6a7.5 7.5 0 010 10.65z'%3E%3C/path%3E%3C/svg%3E") no-repeat 10px center; background-size: 18px; outline: none; transition: var(--transition); box-shadow: var(--shadow-sm);}
+        .search-input-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        /* Autocomplete Smart Chips Dropdown */
+        .autocomplete-dropdown {
+            position: absolute; display: none; background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg); max-height: 220px; overflow-y: auto;
+            z-index: 1000; min-width: 280px; margin-top: 4px;
+        }
+        .autocomplete-item {
+            padding: 0.65rem 1rem; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 0.5rem; font-weight: 500; color: var(--text-main);
+        }
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background: var(--surface-hover); color: var(--primary);
+        }
+        .autocomplete-item:last-child { border-bottom: none; }
+
+        @media (max-width: 900px) { 
+            .layout { grid-template-columns: 1fr; } 
+            .sidebar { display: none; position: static; max-height: none;}
+            .sidebar.active { display: flex; }
+            .cat-management-grid { grid-template-columns: 1fr; }
+            .checkbox-grid { grid-template-columns: 1fr; }
+            .color-palette-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-area">
+                <h1>Knowledge Vault</h1>
+                <p>Organize, filter, and explore your intellectual pursuits</p>
+            </div>
+            <div class="controls-area">
+                <button class="icon-btn" id="openSettingsBtn" title="Settings & Database"><i data-lucide="database" class="icon-sm"></i> DB Connection</button>
+                <div class="view-controls" id="gridListControls">
+                    <button class="view-btn active" id="btn-grid" title="Grid View"><i data-lucide="grid" class="icon-sm"></i></button>
+                    <button class="view-btn" id="btn-list" title="List View"><i data-lucide="list" class="icon-sm"></i></button>
+                </div>
+                <button class="btn-primary" id="mainAddTopicBtn" style="display: flex;"><i data-lucide="plus" class="icon-sm"></i> New Topic</button>
+                <button class="btn-primary" id="mainAddSourceBtn" style="display: none;"><i data-lucide="plus" class="icon-sm"></i> New Source</button>
+                <button class="btn-primary" id="mobileFilterToggle" style="display: none;"><i data-lucide="filter" class="icon-sm"></i> Filters</button>
+            </div>
+        </header>
+
+        <!-- Main Navigation -->
+        <div class="main-nav">
+            <button class="nav-tab active" id="tab-topics"><i data-lucide="library" class="icon-sm"></i> Topics</button>
+            <button class="nav-tab" id="tab-sources"><i data-lucide="bookmark" class="icon-sm"></i> Sources & References</button>
+            <button class="nav-tab" id="tab-categories"><i data-lucide="tags" class="icon-sm"></i> Fields & Sections</button>
+            <button class="nav-tab" id="tab-graph"><i data-lucide="network" class="icon-sm"></i> Graph</button>
+        </div>
+        
+        <div class="layout">
+            <aside class="sidebar active" id="sidebar">
+                <div class="sidebar-section active" id="sidebar-topics">
+                    <div class="panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
+                            <h2 style="margin-bottom:0;">Filter Topics</h2>
+                            <button id="clearFiltersBtn" class="btn-secondary" style="display:none; padding: 0.2rem 0.5rem; font-size: 0.75rem;"><i data-lucide="x-circle" class="icon-xs"></i> Clear Filters</button>
+                        </div>
+                        <div class="filter-group">
+                            <h3>Main Fields</h3>
+                            <div class="checkbox-list" id="fields-filter-list"></div>
+                        </div>
+                        <div class="filter-group" id="sections-filter-container">
+                            <h3>Subsections</h3>
+                            <div class="checkbox-list" id="sections-filter-list"></div>
+                        </div>
+                        <div class="filter-group" style="margin-top: 2rem;">
+                            <h3>Visibility</h3>
+                            <label class="checkbox-label" title="Show topics that are sub-topics of others">
+                                <input type="checkbox" id="showSubtopicsFilter"> Show Sub-topics
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" id="sidebar-sources">
+                    <div class="panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
+                            <h2 style="margin-bottom:0;">Filter Sources</h2>
+                        </div>
+                        <div class="filter-group">
+                            <h3>Reading Status</h3>
+                            <div class="checkbox-list" id="source-status-filters"></div>
+                        </div>
+                        <div class="filter-group">
+                            <h3>Type</h3>
+                            <div class="checkbox-list" id="source-type-filters"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" id="sidebar-categories">
+                    <div class="panel">
+                        <h2>Structure Management</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">Manage the database. Modifying a field or section name will <strong>automatically update all linked topics</strong>.</p>
+                        <p id="statsText" style="font-size: 0.85rem; font-weight: 600; padding: 1rem; background: var(--bg); border-radius: var(--radius-md); border: 1px solid var(--border);"></p>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="content-area">
+                <div class="view-section active" id="view-topics">
+                    <div class="list-header-controls">
+                        <div style="flex-grow: 1; max-width: 400px; margin-right: auto;">
+                            <input type="text" id="topicSearchInput" class="search-input-box" placeholder="Search topics...">
+                        </div>
+                        <select id="topicGroupBy">
+                            <option value="none">Group By: None</option>
+                            <option value="field">Group By: Primary Field</option>
+                        </select>
+                        <select id="topicSortBy">
+                            <option value="title-asc">Sort: A-Z</option>
+                            <option value="title-desc">Sort: Z-A</option>
+                            <option value="newest">Sort: Newest First</option>
+                            <option value="oldest">Sort: Oldest First</option>
+                        </select>
+                    </div>
+                    <div class="topics-container grid-view" id="topicsContainer">
+                        <p id="statusText">Checking database connection...</p>
+                    </div>
+                </div>
+
+                <div class="view-section" id="view-sources">
+                    <div class="list-header-controls">
+                        <div style="flex-grow: 1; max-width: 400px; margin-right: auto;">
+                            <input type="text" id="sourceSearchInput" class="search-input-box" placeholder="Search sources...">
+                        </div>
+                        <select id="sourceGroupBy">
+                            <option value="none">Group By: None</option>
+                            <option value="type">Group By: Type</option>
+                            <option value="status">Group By: Status</option>
+                        </select>
+                        <select id="sourceSortBy">
+                            <option value="title-asc">Sort: A-Z</option>
+                            <option value="title-desc">Sort: Z-A</option>
+                            <option value="newest">Sort: Newest First</option>
+                        </select>
+                    </div>
+                    <div class="sources-list" id="sourcesContainer"></div>
+                </div>
+
+                <div class="view-section" id="view-categories">
+                    <div style="margin-bottom: 2rem;">
+                        <input type="text" id="categorySearchInput" class="search-input-box" placeholder="Search fields and subsections..." style="max-width: 500px;">
+                    </div>
+                    <div class="panel" style="background: transparent; border: none; box-shadow: none; padding: 0;">
+                        <div class="cat-management-grid">
+                            <div class="panel">
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:1rem; margin-bottom:1.5rem;">
+                                    <h3 style="font-size:1.1rem; font-weight:700;">Main Fields</h3>
+                                    <button class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" onclick="openEditFieldModal()"><i data-lucide="plus" class="icon-xs"></i> New Field</button>
+                                </div>
+                                <div id="adminFieldsList"></div>
+                            </div>
+                            <div class="panel">
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:1rem; margin-bottom:1.5rem;">
+                                    <h3 style="font-size:1.1rem; font-weight:700;">Subsections</h3>
+                                    <button class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" onclick="openEditSectionModal()"><i data-lucide="plus" class="icon-xs"></i> New Subsection</button>
+                                </div>
+                                <div id="adminSectionsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRAPH VIEW SECTION -->
+                <div class="view-section" id="view-graph">
+                    <div class="panel" style="height: calc(100vh - 10rem); padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface);">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Knowledge Graph</h3>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Double-click a node to open. Link notes using <code>[[Topic Title]]</code>. Sub-topics automatically link to parents.</div>
+                            </div>
+                            <button class="btn-secondary" onclick="renderGraph()"><i data-lucide="refresh-cw" class="icon-sm"></i> Refresh</button>
+                        </div>
+                        <div id="graph-network-container" style="flex-grow: 1; width: 100%; background: #fafcff; outline: none;"></div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Topic Detail Modal (Interactive Notes inside) -->
+    <div class="modal-overlay" id="topicDetailModal">
+        <div class="modal-content">
+            <div class="modal-controls-top">
+                <button class="modal-btn" id="createSubtopicBtn" title="Create Sub-topic"><i data-lucide="file-plus-2" class="icon-sm"></i></button>
+                <button class="modal-btn" id="editTopicModeBtn" title="Edit Properties"><i data-lucide="edit-2" class="icon-sm"></i></button>
+                <button class="modal-btn danger" id="deleteTopicBtn" title="Delete Topic"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                <button class="modal-btn" id="closeTopicModalBtn"><i data-lucide="x" class="icon-sm"></i></button>
+            </div>
+            
+            <div class="modal-body" style="padding-top: 4rem;">
+                <h2 class="modal-title" id="detailTopicTitle" style="margin-bottom: 0.5rem;">Title</h2>
+                <div class="tags" id="detailTopicTags" style="margin-bottom: 2.5rem;"></div>
+                
+                <div class="topic-notes-section" style="margin-bottom: 2.5rem;">
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;"><i data-lucide="file-text" class="icon-sm"></i> Notes & Content</h3>
+                        <button class="btn-secondary" id="saveNotesBtn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: 600;"><i data-lucide="save" class="icon-xs"></i> Save Notes</button>
+                    </div>
+                    <!-- Autocomplete Wrapper -->
+                    <div style="position: relative;">
+                        <textarea id="detailTopicNotes" rows="8" placeholder="Write your notes here... Type [[ to link to other topics via Smart Chips." style="width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; background: var(--surface); line-height: 1.6;"></textarea>
+                        <div id="topicAutocomplete" class="autocomplete-dropdown"></div>
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 2rem;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;"><i data-lucide="bookmark" class="icon-sm"></i> Linked Sources</h3>
+                    <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <input type="text" id="searchSourceInput" list="allSourcesDatalist" placeholder="Search existing source to link...">
+                        <datalist id="allSourcesDatalist"></datalist>
+                        <button class="btn-secondary" id="linkExistingSourceBtn"><i data-lucide="link" class="icon-xs"></i> Link</button>
+                    </div>
+                    <div class="sources-list" id="topicSpecificSourcesContainer" style="margin-bottom: 1.5rem;"></div>
+                    <button class="btn-secondary" id="createNewSourceFromTopicBtn" style="width: 100%; justify-content: center;"><i data-lucide="plus" class="icon-xs"></i> Create New Source for this Topic</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Form Modal (For Properties & Image) -->
+    <div class="modal-overlay" id="topicFormModal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="topicFormTitle">New Topic</h2>
+                <form id="topicForm">
+                    <div class="form-group">
+                        <label class="input-label">Title</label>
+                        <input type="text" id="formTopicTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="input-label">Parent Topic (Optional, makes this a sub-topic)</label>
+                        <select id="formTopicParentId">
+                            <option value="">None (Main Topic)</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <div class="form-group">
+                                <label class="input-label">Select Fields</label>
+                                <div class="chip-selector-grid" id="fieldChipSelector" style="min-height: 80px; align-content: flex-start;"></div>
+                                <input type="text" id="inlineAddField" placeholder="+ Quick Add Field (Enter)" class="inline-add-input">
+                            </div>
+                            <div class="form-group" id="primaryFieldGroup" style="display: none; margin-bottom: 1.5rem;">
+                                <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Field</label>
+                                <select id="formPrimaryField">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="input-label">Subsections (Relevant to chosen Fields)</label>
+                                <div class="chip-selector-grid" id="sectionChipSelector" style="min-height: 80px; align-content: flex-start;"></div>
+                                <input type="text" id="inlineAddSection" placeholder="+ Quick Add Subsection (Enter)" class="inline-add-input">
+                            </div>
+                            <div class="form-group" id="primarySectionGroup" style="display: none;">
+                                <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Subsection</label>
+                                <select id="formPrimarySection">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="form-group">
+                                <label class="input-label">Cover Image</label>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <button type="button" class="btn-secondary" onclick="document.getElementById('topicImageUpload').click()" style="width: 100%;"><i data-lucide="upload" class="icon-sm"></i> Upload or Ctrl+V</button>
+                                    <input type="file" id="topicImageUpload" accept="image/*" style="display: none;">
+                                    <input type="hidden" id="formTopicImgUrl">
+                                </div>
+                                <div id="imagePreviewContainer" style="display: none; position: relative; width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);">
+                                    <img id="imagePreview" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <button type="button" class="icon-btn danger" style="position: absolute; top: 8px; right: 8px; padding: 0; min-width: 28px; height: 28px;" onclick="clearImage()"><i data-lucide="x" class="icon-sm"></i></button>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">Paste (Ctrl+V) an image here. It will be compressed to save database space.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('topicFormModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveTopicBtn"><i data-lucide="save" class="icon-sm"></i> Save Properties</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Form Modal -->
+    <div class="modal-overlay" id="sourceFormModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-body">
+                <div class="modal-controls-top" id="sourceFormDeleteControl" style="display: none;">
+                    <button type="button" class="modal-btn danger" id="deleteSourceBtn" title="Delete Source"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                </div>
+                <h2 class="modal-title" id="sourceFormTitle">New Source</h2>
+                <form id="sourceForm">
+                    <div class="form-group" style="background: var(--surface-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px dashed var(--border); margin-bottom: 2rem;">
+                        <label class="input-label" style="display:flex; align-items:center; gap:0.4rem; color: var(--primary);">
+                            <i data-lucide="search" class="icon-xs"></i> Cerca Metadati (Titolo, Autore o ISBN)
+                        </label>
+                        <div style="display: flex; gap: 0.5rem; position: relative;">
+                            <input type="text" id="apiSearchInput" placeholder="Es. L'età breve, Hobsbawm..." style="flex-grow: 1;">
+                            <button type="button" id="apiSearchBtn" class="btn-secondary"><i data-lucide="cloud-download" class="icon-xs"></i> Cerca</button>
+                        </div>
+                        <div id="apiSearchResults" class="autocomplete-dropdown" style="width: 100%; max-height: 300px; margin-top: 0.5rem;"></div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0;">I risultati compileranno automaticamente i campi sottostanti.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Document / Book Title</label>
+                        <input type="text" id="formSourceTitle" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label class="input-label">Author</label>
+                            <input type="text" id="formSourceAuthor">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Year</label>
+                            <input type="text" id="formSourceYear">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Type</label>
+                            <select id="formSourceType" required>
+                                <option value="Book">Book</option>
+                                <option value="Academic Article">Academic Article</option>
+                                <option value="Official Document">Official Document</option>
+                                <option value="Website">Website / Online Article</option>
+                                <option value="Video / Documentary">Video / Documentary</option>
+                                <option value="Podcast">Podcast</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Reading Status</label>
+                            <select id="formSourceStatus">
+                                <option value="To Read">To Read / In Library</option>
+                                <option value="Reading">Reading</option>
+                                <option value="Read">Read</option>
+                                <option value="Consulted">Consulted</option>
+                                <option value="On Hold">On Hold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Link (Generates auto-cover if valid)</label>
+                        <input type="url" id="formSourceUrl" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Link to Topics</label>
+                        <div class="chip-selector-grid" id="sourceTopicsSelector"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('sourceFormModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveSourceBtn"><i data-lucide="save" class="icon-sm"></i> Save Source</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIELD Edit Modal -->
+    <div class="modal-overlay" id="editFieldModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="editFieldTitle">Manage Field</h2>
+                <form id="editFieldForm">
+                    <input type="hidden" id="editFieldOldName">
+                    <div class="form-group">
+                        <label class="input-label">Field Name</label>
+                        <input type="text" id="editFieldName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Color Selection</label>
+                        <input type="hidden" id="editFieldColor">
+                        <div id="discreteColorPalette" class="color-palette-grid"></div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Dots (•) indicate colors already in use.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('editFieldModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveFieldBtn"><i data-lucide="save" class="icon-sm"></i> Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBSECTION Edit Modal -->
+    <div class="modal-overlay" id="editSectionModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="editSectionTitle">Manage Subsection</h2>
+                <form id="editSectionForm">
+                    <input type="hidden" id="editSectionOldName">
+                    <div class="form-group">
+                        <label class="input-label">Subsection Name</label>
+                        <input type="text" id="editSectionName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Belongs to Fields:</label>
+                        <div class="checkbox-grid" id="editSectionParentsGrid"></div>
+                    </div>
+                    
+                    <div class="form-group" id="editSectionPrimaryParentGroup" style="display: none;">
+                        <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Field</label>
+                        <select id="editSectionPrimaryParent">
+                            <option value="">None</option>
+                        </select>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Set the dominant field to influence the subsection's color.</p>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('editSectionModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveSectionBtn"><i data-lucide="save" class="icon-sm"></i> Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+        <!-- Settings DB Modal (Supabase & Migrazione) -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content" style="max-width: 550px; padding: 1.5rem; border-radius: 16px;">
+            <div class="modal-body">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h2 class="modal-title" style="font-size: 1.4rem; margin:0; display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="database" style="color:#10b981;"></i> Cloud Database (Supabase)
+                    </h2>
+                    <span id="sbBadge" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; background:#e0f2fe; color:#0369a1; font-weight:600;">Verifica...</span>
+                </div>
+                
+                <form id="settingsForm">
+                    <div class="form-group" style="margin-bottom:0.75rem;">
+                        <label class="input-label" style="font-size:0.8rem; font-weight:600;">Supabase Project URL</label>
+                        <input type="text" id="supabaseUrlInput" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem;" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label class="input-label" style="font-size:0.8rem; font-weight:600;">Supabase Anon Key</label>
+                        <input type="password" id="supabaseKeyInput" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; font-family:monospace;" required>
+                    </div>
+                    <div class="form-actions" style="margin-top: 1rem; display:flex; gap:8px;">
+                        <button type="submit" class="btn-primary" id="saveSettingsBtn" style="flex:1;">Salva Impostazioni</button>
+                        <button type="button" class="btn-secondary" onclick="exportLocalBackupFile()" style="padding:0 12px;" title="Scarica copia JSON di sicurezza">
+                            <i data-lucide="download" class="icon-sm"></i> Backup JSON
+                        </button>
+                        <button type="button" class="btn-cancel" id="closeSettingsBtn">Chiudi</button>
+                    </div>
+                </form>
+
+                <!-- Box Migrazione da Gist -->
+                <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
+                    <details id="migrationDetails" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px;">
+                        <summary style="cursor:pointer; font-weight:600; font-size:0.85rem; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+                            <span><i data-lucide="arrow-down-to-dot" class="icon-sm" style="vertical-align:text-bottom;"></i> Importa / Migra da GitHub Gist</span>
+                            <span style="font-size:0.75rem; color:#64748b;">(One-Shot)</span>
+                        </summary>
+                        <div style="margin-top:0.75rem; font-size:0.8rem; color:#64748b;">
+                            <p style="margin-bottom:8px;">Inserisci le credenziali del Gist per scaricare tutti i dati (comprese tutte le immagini) e salvarli stabilmente su Supabase:</p>
+                            <input type="text" id="gistId" placeholder="Gist ID" style="width:100%; padding:6px 10px; margin-bottom:6px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+                            <input type="password" id="githubPat" placeholder="Personal Access Token (PAT)" style="width:100%; padding:6px 10px; margin-bottom:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+                            <button type="button" id="migrateGistBtn" onclick="migrateFromGistToSupabase()" style="width:100%; padding:8px; background:#0ea5e9; color:white; border:none; border-radius:6px; font-weight:600; font-size:0.85rem; cursor:pointer;">
+                                Avvia Migrazione su Supabase
+                            </button>
+                            <div id="migrationProgress" style="display:none; margin-top:8px; font-size:0.8rem; color:#0369a1; text-align:center;"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Form Modal (For Properties & Image) -->
+    <div class="modal-overlay" id="topicFormModal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="topicFormTitle">New Topic</h2>
+                <form id="topicForm">
+                    <div class="form-group">
+                        <label class="input-label">Title</label>
+                        <input type="text" id="formTopicTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="input-label">Parent Topic (Optional, makes this a sub-topic)</label>
+                        <select id="formTopicParentId">
+                            <option value="">None (Main Topic)</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <div class="form-group">
+                                <label class="input-label">Select Fields</label>
+                                <div class="chip-selector-grid" id="fieldChipSelector" style="min-height: 80px; align-content: flex-start;"></div>
+                                <input type="text" id="inlineAddField" placeholder="+ Quick Add Field (Enter)" class="inline-add-input">
+                            </div>
+                            <div class="form-group" id="primaryFieldGroup" style="display: none; margin-bottom: 1.5rem;">
+                                <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Field</label>
+                                <select id="formPrimaryField">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="input-label">Subsections (Relevant to chosen Fields)</label>
+                                <div class="chip-selector-grid" id="sectionChipSelector" style="min-height: 80px; align-content: flex-start;"></div>
+                                <input type="text" id="inlineAddSection" placeholder="+ Quick Add Subsection (Enter)" class="inline-add-input">
+                            </div>
+                            <div class="form-group" id="primarySectionGroup" style="display: none;">
+                                <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Subsection</label>
+                                <select id="formPrimarySection">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="form-group">
+                                <label class="input-label">Cover Image</label>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <button type="button" class="btn-secondary" onclick="document.getElementById('topicImageUpload').click()" style="width: 100%;"><i data-lucide="upload" class="icon-sm"></i> Upload or Ctrl+V</button>
+                                    <input type="file" id="topicImageUpload" accept="image/*" style="display: none;">
+                                    <input type="hidden" id="formTopicImgUrl">
+                                </div>
+                                <div id="imagePreviewContainer" style="display: none; position: relative; width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);">
+                                    <img id="imagePreview" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <button type="button" class="icon-btn danger" style="position: absolute; top: 8px; right: 8px; padding: 0; min-width: 28px; height: 28px;" onclick="clearImage()"><i data-lucide="x" class="icon-sm"></i></button>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">Paste (Ctrl+V) an image here. It will be compressed to save database space.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('topicFormModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveTopicBtn"><i data-lucide="save" class="icon-sm"></i> Save Properties</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Form Modal -->
+    <div class="modal-overlay" id="sourceFormModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-body">
+                <div class="modal-controls-top" id="sourceFormDeleteControl" style="display: none;">
+                    <button type="button" class="modal-btn danger" id="deleteSourceBtn" title="Delete Source"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                </div>
+                <h2 class="modal-title" id="sourceFormTitle">New Source</h2>
+                <form id="sourceForm">
+                    <div class="form-group" style="background: var(--surface-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px dashed var(--border); margin-bottom: 2rem;">
+                        <label class="input-label" style="display:flex; align-items:center; gap:0.4rem; color: var(--primary);">
+                            <i data-lucide="search" class="icon-xs"></i> Cerca Metadati (Titolo, Autore o ISBN)
+                        </label>
+                        <div style="display: flex; gap: 0.5rem; position: relative;">
+                            <input type="text" id="apiSearchInput" placeholder="Es. L'età breve, Hobsbawm..." style="flex-grow: 1;">
+                            <button type="button" id="apiSearchBtn" class="btn-secondary"><i data-lucide="cloud-download" class="icon-xs"></i> Cerca</button>
+                        </div>
+                        <div id="apiSearchResults" class="autocomplete-dropdown" style="width: 100%; max-height: 300px; margin-top: 0.5rem;"></div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0;">I risultati compileranno automaticamente i campi sottostanti.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Document / Book Title</label>
+                        <input type="text" id="formSourceTitle" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label class="input-label">Author</label>
+                            <input type="text" id="formSourceAuthor">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Year</label>
+                            <input type="text" id="formSourceYear">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Type</label>
+                            <select id="formSourceType" required>
+                                <option value="Book">Book</option>
+                                <option value="Academic Article">Academic Article</option>
+                                <option value="Official Document">Official Document</option>
+                                <option value="Website">Website / Online Article</option>
+                                <option value="Video / Documentary">Video / Documentary</option>
+                                <option value="Podcast">Podcast</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label">Reading Status</label>
+                            <select id="formSourceStatus">
+                                <option value="To Read">To Read / In Library</option>
+                                <option value="Reading">Reading</option>
+                                <option value="Read">Read</option>
+                                <option value="Consulted">Consulted</option>
+                                <option value="On Hold">On Hold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Link (Generates auto-cover if valid)</label>
+                        <input type="url" id="formSourceUrl" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Link to Topics</label>
+                        <div class="chip-selector-grid" id="sourceTopicsSelector"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('sourceFormModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveSourceBtn"><i data-lucide="save" class="icon-sm"></i> Save Source</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIELD Edit Modal -->
+    <div class="modal-overlay" id="editFieldModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="editFieldTitle">Manage Field</h2>
+                <form id="editFieldForm">
+                    <input type="hidden" id="editFieldOldName">
+                    <div class="form-group">
+                        <label class="input-label">Field Name</label>
+                        <input type="text" id="editFieldName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Color Selection</label>
+                        <input type="hidden" id="editFieldColor">
+                        <div id="discreteColorPalette" class="color-palette-grid"></div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Dots (•) indicate colors already in use.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('editFieldModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveFieldBtn"><i data-lucide="save" class="icon-sm"></i> Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBSECTION Edit Modal -->
+    <div class="modal-overlay" id="editSectionModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-body">
+                <h2 class="modal-title" id="editSectionTitle">Manage Subsection</h2>
+                <form id="editSectionForm">
+                    <input type="hidden" id="editSectionOldName">
+                    <div class="form-group">
+                        <label class="input-label">Subsection Name</label>
+                        <input type="text" id="editSectionName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label">Belongs to Fields:</label>
+                        <div class="checkbox-grid" id="editSectionParentsGrid"></div>
+                    </div>
+                    
+                    <div class="form-group" id="editSectionPrimaryParentGroup" style="display: none;">
+                        <label class="input-label" style="color: #f59e0b; display: flex; align-items: center; gap: 4px;"><i data-lucide="star" class="icon-xs"></i> Primary Field</label>
+                        <select id="editSectionPrimaryParent">
+                            <option value="">None</option>
+                        </select>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Set the dominant field to influence the subsection's color.</p>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('editSectionModal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" id="saveSectionBtn"><i data-lucide="save" class="icon-sm"></i> Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Init Icons on load
+        lucide.createIcons();
+
+        // --- DATA STATE ---
+        let topics = [];
+        let sources = [];
+        let metadata = { fields: [], sections: [] }; 
+        
+        const COLOR_PALETTE = [
+            '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', 
+            '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', 
+            '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#64748b', '#78716c'
+        ];
+
+        let activeTab = 'topics';
+        let currentEditingId = null; 
+        let activeTopicInDetail = null;
+
+        let formSelectedFields = new Set();
+        let formSelectedSections = new Set();
+        let formSelectedTopicsForSource = new Set();
+
+        let selectedFilterFields = new Set();
+        let selectedFilterSections = new Set();
+        let selectedFilterSourceTypes = new Set();
+        let selectedFilterSourceStatuses = new Set();
+        
+        let graphNetwork = null;
+
+        if(window.innerWidth <= 900) { document.getElementById('mobileFilterToggle').style.display = 'block'; }
+        document.getElementById('mobileFilterToggle').addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('active'); });
+
+        // Event Listeners Sort/Group & Search
+        document.getElementById('topicSortBy').addEventListener('change', renderTopics);
+        document.getElementById('topicGroupBy').addEventListener('change', renderTopics);
+        document.getElementById('sourceSortBy').addEventListener('change', renderSources);
+        document.getElementById('sourceGroupBy').addEventListener('change', renderSources);
+        document.getElementById('showSubtopicsFilter').addEventListener('change', renderTopics);
+        document.getElementById('topicSearchInput').addEventListener('input', renderTopics);
+        document.getElementById('sourceSearchInput').addEventListener('input', renderSources);
+
+        // Clear Filters
+        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+            selectedFilterFields.clear();
+            selectedFilterSections.clear();
+            document.getElementById('showSubtopicsFilter').checked = false;
+            updateUI();
+        });
+
+        // Search in Categories
+        document.getElementById('categorySearchInput').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.cat-list-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        });
+
+        // --- UI UTILITIES ---
+        function toggleLoading(btnId, isLoading, originalText = 'Save') {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner"></span> Saving...`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            ['topics', 'sources', 'categories', 'graph'].forEach(t => {
+                const tEl = document.getElementById(`tab-${t}`);
+                if(tEl) tEl.classList.toggle('active', tab === t);
+                
+                const vEl = document.getElementById(`view-${t}`);
+                if(vEl) vEl.classList.toggle('active', tab === t);
+                
+                const sEl = document.getElementById(`sidebar-${t}`);
+                if(sEl) sEl.classList.toggle('active', tab === t);
+            });
+            
+            document.getElementById('gridListControls').style.display = tab === 'topics' ? 'flex' : 'none';
+            document.getElementById('mainAddTopicBtn').style.display = tab === 'topics' ? 'flex' : 'none';
+            document.getElementById('mainAddSourceBtn').style.display = tab === 'sources' ? 'flex' : 'none';
+
+            if (tab === 'graph') {
+                setTimeout(renderGraph, 100);
+            }
+        }
+        document.getElementById('tab-topics').addEventListener('click', () => switchTab('topics'));
+        document.getElementById('tab-sources').addEventListener('click', () => switchTab('sources'));
+        document.getElementById('tab-categories').addEventListener('click', () => switchTab('categories'));
+        document.getElementById('tab-graph').addEventListener('click', () => switchTab('graph'));
+
+        // --- TAG FILTERING GLOBALE ---
+        window.filterByTag = function(type, value) {
+            if (type === 'field') {
+                selectedFilterFields.clear(); selectedFilterFields.add(value);
+                selectedFilterSections.clear(); switchTab('topics');
+            } else if (type === 'section') {
+                selectedFilterSections.clear(); selectedFilterSections.add(value);
+                const sec = metadata.sections.find(s => s.name === value);
+                // NEW: Ensure all parent fields of the section are checked in the filter UI
+                if (sec && sec.parents && sec.parents.length > 0) {
+                    selectedFilterFields.clear(); 
+                    sec.parents.forEach(p => selectedFilterFields.add(p));
+                }
+                switchTab('topics');
+            } else if (type === 'type') {
+                selectedFilterSourceTypes.clear(); selectedFilterSourceTypes.add(value); switchTab('sources');
+            } else if (type === 'status') {
+                selectedFilterSourceStatuses.clear(); selectedFilterSourceStatuses.add(value); switchTab('sources');
+            }
+            document.getElementById('topicDetailModal').classList.remove('active');
+            updateUI();
+        }
+
+        // --- COLOR CODING MINIMALISTA ---
+        function getFieldColor(fieldName) {
+            const f = metadata.fields.find(x => x && x.name === fieldName);
+            return f ? f.color : '#94a3b8'; 
+        }
+
+        function getSectionSegmentedBorder(sectionName) {
+            const sec = metadata.sections.find(s => s && s.name === sectionName);
+            const parents = sec && sec.parents ? sec.parents : [];
+            
+            if (parents.length === 0) return 'border: 2.5px solid #cbd5e1; background: var(--surface); color: var(--text-main);';
+            
+            if (parents.length === 1) {
+                const color = getFieldColor(parents[0]);
+                return `border: 2.5px solid ${color}; background: var(--surface); color: ${color};`;
+            }
+
+            const step = 100 / parents.length;
+            let gradientParts = parents.map((p, i) => `${getFieldColor(p)} ${i * step}% ${(i + 1) * step}%`).join(', ');
+            
+            return `
+                border: 2.5px solid transparent;
+                background: linear-gradient(var(--surface), var(--surface)) padding-box, 
+                            linear-gradient(to right, ${gradientParts}) border-box;
+                color: var(--text-main);
+            `;
+        }
+
+        function getFallbackTopicCover(topic) {
+            let color = '#334155';
+            const pf = topic.primaryField || (topic.fields && topic.fields[0]);
+            if (pf) color = getFieldColor(pf);
+            const hex = color.replace('#', '');
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(topic.title)}&background=${hex}&color=fff&size=800&font-size=0.15&length=3`;
+        }
+
+        function getSourceCover(source) {
+            if (source.url && source.url.startsWith('http')) {
+                try {
+                    const hostname = new URL(source.url).hostname;
+                    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+                } catch(e) {}
+            }
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(source.title)}&background=e2e8f0&color=475569&size=128&font-size=0.3`;
+        }
+
+        function getFallbackImageUrl(title) {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(title || 'Source')}&background=e2e8f0&color=475569&size=128&font-size=0.3`;
+        }
+
+        function ensureMetadataIntegrity() {
+            let changed = false;
+            
+            if (!metadata) metadata = { fields: [], sections: [] };
+            if (!Array.isArray(metadata.fields)) metadata.fields = [];
+            if (!Array.isArray(metadata.sections)) metadata.sections = [];
+            
+            metadata.fields = metadata.fields.map(f => {
+                if (typeof f === 'string') { changed = true; return { name: f, color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] }; }
+                return f;
+            }).filter(Boolean);
+
+            metadata.sections = metadata.sections.map(s => {
+                if (typeof s === 'string') { changed = true; return { name: s, parents: [], primaryParent: null }; }
+                return s;
+            }).filter(Boolean);
+
+            const existingFields = new Set(metadata.fields.filter(f => f && f.name).map(f => f.name));
+            topics.forEach(t => {
+                (t.fields || []).forEach(f => {
+                    if (!existingFields.has(f)) { metadata.fields.push({ name: f, color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] }); existingFields.add(f); changed = true; }
+                });
+            });
+            const secMap = new Map(metadata.sections.filter(s => s && s.name).map(s => [s.name, s]));
+            topics.forEach(t => {
+                (t.sections || []).forEach(s => {
+                    if (!secMap.has(s)) {
+                        secMap.set(s, { name: s, parents: Array.from(new Set(t.fields || [])), primaryParent: null });
+                        changed = true;
+                    }
+                    // Rimosso l'else aggressivo: ora i genitori del sottoambito restano quelli che decidi tu dal pannello di gestione!
+                });
+            });
+            metadata.sections = Array.from(secMap.values());
+
+            return changed;
+        }
+
+                // --- CONFIGURAZIONE CLOUD SUPABASE CENTRALIZZATA ---
+        const DEFAULT_SB_URL = 'https://bbskvjxrutsrznwcrlmi.supabase.co';
+        const DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2t2anhydXRzcnpud2NybG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMzIwMDIsImV4cCI6MjEwODYwODAwMn0.l_nFrRcMWn6LDzyI8AJEoc1_J33hAePmNbXTDolVvxU';
+        const APP_STATE_NAME = 'knowledge_base';
+        const LOCAL_CACHE_KEY = 'kb_cached_data';
+
+        let supabaseUrl = localStorage.getItem('hub_supabase_url') || DEFAULT_SB_URL;
+        let anonKey = localStorage.getItem('hub_anon_key') || DEFAULT_SB_KEY;
+
+        const settingsModal = document.getElementById('settingsModal');
+
+        // Salvataggio sicuro in localStorage protetto da quota limit (immagini Base64 grandi)
+        function safeSetLocal(key, val) {
+            try {
+                localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val));
+            } catch(e) {
+                console.warn("Storage quota exceeded per immagini grandi, salvataggio locale saltato. Il cloud Supabase funziona normalmente.", e);
+            }
+        }
+
+        function updateSbBadge(status, text) {
+            const badge = document.getElementById('sbBadge');
+            if (!badge) return;
+            badge.textContent = text;
+            if (status === 'connected') {
+                badge.style.background = '#dcfce7'; badge.style.color = '#15803d';
+            } else if (status === 'warning') {
+                badge.style.background = '#fef9c3'; badge.style.color = '#854d0e';
+            } else {
+                badge.style.background = '#fee2e2'; badge.style.color = '#b91c1c';
+            }
+        }
+
+        const openBtn = document.getElementById('openSettingsBtn');
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                const urlEl = document.getElementById('supabaseUrlInput');
+                const keyEl = document.getElementById('supabaseKeyInput');
+                if (urlEl) urlEl.value = supabaseUrl;
+                if (keyEl) keyEl.value = anonKey;
+                
+                const gId = localStorage.getItem('kv_gist_id') || '';
+                const gPat = localStorage.getItem('kv_github_pat') || '';
+                const gIdEl = document.getElementById('gistId');
+                const gPatEl = document.getElementById('githubPat');
+                if (gId && gIdEl) gIdEl.value = gId;
+                if (gPat && gPatEl) gPatEl.value = gPat;
+                
+                if (settingsModal) settingsModal.classList.add('active');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+        }
+
+        const closeBtn = document.getElementById('closeSettingsBtn');
+        if (closeBtn && settingsModal) {
+            closeBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
+        }
+        
+        const setForm = document.getElementById('settingsForm');
+        if (setForm) {
+            setForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const urlInput = document.getElementById('supabaseUrlInput');
+                const keyInput = document.getElementById('supabaseKeyInput');
+                if (urlInput) supabaseUrl = urlInput.value.trim();
+                if (keyInput) anonKey = keyInput.value.trim();
+                safeSetLocal('hub_supabase_url', supabaseUrl);
+                safeSetLocal('hub_anon_key', anonKey);
+                if (settingsModal) settingsModal.classList.remove('active');
+                loadData();
+            });
+        }
+
+        // Backup di sicurezza scaricabile in formato JSON
+        function exportLocalBackupFile() {
+            const backupObj = {
+                app: APP_STATE_NAME,
+                exported_at: new Date().toISOString(),
+                topics: topics,
+                sources: sources,
+                metadata: metadata
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `${APP_STATE_NAME}_backup_${Date.now()}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // Funzione per recuperare i file completi da Gist anche se troncati da GitHub (>1MB o tante righe)
+        async function fetchIntegralGistFile(fileObj) {
+            if (!fileObj) return '[]';
+            if (fileObj.truncated && fileObj.raw_url) {
+                const rawRes = await fetch(fileObj.raw_url);
+                return await rawRes.text();
+            }
+            return fileObj.content || '[]';
+        }
+
+        // Migrazione One-Shot da GitHub Gist a Supabase
+        async function migrateFromGistToSupabase() {
+            const gistIdEl = document.getElementById('gistId');
+            const patEl = document.getElementById('githubPat');
+            const prog = document.getElementById('migrationProgress');
+            
+            const rawGistId = gistIdEl ? gistIdEl.value.trim() : '';
+            const pat = patEl ? patEl.value.trim() : '';
+            
+            let cleanGistId = rawGistId;
+            if (cleanGistId.includes('/')) cleanGistId = cleanGistId.split('/').pop();
+            
+            if (!cleanGistId) {
+                alert("Inserisci l'ID del Gist da cui importare.");
+                return;
+            }
+
+            try {
+                if (prog) {
+                    prog.style.display = 'block';
+                    prog.style.color = '#0369a1';
+                    prog.textContent = "Download dei dati dal Gist in corso (recupero completo testi e immagini)...";
+                }
+                
+                const headers = pat ? { 'Authorization': `token ${pat}` } : {};
+                const res = await fetch(`https://api.github.com/gists/${cleanGistId}`, { headers });
+                if (!res.ok) throw new Error("Errore risposta GitHub Gist: " + res.statusText);
+                
+                const gist = await res.json();
+                if (prog) prog.textContent = "Elaborazione file JSON...";
+
+                const topicsRaw = await fetchIntegralGistFile(gist.files['data.json']);
+                const sourcesRaw = await fetchIntegralGistFile(gist.files['sources.json']);
+                const metadataRaw = await fetchIntegralGistFile(gist.files['metadata.json']);
+
+                topics = JSON.parse(topicsRaw || '[]');
+                sources = JSON.parse(sourcesRaw || '[]');
+                metadata = JSON.parse(metadataRaw || '{"fields":[], "sections":[]}');
+
+                ensureMetadataIntegrity();
+
+                if (prog) prog.textContent = "Generazione backup di sicurezza locale sul PC...";
+                exportLocalBackupFile();
+
+                if (prog) prog.textContent = "Salvataggio nel database Supabase in corso...";
+                await saveData(true);
+
+                safeSetLocal('kv_gist_id', cleanGistId);
+                if (pat) safeSetLocal('kv_github_pat', pat);
+
+                if (prog) {
+                    prog.style.color = '#15803d';
+                    prog.textContent = `Migrazione completata! Salvati con successo ${topics.length} argomenti e relative immagini.`;
+                }
+                updateSbBadge('connected', 'Supabase Attivo');
+                setTimeout(() => { if (settingsModal) settingsModal.classList.remove('active'); }, 2000);
+            } catch (err) {
+                console.error("Migration error:", err);
+                if (prog) {
+                    prog.style.color = '#b91c1c';
+                    prog.textContent = "Errore durante la migrazione: " + err.message;
+                }
+            }
+        }
+
+        // Caricamento Dati: 100% Nativo su Supabase (con rilevamento automatico intelligente)
+        async function loadData() {
+            const statusEl = document.getElementById('statusText');
+            if (statusEl) statusEl.innerHTML = '<span class="spinner" style="border-top-color: var(--primary);"></span> Sincronizzazione Supabase...';
+            
+            let foundData = null;
+
+            // 1. Prova a scaricare da Supabase: 'knowledge_base'
+            try {
+                const res = await fetch(`${supabaseUrl}/rest/v1/app_states?app_name=eq.${APP_STATE_NAME}&select=data`, {
+                    headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+                    cache: 'no-store'
+                });
+
+                if (res.ok) {
+                    const rows = await res.json();
+                    if (rows && rows.length > 0 && rows[0].data && (rows[0].data.topics || rows[0].data.sources)) {
+                        foundData = rows[0].data;
+                        console.log("Dati caricati da Supabase (knowledge_base)!");
+                    }
+                }
+            } catch (e) {
+                console.warn("Verifica knowledge_base fallita:", e);
+            }
+
+            // 2. Se non ancora in 'knowledge_base', verifica se sono stati salvati sotto 'valige'
+            if (!foundData) {
+                try {
+                    const checkValigeRes = await fetch(`${supabaseUrl}/rest/v1/app_states?app_name=eq.valige&select=data`, {
+                        headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+                        cache: 'no-store'
+                    });
+                    if (checkValigeRes.ok) {
+                        const vRows = await checkValigeRes.json();
+                        if (vRows && vRows.length > 0 && vRows[0].data && vRows[0].data.topics) {
+                            foundData = vRows[0].data;
+                            console.log("Trovati dati Knowledge Vault in 'valige': spostamento su 'knowledge_base'!");
+                            // Salva in knowledge_base su Supabase
+                            fetch(`${supabaseUrl}/rest/v1/app_states`, {
+                                method: 'POST',
+                                headers: {
+                                    'apikey': anonKey,
+                                    'Authorization': `Bearer ${anonKey}`,
+                                    'Content-Type': 'application/json',
+                                    'Prefer': 'resolution=merge-duplicates'
+                                },
+                                body: JSON.stringify({
+                                    app_name: 'knowledge_base',
+                                    data: foundData
+                                })
+                            }).catch(err => console.warn("Background copy to knowledge_base:", err));
+                        }
+                    }
+                } catch(e) {
+                    console.warn("Verifica riga valige fallita:", e);
+                }
+            }
+
+            // 3. Fallback cache locale
+            if (!foundData) {
+                try {
+                    const localV = localStorage.getItem('valige_cached_data');
+                    const localK = localStorage.getItem(LOCAL_CACHE_KEY);
+                    if (localK) foundData = JSON.parse(localK);
+                    else if (localV) foundData = JSON.parse(localV);
+                } catch(e) {}
+            }
+
+            // Se abbiamo i dati (da Supabase o locale)
+            if (foundData && (foundData.topics || foundData.sources)) {
+                topics = Array.isArray(foundData.topics) ? foundData.topics : [];
+                sources = Array.isArray(foundData.sources) ? foundData.sources : [];
+                metadata = foundData.metadata || { fields: [], sections: [] };
+                
+                safeSetLocal(LOCAL_CACHE_KEY, foundData);
+                ensureMetadataIntegrity();
+                updateUI();
+                updateSbBadge('connected', 'Supabase Sincronizzato');
+                if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">● Connesso a Supabase</span>';
+                return;
+            }
+
+            // Se non ci sono dati, chiediamo la migrazione
+            updateSbBadge('warning', 'In attesa migrazione');
+            if (statusEl) statusEl.innerHTML = '<span style="color:#f59e0b;">In attesa di migrazione dati</span>';
+            if (settingsModal) {
+                settingsModal.classList.add('active');
+                const migDetails = document.getElementById('migrationDetails');
+                if (migDetails) migDetails.open = true;
+            }
+        }
+
+        // Salvataggio Dati: 100% Nativo su Supabase
+        async function saveData(refresh = true, btnId = null, btnText = 'Save') {
+            if (btnId) toggleLoading(btnId, true, btnText);
+            
+            const payload = {
+                topics: topics,
+                sources: sources,
+                metadata: metadata,
+                updated_at: new Date().toISOString()
+            };
+
+            safeSetLocal(LOCAL_CACHE_KEY, payload);
+
+            try {
+                const res = await fetch(`${supabaseUrl}/rest/v1/app_states`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': anonKey,
+                        'Authorization': `Bearer ${anonKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        app_name: APP_STATE_NAME,
+                        data: payload
+                    })
+                });
+
+                if (!res.ok) throw new Error("Errore Supabase HTTP " + res.status);
+                
+                const statusEl = document.getElementById('statusText');
+                if (statusEl) statusEl.innerHTML = '<span style="color:#22c55e;">● Sincronizzato con Supabase</span>';
+            } catch (error) {
+                console.error("Supabase Save Error:", error);
+                const statusEl = document.getElementById('statusText');
+                if (statusEl) statusEl.innerHTML = '<span style="color:#eab308;">⚠ Salvato in locale (errore cloud)</span>';
+            } finally {
+                if (btnId) toggleLoading(btnId, false, btnText);
+                if (refresh) updateUI();
+            }
+        }
+        
+        function updateUI() {
+            renderTopicFilters();
+            renderSourceFilters();
+            renderTopics();
+            renderSources();
+            renderCategoryManagement();
+            
+            // Aggiorna stato visivo del clear filters
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            if (selectedFilterFields.size > 0 || selectedFilterSections.size > 0 || document.getElementById('showSubtopicsFilter').checked) {
+                clearBtn.style.display = 'inline-flex';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+            
+            document.getElementById('statsText').innerHTML = `
+                <i data-lucide="library" class="icon-sm" style="vertical-align:text-bottom;"></i> Topics: <span style="color:var(--text-main); font-weight:700;">${topics.length}</span> &nbsp;&nbsp;|&nbsp;&nbsp; 
+                <i data-lucide="bookmark" class="icon-sm" style="vertical-align:text-bottom;"></i> Sources: <span style="color:var(--text-main); font-weight:700;">${sources.length}</span> &nbsp;&nbsp;|&nbsp;&nbsp; 
+                <i data-lucide="tags" class="icon-sm" style="vertical-align:text-bottom;"></i> Fields: <span style="color:var(--text-main); font-weight:700;">${metadata.fields.length}</span> &nbsp;&nbsp;|&nbsp;&nbsp; 
+                <i data-lucide="folder" class="icon-sm" style="vertical-align:text-bottom;"></i> Subsections: <span style="color:var(--text-main); font-weight:700;">${metadata.sections.length}</span>
+            `;
+            document.getElementById('allSourcesDatalist').innerHTML = sources.map(s => `<option value="${s.title}" data-id="${s.id}">`).join('');
+            
+            if(activeTab === 'graph') renderGraph();
+            lucide.createIcons();
+        }
+
+        // --- CATEGORIES SYSTEM ---
+        function renderCategoryManagement() {
+            const term = document.getElementById('categorySearchInput').value.toLowerCase();
+            
+            const fCont = document.getElementById('adminFieldsList'); fCont.innerHTML = '';
+            metadata.fields.filter(f => f && f.name).sort((a,b)=>a.name.localeCompare(b.name)).forEach(f => {
+                if (term && !f.name.toLowerCase().includes(term)) return;
+                const item = document.createElement('div'); item.className = 'cat-list-item';
+                item.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <span style="width:18px; height:18px; border-radius:6px; background:${f.color}; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);"></span>
+                        <strong style="font-size:1rem; color: var(--text-main);">${f.name}</strong>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="icon-btn" style="padding:0.35rem 0.6rem;" onclick="openEditFieldModal('${f.name.replace(/'/g, "\\'")}')"><i data-lucide="edit-2" class="icon-xs"></i></button>
+                        <button class="icon-btn danger" style="padding:0.35rem 0.6rem;" onclick="deleteField('${f.name.replace(/'/g, "\\'")}')"><i data-lucide="trash-2" class="icon-xs"></i></button>
+                    </div>
+                `;
+                fCont.appendChild(item);
+            });
+
+            const sCont = document.getElementById('adminSectionsList'); sCont.innerHTML = '';
+            metadata.sections.filter(s => s && s.name).sort((a,b)=>a.name.localeCompare(b.name)).forEach(s => {
+                if (term && !s.name.toLowerCase().includes(term)) return;
+                const pText = (s.parents && s.parents.length > 0) ? s.parents.join(', ') : 'No linked field';
+                let primaryInfo = '';
+                if (s.primaryParent) primaryInfo = ` <span style="color:#f59e0b;" title="Primary Field"><i data-lucide="star" style="width:12px; height:12px; display:inline;"></i> ${s.primaryParent}</span>`;
+
+                const item = document.createElement('div'); item.className = 'cat-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong style="display:inline-block; padding: 0.15rem 0.5rem; border-radius: 6px; font-size:0.9rem; ${getSectionSegmentedBorder(s.name)}">${s.name}</strong>
+                        <span style="display:block; margin-top: 0.35rem; font-size:0.8rem; color:var(--text-muted); font-weight: 500;">In: ${pText}${primaryInfo}</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="icon-btn" style="padding:0.35rem 0.6rem;" onclick="openEditSectionModal('${s.name.replace(/'/g, "\\'")}')"><i data-lucide="edit-2" class="icon-xs"></i></button>
+                        <button class="icon-btn danger" style="padding:0.35rem 0.6rem;" onclick="deleteSection('${s.name.replace(/'/g, "\\'")}')"><i data-lucide="trash-2" class="icon-xs"></i></button>
+                    </div>
+                `;
+                sCont.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        // Modals per Field / Section
+        const editFieldModal = document.getElementById('editFieldModal');
+        function renderDiscreteColorPalette(selectedColor) {
+            const usedColors = metadata.fields.map(f => f.color.toLowerCase());
+            const cont = document.getElementById('discreteColorPalette');
+            cont.innerHTML = COLOR_PALETTE.map(c => {
+                const isUsed = usedColors.includes(c);
+                const isSelected = c === selectedColor;
+                return `<div class="color-swatch ${isSelected ? 'selected' : ''}" style="background-color: ${c}" onclick="selectPaletteColor('${c}')">${isUsed ? '<div class="dot"></div>' : ''}</div>`;
+            }).join('');
+            document.getElementById('editFieldColor').value = selectedColor;
+        }
+
+        window.selectPaletteColor = function(color) {
+            renderDiscreteColorPalette(color);
+        }
+
+        window.openEditFieldModal = function(name = null) {
+            document.getElementById('editFieldForm').reset();
+            let colorToSelect = COLOR_PALETTE[0];
+            if (name) {
+                const f = metadata.fields.find(x => x.name === name);
+                document.getElementById('editFieldTitle').textContent = 'Edit Field';
+                document.getElementById('editFieldOldName').value = f.name;
+                document.getElementById('editFieldName').value = f.name;
+                colorToSelect = f.color;
+            } else {
+                document.getElementById('editFieldTitle').textContent = 'New Field';
+                document.getElementById('editFieldOldName').value = '';
+            }
+            renderDiscreteColorPalette(colorToSelect);
+            editFieldModal.classList.add('active');
+        };
+
+        document.getElementById('editFieldForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldName = document.getElementById('editFieldOldName').value;
+            const newName = document.getElementById('editFieldName').value.trim();
+            const newColor = document.getElementById('editFieldColor').value;
+            
+            if (oldName) {
+                const f = metadata.fields.find(x => x.name === oldName);
+                if (f) { f.name = newName; f.color = newColor; }
+                if (oldName !== newName) {
+                    metadata.sections.forEach(s => { 
+                        s.parents = (s.parents || []).map(p => p === oldName ? newName : p); 
+                        if(s.primaryParent === oldName) s.primaryParent = newName;
+                    });
+                    topics.forEach(t => { 
+                        if(t.fields) t.fields = t.fields.map(field => field === oldName ? newName : field); 
+                        if(t.primaryField === oldName) t.primaryField = newName;
+                    });
+                }
+            } else {
+                if (metadata.fields.some(f => f && f.name.toLowerCase() === newName.toLowerCase())) { alert("Field already exists!"); return; }
+                metadata.fields.push({name: newName, color: newColor});
+            }
+            await saveData(true, 'saveFieldBtn', `<i data-lucide="save" class="icon-sm"></i> Save Changes`); 
+            editFieldModal.classList.remove('active');
+        });
+
+        window.deleteField = async function(name) {
+            if(confirm(`Delete field "${name}"? It will be removed from topics and subsections.`)){
+                metadata.fields = metadata.fields.filter(x => x.name !== name);
+                metadata.sections.forEach(s => { 
+                    s.parents = (s.parents || []).filter(p => p !== name); 
+                    if(s.primaryParent === name) s.primaryParent = null;
+                });
+                topics.forEach(t => { 
+                    if(t.fields) t.fields = t.fields.filter(f => f !== name); 
+                    if(t.primaryField === name) t.primaryField = null;
+                });
+                await saveData(true); 
+            }
+        };
+
+        const editSectionModal = document.getElementById('editSectionModal');
+        
+        function updateEditSectionPrimaryDropdown(currentPrimary = null) {
+            const checkboxes = document.querySelectorAll('#editSectionParentsGrid input:checked');
+            const group = document.getElementById('editSectionPrimaryParentGroup');
+            const select = document.getElementById('editSectionPrimaryParent');
+            
+            if (checkboxes.length > 0) {
+                group.style.display = 'block';
+                const options = Array.from(checkboxes).map(cb => `<option value="${cb.value}">${cb.value}</option>`);
+                select.innerHTML = '<option value="">None</option>' + options.join('');
+                if (currentPrimary && Array.from(checkboxes).some(cb => cb.value === currentPrimary)) {
+                    select.value = currentPrimary;
+                }
+            } else {
+                group.style.display = 'none';
+                select.innerHTML = '<option value="">None</option>';
+            }
+        }
+
+        window.openEditSectionModal = function(name = null) {
+            document.getElementById('editSectionForm').reset();
+            const grid = document.getElementById('editSectionParentsGrid'); grid.innerHTML = '';
+            let parents = [];
+            let primaryParent = null;
+            
+            if (name) {
+                const s = metadata.sections.find(x => x.name === name);
+                document.getElementById('editSectionTitle').textContent = 'Edit Subsection';
+                document.getElementById('editSectionOldName').value = s.name;
+                document.getElementById('editSectionName').value = s.name;
+                parents = s.parents || [];
+                primaryParent = s.primaryParent || null;
+            } else {
+                document.getElementById('editSectionTitle').textContent = 'New Subsection';
+                document.getElementById('editSectionOldName').value = '';
+            }
+
+            metadata.fields.filter(f => f && f.name).forEach(f => {
+                const checked = parents.includes(f.name) ? 'checked' : '';
+                const lbl = document.createElement('label');
+                lbl.className = 'checkbox-label';
+                lbl.innerHTML = `<input type="checkbox" value="${f.name}" ${checked}> <span style="width:12px; height:12px; border-radius:3px; background:${f.color};"></span>${f.name}`;
+                lbl.querySelector('input').addEventListener('change', () => {
+                    const currentPrimary = document.getElementById('editSectionPrimaryParent').value;
+                    updateEditSectionPrimaryDropdown(currentPrimary);
+                });
+                grid.appendChild(lbl);
+            });
+            
+            updateEditSectionPrimaryDropdown(primaryParent);
+            editSectionModal.classList.add('active');
+        };
+
+        document.getElementById('editSectionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldName = document.getElementById('editSectionOldName').value;
+            const newName = document.getElementById('editSectionName').value.trim();
+            const newParents = Array.from(document.querySelectorAll('#editSectionParentsGrid input:checked')).map(cb => cb.value);
+            const primaryParent = document.getElementById('editSectionPrimaryParent').value || null;
+            
+            if (oldName) {
+                const s = metadata.sections.find(x => x.name === oldName);
+                if (s) { s.name = newName; s.parents = newParents; s.primaryParent = primaryParent; }
+                if (oldName !== newName) {
+                    topics.forEach(t => { if(t.sections) t.sections = t.sections.map(sec => sec === oldName ? newName : sec); });
+                    topics.forEach(t => { if(t.primarySection === oldName) t.primarySection = newName; });
+                }
+            } else {
+                if (metadata.sections.some(s => s && s.name.toLowerCase() === newName.toLowerCase())) { alert("Subsection already exists!"); return; }
+                metadata.sections.push({name: newName, parents: newParents, primaryParent: primaryParent});
+            }
+            await saveData(true, 'saveSectionBtn', `<i data-lucide="save" class="icon-sm"></i> Save Changes`); 
+            editSectionModal.classList.remove('active');
+        });
+
+        window.deleteSection = async function(name) {
+            if(confirm(`Delete subsection "${name}"? It will be removed from topics.`)){
+                metadata.sections = metadata.sections.filter(x => x.name !== name);
+                topics.forEach(t => { 
+                    if(t.sections) t.sections = t.sections.filter(s => s !== name); 
+                    if(t.primarySection === name) t.primarySection = null;
+                });
+                await saveData(true);
+            }
+        };
+
+        // --- TAG SYSTEM FOR FORMS ---
+        function updatePrimaryDropdowns(currentPrimaryField = null, currentPrimarySection = null) {
+            const pfGroup = document.getElementById('primaryFieldGroup');
+            const pfSelect = document.getElementById('formPrimaryField');
+            if (formSelectedFields.size > 0) {
+                pfGroup.style.display = 'block';
+                const pfOptions = `<option value="">None</option>` + Array.from(formSelectedFields).map(f => `<option value="${f}">${f}</option>`).join('');
+                pfSelect.innerHTML = pfOptions;
+                if (currentPrimaryField && formSelectedFields.has(currentPrimaryField)) pfSelect.value = currentPrimaryField;
+            } else {
+                pfGroup.style.display = 'none';
+                pfSelect.innerHTML = '<option value="">None</option>';
+            }
+
+            const psGroup = document.getElementById('primarySectionGroup');
+            const psSelect = document.getElementById('formPrimarySection');
+            if (formSelectedSections.size > 0) {
+                psGroup.style.display = 'block';
+                const psOptions = `<option value="">None</option>` + Array.from(formSelectedSections).map(s => `<option value="${s}">${s}</option>`).join('');
+                psSelect.innerHTML = psOptions;
+                if (currentPrimarySection && formSelectedSections.has(currentPrimarySection)) psSelect.value = currentPrimarySection;
+            } else {
+                psGroup.style.display = 'none';
+                psSelect.innerHTML = '<option value="">None</option>';
+            }
+            lucide.createIcons();
+        }
+
+        function populateParentTopicDropdown(excludeId = null, preselectedId = null) {
+            const parentSelect = document.getElementById('formTopicParentId');
+            let options = '<option value="">None (Main Topic)</option>';
+            
+            topics.forEach(t => {
+                if (t.id !== excludeId) {
+                    options += `<option value="${t.id}">${t.title}</option>`;
+                }
+            });
+            parentSelect.innerHTML = options;
+            if (preselectedId) {
+                parentSelect.value = preselectedId;
+            }
+        }
+
+        function renderFormChips() {
+            const fieldCont = document.getElementById('fieldChipSelector'); fieldCont.innerHTML = '';
+            metadata.fields.filter(f => f && f.name).sort((a,b)=>a.name.localeCompare(b.name)).forEach(f => {
+                const c = document.createElement('div');
+                c.className = `chip field-chip ${formSelectedFields.has(f.name) ? 'active' : ''}`;
+                c.style.background = f.color;
+                c.textContent = f.name;
+                c.onclick = () => { 
+                    formSelectedFields.has(f.name) ? formSelectedFields.delete(f.name) : formSelectedFields.add(f.name); 
+                    const validSecs = metadata.sections.filter(s => (s.parents||[]).some(p => formSelectedFields.has(p))).map(s=>s.name);
+                    for (let item of formSelectedSections) { if(!validSecs.includes(item)) formSelectedSections.delete(item); }
+                    
+                    const curPF = document.getElementById('formPrimaryField').value;
+                    const curPS = document.getElementById('formPrimarySection').value;
+                    renderFormChips(); 
+                    updatePrimaryDropdowns(curPF, curPS);
+                };
+                fieldCont.appendChild(c);
+            });
+
+            const secCont = document.getElementById('sectionChipSelector'); secCont.innerHTML = '';
+            if (formSelectedFields.size === 0) { secCont.innerHTML = '<span style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem; font-weight: 500;">Select a field above first.</span>'; return; }
+            
+            const relevantSections = metadata.sections.filter(s => (s.parents||[]).some(p => formSelectedFields.has(p)));
+            relevantSections.sort((a,b)=>a.name.localeCompare(b.name)).forEach(s => {
+                const c = document.createElement('div');
+                c.className = `chip section-chip ${formSelectedSections.has(s.name) ? 'active' : ''}`;
+                c.style.cssText = getSectionSegmentedBorder(s.name);
+                if (!formSelectedSections.has(s.name)) {
+                    c.style.opacity = '0.5';
+                    c.style.boxShadow = 'none';
+                }
+                c.textContent = s.name;
+                c.onclick = () => { 
+                    formSelectedSections.has(s.name) ? formSelectedSections.delete(s.name) : formSelectedSections.add(s.name); 
+                    const curPF = document.getElementById('formPrimaryField').value;
+                    const curPS = document.getElementById('formPrimarySection').value;
+                    renderFormChips(); 
+                    updatePrimaryDropdowns(curPF, curPS);
+                };
+                secCont.appendChild(c);
+            });
+        }
+
+        // Inline Add Logic
+        document.getElementById('inlineAddField').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = this.value.trim();
+                if (val && !metadata.fields.some(f => f.name.toLowerCase() === val.toLowerCase())) {
+                    metadata.fields.push({name: val, color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)]});
+                    formSelectedFields.add(val);
+                    this.value = '';
+                    renderFormChips();
+                    updatePrimaryDropdowns(document.getElementById('formPrimaryField').value, document.getElementById('formPrimarySection').value);
+                } else if (val) alert("Field already exists.");
+            }
+        });
+
+        document.getElementById('inlineAddSection').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = this.value.trim();
+                if (val && !metadata.sections.some(s => s.name.toLowerCase() === val.toLowerCase())) {
+                    const parents = Array.from(formSelectedFields);
+                    metadata.sections.push({name: val, parents: parents, primaryParent: parents.length > 0 ? parents[0] : null});
+                    formSelectedSections.add(val);
+                    this.value = '';
+                    renderFormChips();
+                    updatePrimaryDropdowns(document.getElementById('formPrimaryField').value, document.getElementById('formPrimarySection').value);
+                } else if (val) alert("Subsection already exists.");
+            }
+        });
+
+        // --- IMAGE COMPRESSION & UPLOAD ---
+        function processImageFile(file) {
+            if (!file || !file.type.match('image.*')) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 400; 
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5); 
+                    
+                    document.getElementById('formTopicImgUrl').value = dataUrl;
+                    document.getElementById('imagePreview').src = dataUrl;
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('topicImageUpload').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) processImageFile(e.target.files[0]);
+        });
+
+        document.getElementById('formTopicImgUrl').addEventListener('input', function(e) {
+            if (e.target.value) {
+                document.getElementById('imagePreview').src = e.target.value;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+            } else {
+                document.getElementById('imagePreviewContainer').style.display = 'none';
+            }
+        });
+
+        window.clearImage = function() {
+            document.getElementById('formTopicImgUrl').value = '';
+            document.getElementById('imagePreviewContainer').style.display = 'none';
+            document.getElementById('topicImageUpload').value = '';
+        }
+
+        document.addEventListener('paste', function(e) {
+            if (!document.getElementById('topicFormModal').classList.contains('active')) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    processImageFile(blob);
+                    e.preventDefault(); 
+                }
+            }
+        });
+
+        // --- GESTIONE FORM MODALS ---
+        // Topics
+        const topicFormModal = document.getElementById('topicFormModal');
+        document.getElementById('mainAddTopicBtn').addEventListener('click', () => {
+            document.getElementById('topicForm').reset();
+            clearImage();
+            currentEditingId = null; formSelectedFields.clear(); formSelectedSections.clear();
+            document.getElementById('topicFormTitle').textContent = 'New Topic';
+            
+            populateParentTopicDropdown();
+            renderFormChips(); updatePrimaryDropdowns();
+            topicFormModal.classList.add('active');
+        });
+
+        // Tasto Creazione Sotto-tema nel Topic Modal
+        document.getElementById('createSubtopicBtn').addEventListener('click', () => {
+            const parentTopic = activeTopicInDetail;
+            if(!parentTopic) return;
+            document.getElementById('topicForm').reset();
+            clearImage();
+            currentEditingId = null; 
+            formSelectedFields = new Set(parentTopic.fields || []); 
+            formSelectedSections = new Set(parentTopic.sections || []);
+            document.getElementById('topicFormTitle').textContent = 'New Sub-topic';
+            
+            populateParentTopicDropdown(null, parentTopic.id);
+            renderFormChips(); updatePrimaryDropdowns(parentTopic.primaryField, parentTopic.primarySection);
+            
+            topicDetailModal.classList.remove('active');
+            topicFormModal.classList.add('active');
+        });
+
+        document.getElementById('topicForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(formSelectedFields.size === 0) { alert("Select at least one field."); return; }
+            const tData = {
+                id: currentEditingId || Date.now().toString(),
+                title: document.getElementById('formTopicTitle').value.trim(),
+                parentId: document.getElementById('formTopicParentId').value || null,
+                fields: Array.from(formSelectedFields),
+                sections: Array.from(formSelectedSections),
+                primaryField: document.getElementById('formPrimaryField').value || null,
+                primarySection: document.getElementById('formPrimarySection').value || null,
+                image: document.getElementById('formTopicImgUrl').value.trim(),
+                notes: currentEditingId ? topics.find(t => t.id === currentEditingId)?.notes || '' : '' 
+            };
+            topics = currentEditingId ? topics.map(t => t.id === currentEditingId ? tData : t) : [tData, ...topics];
+            await saveData(true, 'saveTopicBtn', `<i data-lucide="save" class="icon-sm"></i> Save Properties`);
+            topicFormModal.classList.remove('active');
+        });
+
+        // Sources
+        const sourceFormModal = document.getElementById('sourceFormModal');
+        function renderSourceTopicsSelector() {
+            const cont = document.getElementById('sourceTopicsSelector'); cont.innerHTML = '';
+            topics.sort((a,b)=>a.title.localeCompare(b.title)).forEach(t => {
+                const c = document.createElement('div');
+                c.className = `chip inactive-ghost ${formSelectedTopicsForSource.has(t.id) ? 'active' : ''}`;
+                c.textContent = t.title;
+                c.onclick = () => { formSelectedTopicsForSource.has(t.id) ? formSelectedTopicsForSource.delete(t.id) : formSelectedTopicsForSource.add(t.id); renderSourceTopicsSelector(); };
+                cont.appendChild(c);
+            });
+        }
+        
+        document.getElementById('mainAddSourceBtn').addEventListener('click', () => openSourceForm());
+        
+function openSourceForm(preselectedTopicId = null) {
+            document.getElementById('sourceForm').reset();
+            currentEditingId = null; formSelectedTopicsForSource.clear();
+            if(preselectedTopicId) formSelectedTopicsForSource.add(preselectedTopicId);
+            document.getElementById('sourceFormTitle').textContent = 'New Source';
+            document.getElementById('sourceFormDeleteControl').style.display = 'none';
+            
+            // --- INIZIO DELLE DUE RIGHE AGGIUNTE ---
+            if(document.getElementById('apiSearchInput')) document.getElementById('apiSearchInput').value = '';
+            if(document.getElementById('apiSearchResults')) document.getElementById('apiSearchResults').style.display = 'none';
+            // --- FINE DELLE DUE RIGHE AGGIUNTE ---
+
+            renderSourceTopicsSelector(); sourceFormModal.classList.add('active');
+        }
+
+        document.getElementById('sourceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const sData = {
+                id: currentEditingId || Date.now().toString(),
+                title: document.getElementById('formSourceTitle').value.trim(),
+                author: document.getElementById('formSourceAuthor').value.trim(),
+                type: document.getElementById('formSourceType').value,
+                status: document.getElementById('formSourceStatus').value,
+                year: document.getElementById('formSourceYear').value.trim(),
+                url: document.getElementById('formSourceUrl').value.trim(),
+                topicIds: Array.from(formSelectedTopicsForSource)
+            };
+            sources = currentEditingId ? sources.map(s => s.id === currentEditingId ? sData : s) : [sData, ...sources];
+            await saveData(true, 'saveSourceBtn', `<i data-lucide="save" class="icon-sm"></i> Save Source`);
+            sourceFormModal.classList.remove('active');
+            if (activeTopicInDetail) renderDetailTopicSources(activeTopicInDetail.id);
+        });
+
+        // --- SMART CHIPS AUTOCOMPLETE (Appunti Testo) ---
+        const textarea = document.getElementById('detailTopicNotes');
+        const autocomplete = document.getElementById('topicAutocomplete');
+        let currentAutocompleteMatch = null;
+        let autocompleteIndex = -1;
+
+        textarea.addEventListener('input', () => {
+            const val = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const textBeforeCursor = val.substring(0, cursorPos);
+            const match = textBeforeCursor.match(/\[\[([^\]]*)$/);
+            
+            if (match) {
+                const query = match[1].toLowerCase();
+                currentAutocompleteMatch = { text: match[0], query: query, pos: cursorPos };
+                
+                const matches = topics.filter(t => t.title.toLowerCase().includes(query) && t.id !== activeTopicInDetail?.id).slice(0, 8);
+                
+                if (matches.length > 0) {
+                    autocompleteIndex = -1;
+                    autocomplete.innerHTML = matches.map((t, i) => `
+                        <div class="autocomplete-item" data-index="${i}" data-title="${t.title.replace(/'/g, "\\'")}">
+                            <i data-lucide="hash" class="icon-sm" style="color:var(--text-muted);"></i> ${t.title}
+                        </div>
+                    `).join('');
+                    autocomplete.style.display = 'block';
+                    lucide.createIcons();
+
+                    autocomplete.querySelectorAll('.autocomplete-item').forEach(item => {
+                        item.addEventListener('mousedown', (e) => {
+                            e.preventDefault(); // Prevents textarea from losing focus
+                            insertAutocompleteLink(item.getAttribute('data-title'));
+                        });
+                        item.addEventListener('mouseenter', () => {
+                            autocompleteIndex = parseInt(item.getAttribute('data-index'));
+                            updateAutocompleteHighlight();
+                        });
+                    });
+                } else {
+                    autocomplete.style.display = 'none';
+                }
+            } else {
+                autocomplete.style.display = 'none';
+                currentAutocompleteMatch = null;
+            }
+        });
+
+        textarea.addEventListener('keydown', (e) => {
+            if (autocomplete.style.display === 'block') {
+                const items = autocomplete.querySelectorAll('.autocomplete-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    autocompleteIndex = (autocompleteIndex + 1) % items.length;
+                    updateAutocompleteHighlight(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    autocompleteIndex = (autocompleteIndex - 1 + items.length) % items.length;
+                    updateAutocompleteHighlight(items);
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+                        insertAutocompleteLink(items[autocompleteIndex].getAttribute('data-title'));
+                    } else if (items.length > 0) {
+                        insertAutocompleteLink(items[0].getAttribute('data-title'));
+                    }
+                } else if (e.key === 'Escape') {
+                    autocomplete.style.display = 'none';
+                    currentAutocompleteMatch = null;
+                }
+            }
+        });
+
+        function updateAutocompleteHighlight() {
+            const items = autocomplete.querySelectorAll('.autocomplete-item');
+            items.forEach((item, i) => {
+                if (i === autocompleteIndex) item.classList.add('selected');
+                else item.classList.remove('selected');
+            });
+        }
+
+        function insertAutocompleteLink(title) {
+            if (!currentAutocompleteMatch) return;
+            const val = textarea.value;
+            const before = val.substring(0, currentAutocompleteMatch.pos - currentAutocompleteMatch.text.length);
+            const after = val.substring(textarea.selectionEnd);
+            
+            textarea.value = before + `[[${title}]] ` + after;
+            autocomplete.style.display = 'none';
+            currentAutocompleteMatch = null;
+            textarea.focus();
+            
+            const newPos = before.length + title.length + 5; // +5 per "[[", "]]", " "
+            textarea.setSelectionRange(newPos, newPos);
+        }
+
+        // --- DETTAGLIO ARGOMENTO & LINKING & NOTES ---
+        const topicDetailModal = document.getElementById('topicDetailModal');
+        
+        document.getElementById('saveNotesBtn').addEventListener('click', async () => {
+            if (activeTopicInDetail) {
+                const newVal = document.getElementById('detailTopicNotes').value;
+                activeTopicInDetail.notes = newVal;
+                topics = topics.map(t => t.id === activeTopicInDetail.id ? activeTopicInDetail : t);
+                
+                const btn = document.getElementById('saveNotesBtn');
+                btn.innerHTML = '<span class="spinner"></span>';
+                btn.disabled = true;
+                await saveData(false); 
+                btn.innerHTML = '<i data-lucide="check" class="icon-xs"></i> Saved!';
+                lucide.createIcons();
+                setTimeout(() => { btn.innerHTML = '<i data-lucide="save" class="icon-xs"></i> Save Notes'; btn.disabled = false; lucide.createIcons(); }, 2000);
+            }
+        });
+
+        function openTopicDetail(topic) {
+            activeTopicInDetail = topic;
+            
+            let titlePrefix = '';
+            if (topic.parentId) {
+                const p = topics.find(x => x.id === topic.parentId);
+                if (p) titlePrefix = `<span style="font-size: 0.9rem; display: flex; align-items:center; gap:0.4rem; color: var(--text-muted); margin-bottom: 0.25rem;"><i data-lucide="corner-down-right" class="icon-sm"></i> Sub-topic of: ${p.title}</span>`;
+            }
+            
+            document.getElementById('detailTopicTitle').innerHTML = titlePrefix + topic.title;
+            
+            const sortedFields = [...(topic.fields || [])].sort((a, b) => {
+                if (a === topic.primaryField) return -1;
+                if (b === topic.primaryField) return 1;
+                return 0;
+            });
+            const fHtml = sortedFields.map(f => {
+                const isPrimary = f === topic.primaryField;
+                const starHTML = isPrimary ? '<i data-lucide="star" class="icon-xs" style="color:white; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));"></i>' : '';
+                return `<span class="tag tag-field" style="background:${getFieldColor(f)}" onclick="filterByTag('field', '${f.replace(/'/g, "\\'")}')">${starHTML}${f}</span>`;
+            }).join('');
+            
+            const sortedSections = [...(topic.sections || [])].sort((a, b) => {
+                if (a === topic.primarySection) return -1;
+                if (b === topic.primarySection) return 1;
+                return 0;
+            });
+            const sHtml = sortedSections.map(s => {
+                const isPrimary = s === topic.primarySection;
+                const starHTML = isPrimary ? '<i data-lucide="star" class="icon-xs"></i>' : '';
+                return `<span class="tag tag-section" style="${getSectionSegmentedBorder(s)}" onclick="filterByTag('section', '${s.replace(/'/g, "\\'")}')">${starHTML}${s}</span>`;
+            }).join('');
+            
+            document.getElementById('detailTopicTags').innerHTML = fHtml + sHtml;
+            document.getElementById('detailTopicNotes').value = topic.notes || '';
+            document.getElementById('searchSourceInput').value = '';
+            
+            renderDetailTopicSources(topic.id);
+            topicDetailModal.classList.add('active');
+            lucide.createIcons();
+        }
+        document.getElementById('closeTopicModalBtn').addEventListener('click', () => { topicDetailModal.classList.remove('active'); activeTopicInDetail = null; });
+
+        function renderDetailTopicSources(topicId) {
+            const cont = document.getElementById('topicSpecificSourcesContainer');
+            const specificSources = sources.filter(s => s.topicIds && s.topicIds.includes(topicId));
+            if (specificSources.length === 0) { cont.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem; font-weight:500;">No linked sources.</p>'; return; }
+            cont.innerHTML = specificSources.map(s => {
+                const author = s.author ? `by ${s.author}` : ''; 
+                const link = s.url ? `<a href="${s.url}" target="_blank" style="color:var(--primary); font-size:0.875rem; font-weight:600;" onclick="event.stopPropagation();"><i data-lucide="external-link" class="icon-xs"></i> Open</a>` : '';
+                return `
+                <div class="source-card" style="padding: 1rem; border-radius: 12px;">
+                    <img src="${getSourceCover(s)}" class="source-cover-thumb" style="width: 45px; height: 45px;" onerror="this.src=getFallbackImageUrl('${s.title.replace(/'/g, "\\'")}')">
+                    <div class="source-info">
+                        <h4 style="font-size:0.95rem; margin-bottom:0.15rem;">${s.title}</h4>
+                        <p style="font-size:0.8rem;">${author}</p>
+                    </div>
+                    <div class="source-meta">
+                        ${link}
+                        <button class="icon-btn" style="padding:0.25rem 0.5rem; font-size:0.8rem;" onclick="editSource('${s.id}'); event.stopPropagation();"><i data-lucide="edit-2" class="icon-xs"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        document.getElementById('linkExistingSourceBtn').addEventListener('click', async () => {
+            const inputVal = document.getElementById('searchSourceInput').value;
+            const option = document.querySelector(`#allSourcesDatalist option[value="${inputVal}"]`);
+            if (option && activeTopicInDetail) {
+                const source = sources.find(s => s.id === option.getAttribute('data-id'));
+                if (source && !source.topicIds.includes(activeTopicInDetail.id)) {
+                    source.topicIds.push(activeTopicInDetail.id); 
+                    
+                    const btn = document.getElementById('linkExistingSourceBtn');
+                    btn.disabled = true; btn.innerHTML = '...';
+                    await saveData(false);
+                    btn.disabled = false; btn.innerHTML = '<i data-lucide="link" class="icon-xs"></i> Link';
+                    lucide.createIcons();
+                    
+                    document.getElementById('searchSourceInput').value = ''; 
+                    renderDetailTopicSources(activeTopicInDetail.id);
+                }
+            }
+        });
+
+        document.getElementById('createNewSourceFromTopicBtn').addEventListener('click', () => { if(activeTopicInDetail) openSourceForm(activeTopicInDetail.id); });
+
+        // Edit & Delete Topic
+        document.getElementById('editTopicModeBtn').addEventListener('click', () => {
+            if(!activeTopicInDetail) return; const t = activeTopicInDetail;
+            topicDetailModal.classList.remove('active');
+            currentEditingId = t.id;
+            
+            document.getElementById('formTopicTitle').value = t.title;
+            populateParentTopicDropdown(t.id, t.parentId);
+            
+            document.getElementById('formTopicImgUrl').value = t.image || '';
+            if (t.image) {
+                document.getElementById('imagePreview').src = t.image;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+            } else {
+                clearImage();
+            }
+
+            formSelectedFields = new Set(t.fields || []); formSelectedSections = new Set(t.sections || []);
+            document.getElementById('topicFormTitle').textContent = 'Edit Topic Properties';
+            
+            renderFormChips(); 
+            updatePrimaryDropdowns(t.primaryField, t.primarySection);
+            
+            topicFormModal.classList.add('active');
+        });
+
+        document.getElementById('deleteTopicBtn').addEventListener('click', async () => {
+            if(activeTopicInDetail && confirm("Delete this topic? (Sources will remain but be unlinked)")) {
+                const tid = activeTopicInDetail.id; topics = topics.filter(t => t.id !== tid);
+                sources.forEach(s => { if(s.topicIds) s.topicIds = s.topicIds.filter(id => id !== tid); });
+                await saveData(true); topicDetailModal.classList.remove('active'); activeTopicInDetail = null;
+            }
+        });
+
+        // Edit & Delete Source
+        window.editSource = function(id) {
+            const s = sources.find(x => x.id === id); if (!s) return;
+            currentEditingId = id;
+            document.getElementById('formSourceTitle').value = s.title;
+            document.getElementById('formSourceAuthor').value = s.author || '';
+            document.getElementById('formSourceType').value = s.type;
+            document.getElementById('formSourceStatus').value = s.status || 'To Read';
+            document.getElementById('formSourceYear').value = s.year || '';
+            document.getElementById('formSourceUrl').value = s.url || '';
+            formSelectedTopicsForSource = new Set(s.topicIds || []);
+            
+            document.getElementById('sourceFormTitle').textContent = 'Edit Source';
+            document.getElementById('sourceFormDeleteControl').style.display = 'block';
+            renderSourceTopicsSelector(); sourceFormModal.classList.add('active');
+        };
+
+        document.getElementById('deleteSourceBtn').addEventListener('click', async () => {
+            if(currentEditingId && confirm("Permanently delete this source?")) {
+                sources = sources.filter(s => s.id !== currentEditingId);
+                await saveData(true); sourceFormModal.classList.remove('active');
+                if (activeTopicInDetail) renderDetailTopicSources(activeTopicInDetail.id);
+            }
+        });
+
+        // --- RENDER VISUALE (Main Views) ---
+        function renderTopicFilters() {
+            const cont = document.getElementById('fields-filter-list'); cont.innerHTML = '';
+            metadata.fields.filter(f => f && f.name).sort((a,b)=>a.name.localeCompare(b.name)).forEach(f => {
+                const lbl = document.createElement('label'); lbl.className = 'checkbox-label';
+                const checked = selectedFilterFields.has(f.name) ? 'checked' : '';
+                lbl.innerHTML = `<input type="checkbox" value="${f.name}" ${checked}> <span style="width:14px; height:14px; border-radius:4px; background:${f.color};"></span>${f.name}`;
+                lbl.querySelector('input').addEventListener('change', (e) => { e.target.checked ? selectedFilterFields.add(f.name) : selectedFilterFields.delete(f.name); if(selectedFilterFields.size===0) selectedFilterSections.clear(); renderTopicSectionFilters(); renderTopics(); });
+                cont.appendChild(lbl);
+            });
+        }
+        
+        function renderTopicSectionFilters() {
+            const sList = document.getElementById('sections-filter-list'); const sCont = document.getElementById('sections-filter-container'); sList.innerHTML = '';
+            if (selectedFilterFields.size === 0) { sCont.classList.remove('active'); return; }
+            sCont.classList.add('active');
+            const relevant = metadata.sections.filter(s => (s.parents||[]).some(p => selectedFilterFields.has(p)));
+            relevant.sort((a,b)=>a.name.localeCompare(b.name)).forEach(sec => {
+                const lbl = document.createElement('label'); lbl.className = 'checkbox-label';
+                const checked = selectedFilterSections.has(sec.name) ? 'checked' : '';
+                lbl.innerHTML = `<input type="checkbox" value="${sec.name}" ${checked}> ${sec.name}`;
+                lbl.querySelector('input').addEventListener('change', (e) => { e.target.checked ? selectedFilterSections.add(sec.name) : selectedFilterSections.delete(sec.name); renderTopics(); });
+                sList.appendChild(lbl);
+            });
+        }
+
+        function sortArray(arr, sortBy) {
+            return [...arr].sort((a, b) => {
+                if (sortBy === 'title-asc') return (a.title||'').localeCompare(b.title||'');
+                if (sortBy === 'title-desc') return (b.title||'').localeCompare(a.title||'');
+                if (sortBy === 'newest') return parseInt(b.id||0) - parseInt(a.id||0);
+                if (sortBy === 'oldest') return parseInt(a.id||0) - parseInt(b.id||0);
+                return 0;
+            });
+        }
+
+        function renderTopics() {
+            const cont = document.getElementById('topicsContainer'); cont.innerHTML = '';
+            const term = document.getElementById('topicSearchInput').value.toLowerCase();
+            
+            // Toggle visibility UI updates
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            const showSubtopics = document.getElementById('showSubtopicsFilter').checked;
+            
+            if (selectedFilterFields.size > 0 || selectedFilterSections.size > 0 || showSubtopics) {
+                clearBtn.style.display = 'inline-flex';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+
+            let filtered = topics.filter(t => {
+                if (t.parentId && !showSubtopics) return false;
+                
+                const matchTerm = !term || t.title.toLowerCase().includes(term);
+                const mf = selectedFilterFields.size === 0 || (t.fields || []).some(f => selectedFilterFields.has(f));
+                const ms = selectedFilterSections.size === 0 || (t.sections || []).some(s => selectedFilterSections.has(s));
+                
+                return matchTerm && (selectedFilterFields.size > 0 && selectedFilterSections.size > 0 ? (mf && ms) : mf); 
+            });
+
+            if (filtered.length === 0) { cont.innerHTML = '<p style="color: var(--text-muted); font-weight: 500;">No topics found.</p>'; return; }
+
+            const sortBy = document.getElementById('topicSortBy').value;
+            filtered = sortArray(filtered, sortBy);
+
+            const groupBy = document.getElementById('topicGroupBy').value;
+            let groups = { 'All': filtered };
+
+            if (groupBy === 'field') {
+                groups = {};
+                filtered.forEach(t => {
+                    const primary = t.primaryField || ((t.fields && t.fields.length > 0) ? t.fields[0] : 'Uncategorized');
+                    if (!groups[primary]) groups[primary] = [];
+                    groups[primary].push(t);
+                });
+            }
+
+            for (const [groupName, items] of Object.entries(groups)) {
+                if (groupBy !== 'none' && groupName !== 'All') {
+                    const header = document.createElement('h3');
+                    header.className = 'group-header';
+                    header.innerHTML = groupName !== 'Uncategorized' ? `<span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${getFieldColor(groupName)}; margin-right:8px;"></span>${groupName}` : groupName;
+                    cont.appendChild(header);
+                }
+
+                items.forEach(t => {
+                    const card = document.createElement('div'); card.className = 'topic-card';
+                    
+                    let parentBadge = '';
+                    if (t.parentId) {
+                        const p = topics.find(x => x.id === t.parentId);
+                        if (p) parentBadge = `<div class="topic-sub-badge"><i data-lucide="corner-down-right" style="width:12px; height:12px;"></i> Sub-topic of: ${p.title}</div>`;
+                    }
+                    
+                    const sortedFields = [...(t.fields || [])].sort((a, b) => {
+                        if (a === t.primaryField) return -1;
+                        if (b === t.primaryField) return 1;
+                        return 0;
+                    });
+                    const fTags = sortedFields.map(f => {
+                        const star = (f === t.primaryField) ? '<i data-lucide="star" class="icon-xs" style="color:white; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));"></i>' : '';
+                        return `<span class="tag tag-field" style="background:${getFieldColor(f)}" onclick="filterByTag('field', '${f.replace(/'/g, "\\'")}')">${star}${f}</span>`;
+                    }).join('');
+                    
+                    const sortedSections = [...(t.sections || [])].sort((a, b) => {
+                        if (a === t.primarySection) return -1;
+                        if (b === t.primarySection) return 1;
+                        return 0;
+                    });
+                    const sTags = sortedSections.map(s => {
+                        const star = (s === t.primarySection) ? '<i data-lucide="star" class="icon-xs"></i>' : '';
+                        return `<span class="tag tag-section" style="${getSectionSegmentedBorder(s)}" onclick="filterByTag('section', '${s.replace(/'/g, "\\'")}')">${star}${s}</span>`;
+                    }).join('');
+                    
+                    card.innerHTML = `<img src="${t.image || getFallbackTopicCover(t)}" class="topic-image"><div class="topic-content">${parentBadge}<h3 class="topic-title">${t.title}</h3><div class="tags" style="pointer-events: auto;">${fTags}${sTags}</div></div>`;
+                    card.onclick = (e) => {
+                        if (!e.target.closest('.tag')) openTopicDetail(t);
+                    };
+                    cont.appendChild(card);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function renderSourceFilters() {
+            const types = new Set(); const statuses = new Set();
+            sources.forEach(s => { types.add(s.type); statuses.add(s.status || 'To Read'); });
+            const tList = document.getElementById('source-type-filters'); tList.innerHTML = '';
+            Array.from(types).sort().forEach(type => {
+                const l = document.createElement('label'); l.className = 'checkbox-label'; 
+                const checked = selectedFilterSourceTypes.has(type) ? 'checked' : '';
+                l.innerHTML = `<input type="checkbox" value="${type}" ${checked}> ${type}`;
+                l.querySelector('input').addEventListener('change', (e) => { e.target.checked ? selectedFilterSourceTypes.add(type) : selectedFilterSourceTypes.delete(type); renderSources(); });
+                tList.appendChild(l);
+            });
+            const stList = document.getElementById('source-status-filters'); stList.innerHTML = '';
+            Array.from(statuses).sort().forEach(st => {
+                const l = document.createElement('label'); l.className = 'checkbox-label'; 
+                const checked = selectedFilterSourceStatuses.has(st) ? 'checked' : '';
+                l.innerHTML = `<input type="checkbox" value="${st}" ${checked}> ${st}`;
+                l.querySelector('input').addEventListener('change', (e) => { e.target.checked ? selectedFilterSourceStatuses.add(st) : selectedFilterSourceStatuses.delete(st); renderSources(); });
+                stList.appendChild(l);
+            });
+        }
+
+        function renderSources() {
+            const cont = document.getElementById('sourcesContainer'); cont.innerHTML = '';
+            const term = document.getElementById('sourceSearchInput').value.toLowerCase();
+
+            let filtered = sources.filter(s => {
+                const matchTerm = !term || s.title.toLowerCase().includes(term) || (s.author && s.author.toLowerCase().includes(term));
+                return matchTerm && (selectedFilterSourceTypes.size === 0 || selectedFilterSourceTypes.has(s.type)) && (selectedFilterSourceStatuses.size === 0 || selectedFilterSourceStatuses.has(s.status || 'To Read'));
+            });
+            
+            if (filtered.length === 0) { cont.innerHTML = '<p style="color: var(--text-muted); font-weight: 500;">No sources found.</p>'; return; }
+
+            const sortBy = document.getElementById('sourceSortBy').value;
+            filtered = sortArray(filtered, sortBy);
+
+            const groupBy = document.getElementById('sourceGroupBy').value;
+            let groups = { 'All': filtered };
+
+            if (groupBy === 'type' || groupBy === 'status') {
+                groups = {};
+                filtered.forEach(s => {
+                    const key = groupBy === 'type' ? s.type : (s.status || 'To Read');
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(s);
+                });
+            }
+
+            for (const [groupName, items] of Object.entries(groups)) {
+                if (groupBy !== 'none' && groupName !== 'All') {
+                    const header = document.createElement('h3');
+                    header.className = 'group-header';
+                    header.textContent = groupName;
+                    cont.appendChild(header);
+                }
+
+                items.forEach(s => {
+                    let topicsTags = (s.topicIds || []).map(tid => { const t = topics.find(x => x.id === tid); return t ? `<span class="tag tag-source-link" onclick="openTopicDetail(topics.find(t=>t.id==='${tid}')); event.stopPropagation();"><i data-lucide="library" class="icon-xs"></i> ${t.title}</span>` : ''; }).join('');
+                    const card = document.createElement('div'); card.className = 'source-card';
+                    card.innerHTML = `
+                        <img src="${getSourceCover(s)}" class="source-cover-thumb" onerror="this.src=getFallbackImageUrl('${s.title.replace(/'/g, "\\'")}')">
+                        <div class="source-info">
+                            <h4>${s.title}</h4>
+                            <p>${s.author ? `by ${s.author}`:''} ${s.year ? `(${s.year})`:''}</p>
+                            <div class="tags" style="pointer-events: auto;"><span class="tag tag-field" style="background:var(--text-muted); color:white; border:none;" onclick="filterByTag('type','${s.type}')">${s.type}</span><span class="tag tag-status" onclick="filterByTag('status','${s.status||'To Read'}')">${s.status||'To Read'}</span>${topicsTags}</div>
+                        </div>
+                        <div class="source-meta">
+                            ${s.url ? `<a href="${s.url}" target="_blank" style="color:var(--primary); font-size:0.85rem; font-weight: 600; display:flex; align-items:center; gap:0.25rem;" onclick="event.stopPropagation();"><i data-lucide="external-link" class="icon-xs"></i> Open Link</a>` : ''}
+                            <button class="icon-btn" style="padding:0.35rem 0.6rem; font-size:0.8rem;" onclick="editSource('${s.id}'); event.stopPropagation();"><i data-lucide="edit-2" class="icon-xs"></i> Edit</button>
+                        </div>`;
+                    cont.appendChild(card);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        // --- GRAPH VIEW (VIS-NETWORK) ---
+        window.renderGraph = function() {
+            if (typeof vis === 'undefined') return;
+            if (graphNetwork) {
+                graphNetwork.destroy();
+                graphNetwork = null;
+            }
+
+            const container = document.getElementById('graph-network-container');
+            const nodes = [];
+            const edges = [];
+            
+            // Map title to ID for markdown link parsing
+            const titleToId = {};
+            topics.forEach(t => { titleToId[t.title.toLowerCase()] = t.id; });
+
+            topics.forEach(t => {
+                const isSubtopic = !!t.parentId;
+                const primaryField = t.primaryField || (t.fields && t.fields.length > 0 ? t.fields[0] : null);
+                const color = primaryField ? getFieldColor(primaryField) : '#94a3b8';
+
+                // Node Creation
+                nodes.push({
+                    id: t.id,
+                    label: t.title,
+                    shape: isSubtopic ? 'dot' : 'dot',
+                    size: isSubtopic ? 12 : 24,
+                    color: {
+                        background: color,
+                        border: isSubtopic ? '#ffffff' : '#e2e8f0',
+                        highlight: { background: color, border: '#2563eb' },
+                        hover: { background: color, border: '#93c5fd' }
+                    },
+                    font: { size: isSubtopic ? 12 : 16, face: 'Inter', color: '#0f172a', bold: !isSubtopic },
+                    borderWidth: isSubtopic ? 2 : 3
+                });
+
+                // Parent-Child Implicit Edge
+                if (t.parentId) {
+                    edges.push({
+                        from: t.parentId,
+                        to: t.id,
+                        color: { color: '#cbd5e1', highlight: '#2563eb' },
+                        dashes: true,
+                        arrows: 'to',
+                        width: 1.5
+                    });
+                }
+
+                // Explicit Markdown Links in Notes [[Title]]
+                if (t.notes) {
+                    const regex = /\[\[(.*?)\]\]/g;
+                    let match;
+                    const linkedSet = new Set();
+                    while ((match = regex.exec(t.notes)) !== null) {
+                        const linkedTitle = match[1].toLowerCase().trim();
+                        if (titleToId[linkedTitle] && titleToId[linkedTitle] !== t.id && !linkedSet.has(titleToId[linkedTitle])) {
+                            linkedSet.add(titleToId[linkedTitle]);
+                            edges.push({
+                                from: t.id,
+                                to: titleToId[linkedTitle],
+                                color: { color: '#94a3b8', highlight: '#f59e0b' },
+                                arrows: 'to',
+                                width: 2
+                            });
+                        }
+                    }
+                }
+            });
+
+            const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+            const options = {
+                physics: { 
+                    barnesHut: { gravitationalConstant: -3000, centralGravity: 0.3, springLength: 150, springConstant: 0.04, damping: 0.09 },
+                    solver: 'barnesHut'
+                },
+                interaction: { hover: true, tooltipDelay: 200, zoomView: true },
+                edges: { smooth: { type: 'continuous' } }
+            };
+
+            graphNetwork = new vis.Network(container, data, options);
+
+            // Double Click to open topic
+            graphNetwork.on("doubleClick", function (params) {
+                if (params.nodes.length > 0) {
+                    const t = topics.find(x => x.id === params.nodes[0]);
+                    if (t) openTopicDetail(t);
+                }
+            });
+        };
+
+        // View Toggles (Grid/List)
+        document.getElementById('btn-grid').addEventListener('click', (e) => { e.target.classList.add('active'); document.getElementById('btn-list').classList.remove('active'); document.getElementById('topicsContainer').className = 'topics-container grid-view'; });
+        document.getElementById('btn-list').addEventListener('click', (e) => { e.target.classList.add('active'); document.getElementById('btn-grid').classList.remove('active'); document.getElementById('topicsContainer').className = 'topics-container list-view'; });
+
+        // --- INTEGRAZIONE API RICERCA LIBRI/DOCUMENTI (Con Fallback) ---
+        const apiSearchBtn = document.getElementById('apiSearchBtn');
+        const apiSearchInput = document.getElementById('apiSearchInput');
+        const apiSearchResults = document.getElementById('apiSearchResults');
+
+        function buildResultItem(title, author, year, cover, link) {
+            return `
+            <div class="autocomplete-item api-result-item" style="align-items: flex-start; gap: 1rem; padding: 0.75rem 1rem;"
+                 data-title="${title.replace(/"/g, '&quot;')}"
+                 data-author="${author.replace(/"/g, '&quot;')}"
+                 data-year="${year}"
+                 data-cover="${cover}"
+                 data-url="${link}">
+                <img src="${cover || getFallbackImageUrl(title)}" style="width: 45px; height: 65px; object-fit: cover; border-radius: 4px; box-shadow: var(--shadow-sm); flex-shrink:0;">
+                <div style="flex-grow: 1;">
+                    <strong style="display: block; line-height: 1.2; margin-bottom: 0.25rem; font-size: 0.95rem; white-space: normal;">${title}</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">${author}</span>
+                    <span style="font-size: 0.75rem; color: var(--primary); font-weight: 600;">${year}</span>
+                </div>
+            </div>`;
+        }
+
+        apiSearchBtn.addEventListener('click', async () => {
+            const query = apiSearchInput.value.trim();
+            if (!query) return;
+
+            apiSearchBtn.innerHTML = '<span class="spinner"></span>';
+            apiSearchBtn.disabled = true;
+
+            try {
+                let resultsHTML = '';
+                
+                // TENTATIVO 1: Google Books API
+                const resGoogle = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6`);
+                const dataGoogle = await resGoogle.json();
+
+                if (dataGoogle.items && dataGoogle.items.length > 0) {
+                    resultsHTML = dataGoogle.items.map((item) => {
+                        const vol = item.volumeInfo;
+                        const title = vol.title || 'Titolo Sconosciuto';
+                        const author = vol.authors ? vol.authors.join(', ') : 'Autore ignoto';
+                        const year = vol.publishedDate ? vol.publishedDate.substring(0, 4) : '';
+                        const cover = vol.imageLinks?.thumbnail ? vol.imageLinks.thumbnail.replace('http:', 'https:') : '';
+                        const link = vol.infoLink || '';
+                        return buildResultItem(title, author, year, cover, link);
+                    }).join('');
+                } 
+                else {
+                    // TENTATIVO 2: OpenLibrary API (Subentra se Google blocca l'IP)
+                    const resOpen = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6`);
+                    const dataOpen = await resOpen.json();
+                    
+                    if (dataOpen.docs && dataOpen.docs.length > 0) {
+                        resultsHTML = dataOpen.docs.map((doc) => {
+                            const title = doc.title || 'Titolo Sconosciuto';
+                            const author = doc.author_name ? doc.author_name.join(', ') : 'Autore ignoto';
+                            const year = doc.first_publish_year || '';
+                            const cover = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : '';
+                            const link = doc.key ? `https://openlibrary.org${doc.key}` : '';
+                            return buildResultItem(title, author, year, cover, link);
+                        }).join('');
+                    }
+                }
+
+                if (!resultsHTML) {
+                    apiSearchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">Nessun documento trovato. Prova un termine più specifico o inserisci i dati a mano.</div>';
+                } else {
+                    apiSearchResults.innerHTML = resultsHTML;
+                    
+                    // Evento click per Autofill
+                    document.querySelectorAll('.api-result-item').forEach(el => {
+                        el.addEventListener('click', () => {
+                            document.getElementById('formSourceTitle').value = el.getAttribute('data-title');
+                            document.getElementById('formSourceAuthor').value = el.getAttribute('data-author');
+                            document.getElementById('formSourceYear').value = el.getAttribute('data-year');
+                            document.getElementById('formSourceUrl').value = el.getAttribute('data-url');
+                            document.getElementById('formSourceType').value = 'Book';
+
+                            apiSearchResults.style.display = 'none';
+                            apiSearchInput.value = '';
+                        });
+                    });
+                }
+                apiSearchResults.style.display = 'block';
+
+            } catch (err) {
+                console.error("Errore API:", err);
+                apiSearchResults.innerHTML = `<div style="padding: 1rem; color: #ef4444; font-weight: 500;">Errore di sistema: ${err.message}. Controlla la console.</div>`;
+                apiSearchResults.style.display = 'block';
+            } finally {
+                apiSearchBtn.innerHTML = '<i data-lucide="cloud-download" class="icon-xs"></i> Cerca';
+                apiSearchBtn.disabled = false;
+                lucide.createIcons();
+            }
+        });
+
+        // Nasconde il menu a tendina se si clicca fuori
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#apiSearchResults') && !e.target.closest('#apiSearchBtn') && !e.target.closest('#apiSearchInput')) {
+                if(apiSearchResults) apiSearchResults.style.display = 'none';
+            }
+        });
+        
+        // Cerca premendo Enter
+        apiSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                apiSearchBtn.click();
+            }
+        });
+
+        // Chiudi il menu a tendina se si clicca fuori
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#apiSearchResults') && !e.target.closest('#apiSearchBtn') && !e.target.closest('#apiSearchInput')) {
+                if(apiSearchResults) apiSearchResults.style.display = 'none';
+            }
+        });
+        
+        // Cerca premendo Enter nell'input
+        apiSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                apiSearchBtn.click();
+            }
+        });
+        loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="it"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Hub - OS</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#1e293b',
+                        darkpanel: '#334155',
+                        darkborder: '#475569',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Quill Editor (Rich Text) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <!-- Stili Custom Life Hub OS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 flex flex-col relative pb-10">
+    <div id="toast-container"></div>
+
+    <header class="sticky top-0 z-40 w-full glass-header mb-8 px-4 md:px-8 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hidden-in-tm transition-all">
+        <div id="breadcrumbs" class="flex flex-wrap gap-2 items-center text-sm font-semibold text-slate-500 dark:text-slate-300"></div>
+        <div class="flex flex-wrap gap-2 md:gap-3 items-center text-sm font-medium">
+            <button onclick="navigate('global_calendar')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-calendar-alt mr-1 text-emerald-500"></i> Calendario</button>
+            <button onclick="navigate('global_tasks')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-check-double mr-1 text-blue-500"></i> Tasks</button>
+            <button onclick="navigate('global_contacts')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-address-book mr-1 text-purple-500"></i> Rubrica</button>
+            <div class="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1 hidden md:block"></div>
+            <button onclick="toggleTheme()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Cambia Tema"><i class="fas fa-moon text-base dark:hidden"></i><i class="fas fa-sun text-base hidden dark:block text-amber-400"></i></button>
+            <button onclick="AppData.exportJSON()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Esporta Backup JSON"><i class="fas fa-file-export text-base"></i></button>
+            <button onclick="openImportModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Importazione Massiva"><i class="fas fa-file-import text-base"></i></button>
+            <button onclick="forceSync()" id="syncBtn" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Sincronizza Cloud"><i class="fas fa-cloud-sync text-base"></i></button>
+            <button onclick="toggleShortcutsModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Scorciatoie da tastiera (?)"><i class="fas fa-keyboard text-base"></i></button>
+            <button onclick="toggleSettings()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Impostazioni"><i class="fas fa-cog text-base"></i></button>
+        </div>
+    </header>
+
+    <main id="app-content" class="w-full max-w-[1400px] mx-auto flex-1 px-4 md:px-8 page-fade"></main>
+
+    <!-- MOBILE QUICK ADD MODAL (Task Manager) -->
+    <div id="mobileQuickAddModal" class="fixed inset-0 z-[100] hidden flex-col justify-end">
+        <div class="absolute inset-0 bg-slate-900/50 animate-fade-in-add backdrop-blur-sm" onclick="closeMobileQuickAdd()"></div>
+        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-5 shadow-2xl flex flex-col gap-4 animate-slide-up-add border-t border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-1">
+                <h3 class="font-bold text-slate-800 dark:text-white text-lg">Nuova Task</h3>
+                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="relative">
+                <input type="text" id="gtInMobile" class="input-base text-base py-3.5 font-semibold bg-slate-50 dark:bg-slate-800/50 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition" placeholder="Cosa devi fare? (es. Task p2 @oggi #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+            </div>
+            <div class="flex gap-3">
+                 <select id="gtPriMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg"><option value="0">Nessuna Prio</option><option value="1">Bassa Prio</option><option value="2">Media Prio</option><option value="3">Alta Prio</option></select>
+                 <input type="date" id="gtDateMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg">
+            </div>
+            <div id="mobileCtxContainer"></div>
+            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98]"><i class="fas fa-arrow-up mr-2"></i> Aggiungi</button>
+        </div>
+    </div>
+
+    <!-- Modale Appunti Fullscreen (Mobile) -->
+    <div id="mobileNotesModal" class="fixed inset-0 bg-slate-50 dark:bg-darkbg hidden flex-col z-[60]">
+        <div class="glass-header px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-darkborder shadow-sm">
+            <h2 id="mobileNotesTitle" class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2"><i class="fas fa-pen-nib text-blue-500"></i> Appunti</h2>
+            <div class="flex gap-2">
+                <button onclick="closeMobileNotes()" class="text-slate-600 dark:text-slate-300 font-bold px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition rounded-lg text-xs">Chiudi</button>
+                <button onclick="saveMobileNotes()" class="text-white font-bold px-4 py-2 bg-blue-600 hover:bg-blue-700 transition rounded-lg shadow text-xs">Salva</button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-hidden p-3">
+            <div class="bg-white dark:bg-darkpanel rounded-xl border border-slate-200 dark:border-darkborder shadow-inner h-full flex flex-col p-2">
+                 <div id="quill-mobile-editor" class="mobile-ql-container"></div>
+            </div>
+        </div>
+        <div class="p-3 border-t border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel flex justify-center">
+            <button onclick="archiveMobileNotes()" class="text-xs font-bold text-slate-500 dark:text-slate-400 py-3 w-full rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-file-archive mr-2"></i> Archivia Foglio Corrente</button>
+        </div>
+    </div>
+
+    <!-- Modal Archivio Letto/Scritto -->
+    <div id="archiveViewModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-4xl flex flex-col h-[85vh] modal-animate">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="archiveViewTitle" class="text-xl font-bold">Archivio Appunti</h2>
+                <span id="archiveViewDate" class="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md"></span>
+            </div>
+            <div class="flex-1 bg-slate-50 dark:bg-darkbg rounded border border-slate-200 dark:border-darkborder p-4 overflow-hidden flex flex-col shadow-inner">
+                <div id="quill-archive-editor" class="flex-1 overflow-y-auto"></div>
+            </div>
+            <div class="flex justify-between items-center mt-5 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <p id="archiveEditIndicator" class="text-[10px] font-bold text-amber-500 hidden bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-200 dark:border-amber-900/50"><i class="fas fa-pencil-alt mr-1"></i> Modificato</p>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeArchiveModal()" class="px-4 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">Chiudi</button>
+                    <button onclick="saveArchiveEdit()" class="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva Modifiche</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importazione Dati -->
+    <div id="importModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-2xl modal-animate">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold">Importazione Massiva (JSON)</h2>
+                <button type="button" onclick="document.getElementById('jsonFilePicker').click()" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer"><i class="fas fa-folder-open"></i> Carica file .json</button>
+                <input type="file" id="jsonFilePicker" accept=".json" class="hidden" onchange="const f = this.files[0]; if(f){ const r = new FileReader(); r.onload = e => document.getElementById('importDataArea').value = e.target.result; r.readAsText(f); }">
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Incolla qui il codice JSON per generare o recuperare i tuoi dati.</p>
+            <textarea id="importDataArea" class="input-base font-mono text-xs h-64 mb-4" placeholder='{ "spheres": [...], "projects": [...] }'></textarea>
+            <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-darkborder">
+                <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" id="importOverwriteChk" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                    <span>Sovrascrivi tutto</span>
+                </label>
+                <div class="flex gap-2">
+                <button onclick="closeImportModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                <button onclick="executeImport()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Importa e Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Settings Supabase & Google Calendar -->
+    <div id="settingsModal" class="modal-overlay hidden" onclick="if(event.target === this) toggleSettings(false)">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
+            <h2 class="text-lg font-bold mb-5"><i class="fas fa-cog text-slate-500 mr-2"></i> Impostazioni Generali</h2>
+            
+            <div class="space-y-4 mb-6">
+                <div class="pb-3 border-b border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-database text-blue-500 mr-2"></i> Database Supabase</h3>
+                    <div class="space-y-3">
+                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Project URL</label><input type="text" id="supabaseUrl" class="input-base" placeholder="https://xyz.supabase.co"></div>
+                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Anon Key (API)</label><input type="password" id="anonKey" class="input-base"></div>
+                    </div>
+                </div>
+                
+                <div class="pt-2">
+                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fab fa-google text-emerald-500 mr-2"></i> Integrazione Google Calendar</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">ID Calendari (separati da virgola)</label>
+                            <input type="text" id="gcalIdSettings" class="input-base" placeholder="es. tua.email@gmail.com, it.holiday@group.v.calendar.google.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">API Key Google Calendar</label>
+                            <input type="password" id="gcalApiSettings" class="input-base" placeholder="AIzaSy...">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-3 leading-tight bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700"><i class="fas fa-info-circle mr-1"></i> Puoi assegnare un colore custom aggiungendo |#colore dopo l'ID (es: tua.email@gmail.com|#8e24aa). Per la API Key: Google Cloud Console > API e Servizi > Credenziali > Crea API Key.</p>
+                </div>
+            </div>
+            
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700 mb-6">
+                <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-file-export text-indigo-500 mr-2"></i> Backup & Ripristino</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="AppData.exportJSON()" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-2"><i class="fas fa-download"></i> Scarica Backup JSON</button>
+                    <button type="button" onclick="toggleSettings(false); openImportModal();" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition flex items-center gap-2"><i class="fas fa-upload"></i> Ripristina da JSON</button>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button onclick="factoryReset()" class="text-red-500 hover:text-red-600 text-xs font-bold flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-exclamation-triangle mr-2"></i> Factory Reset</button>
+                <div class="flex gap-2">
+                    <button onclick="toggleSettings(false)" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Chiudi</button>
+                    <button onclick="saveSettings()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Entità -->
+    <div id="entityModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
+            <h2 id="emTitle" class="text-lg font-bold mb-5">Modifica</h2>
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Nome</label><input type="text" id="emName" class="input-base"></div>
+                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Icona</label><input type="text" id="emIcon" class="input-base text-center" placeholder="fa-folder"></div>
+                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Colore</label><input type="color" id="emColor" class="w-full h-[42px] bg-transparent cursor-pointer rounded-lg border border-slate-200 dark:border-darkborder p-1"></div>
+                </div>
+
+                <div id="emProjectFields" class="hidden space-y-4 pt-2">
+                    <div class="flex gap-3">
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Tipologia</label><select id="emType" class="input-base"><option value="Costante">Costante</option><option value="A termine">A termine</option><option value="Ciclico">Ciclico</option></select></div>
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Status</label><select id="emStatus" class="input-base"><option value="Nuovo">Nuovo</option><option value="Attivo">Attivo</option><option value="In corso">In corso</option><option value="Completato">Completato</option><option value="In pausa">In pausa</option></select></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Inizio</label><input type="date" id="emStartDate" class="input-base text-slate-500 dark:text-slate-400"></div>
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Fine</label><input type="date" id="emEndDate" class="input-base text-slate-500 dark:text-slate-400"></div>
+                    </div>
+                    <div id="emRelocationArea" class="pt-4 border-t border-slate-200 dark:border-darkborder hidden mt-4">
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400" id="emParentLabel">Sposta in...</label>
+                        <select id="emParentSelect" class="input-base"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-8 pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button id="emDeleteBtn" onclick="deleteCurrentEntity()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-trash-alt mr-2"></i> Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeEntityModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveEntityModal()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Rubrica -->
+    <div id="contactModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-sm modal-animate">
+            <h2 id="cmTitle" class="text-lg font-bold mb-5 flex items-center"><i class="fas fa-user-circle text-purple-500 mr-2"></i> Contatto</h2>
+            <div class="space-y-4">
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">NOME</label><input type="text" id="cmName" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">RUOLO</label><input type="text" id="cmRole" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">ORGANIZZAZIONE</label><input type="text" id="cmOrg" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">TELEFONO</label><input type="text" id="cmPhone" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">EMAIL</label><input type="email" id="cmEmail" class="input-base"></div>
+            </div>
+            <div class="flex justify-between items-center mt-8 pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button id="cmDeleteBtn" onclick="deleteContact()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeContactModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveContact()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Time Block (Calendario) -->
+    <div id="blockModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-start pt-10 md:items-center md:pt-0 backdrop-blur-sm z-50 p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-5 w-full max-w-md modal-animate my-auto">
+            <h2 id="bmTitle" class="text-lg font-bold mb-4 flex items-center"><i class="fas fa-clock text-blue-500 mr-2"></i> Programma Blocco</h2>
+            
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Tipologia</label>
+                        <select id="bmType" class="input-base text-sm font-bold py-2" onchange="toggleBlockTypeFields()">
+                            <option value="simple">Testo Semplice</option>
+                            <option value="task">Collega a Task</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Categoria</label>
+                        <select id="bmCat" class="input-base text-sm font-bold py-2">
+                            <option value="focus">💻 Focus / Studio</option>
+                            <option value="routine">🔄 Routine / Faccende</option>
+                            <option value="break">☕ Pausa / Svago / Pasti</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="bmSimpleArea">
+                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Cosa devi fare?</label>
+                    <input type="text" id="bmTextTitle" class="input-base py-2" placeholder="Es. Studiare Diritto Privato">
+                </div>
+
+                <div id="bmTaskArea" class="hidden">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Seleziona Task Attive</label>
+                        <span id="bmSelectedTasksCount" class="text-[10px] font-bold text-blue-600 dark:text-blue-400">0 selezionate</span>
+                    </div>
+                    <div class="relative mb-2">
+                        <i class="fas fa-search absolute left-2.5 top-2.5 text-xs text-slate-400"></i>
+                        <input type="text" id="bmTaskSearch" placeholder="Cerca task o progetto..." oninput="renderBlockModalTaskList(this.value)" class="input-base pl-8 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg">
+                    </div>
+                    <div id="bmTaskAreaList" class="input-base p-2 max-h-40 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-800/50">
+                        <!-- Lista checkbox popolata in JS -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Dalle</label>
+                        <input type="time" id="bmStart" class="input-base py-2 font-bold w-28">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Alle</label>
+                        <input type="time" id="bmEnd" class="input-base py-2 font-bold w-28">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Data Inizio</label>
+                        <input type="date" id="bmDate" class="input-base py-2 text-sm font-bold">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 -mt-2 mb-2">
+                    <span class="text-[10px] text-slate-400 font-semibold mr-1">Durata rapida:</span>
+                    <button type="button" onclick="addBlockDuration(15)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+15m</button>
+                    <button type="button" onclick="addBlockDuration(30)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+30m</button>
+                    <button type="button" onclick="addBlockDuration(60)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+1h</button>
+                    <button type="button" onclick="addBlockDuration(120)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+2h</button>
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Note (Opzionale)</label>
+                    <textarea id="bmNotes" class="input-base text-sm py-2 min-h-[90px] leading-relaxed resize-y" rows="4" placeholder="Scrivi note, indicazioni o scaletta per questo blocco..."></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <label class="flex items-center gap-2 cursor-pointer mb-3">
+                        <input type="checkbox" id="bmIsRecurring" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" onchange="toggleRecurrenceFields()">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Evento Ciclico / Ripetitivo</span>
+                    </label>
+                    
+                    <div id="bmRecurrenceArea" class="hidden bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
+                        <select id="bmRecType" class="input-base text-sm py-1.5" onchange="toggleRecurrenceDetails()">
+                            <option value="daily">Ogni giorno</option>
+                            <option value="weekly">Giorni specifici della settimana</option>
+                            <option value="interval">A intervallo fisso</option>
+                        </select>
+                        
+                        <div id="bmRecWeekly" class="hidden flex flex-wrap gap-2">
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="1"> Lun</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="2"> Mar</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="3"> Mer</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="4"> Gio</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="5"> Ven</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="6"> Sab</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="0"> Dom</label>
+                        </div>
+                        
+                        <div id="bmRecInterval" class="hidden flex items-center gap-2">
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Ripeti ogni</span>
+                            <input type="number" id="bmIntervalNum" class="input-base w-20 py-1 text-center" min="2" value="2">
+                            <span class="text-xs text-slate-600 dark:text-slate-400">giorni</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <div class="flex items-center gap-2">
+                    <button id="bmDeleteBtn" onclick="deleteBlock()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+                    <button id="bmDuplicateBtn" onclick="duplicateBlock()" class="text-amber-500 hover:text-amber-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"><i class="fas fa-clone mr-1"></i> Duplica</button>
+                </div>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeBlockModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveBlock()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Note del Blocco (Calendario) -->
+    <div id="blockNotesModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col h-[75vh] modal-animate">
+            <div class="flex justify-between items-start mb-4 pb-3 border-b border-slate-200 dark:border-darkborder">
+                <div>
+                    <h2 id="bnmTitle" class="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center">
+                        <i class="fas fa-sticky-note text-amber-500 mr-2.5"></i> Note del Blocco
+                    </h2>
+                    <p id="bnmSubtitle" class="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5"></p>
+                </div>
+                <button onclick="closeBlockNotesModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="flex-1 flex flex-col mb-4">
+                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Appunti, Scaletta & Indicazioni</label>
+                <textarea id="bnmNotesArea" class="input-base flex-1 w-full p-4 font-normal text-sm leading-relaxed resize-none rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="Scrivi qui tutti i tuoi appunti, link, riferimenti o istruzioni per questo blocco..."></textarea>
+            </div>
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder">
+                <span class="text-xs text-slate-400 italic"><i class="fas fa-info-circle mr-1"></i> Puoi modificare e salvare le note direttamente da qui.</span>
+                <div class="flex gap-2">
+                    <button onclick="closeBlockNotesModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveBlockNotesModal()" class="px-6 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition active:scale-95"><i class="fas fa-save mr-1.5"></i> Salva Note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- MODALE SCORCIATOIE DA TASTIERA -->
+    <div id="shortcutsModal" class="modal-overlay hidden" onclick="if(event.target === this) toggleShortcutsModal(false)">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-lg modal-animate">
+            <div class="flex justify-between items-center pb-3 mb-4 border-b border-slate-200 dark:border-darkborder">
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fas fa-keyboard text-blue-500"></i> Scorciatoie da Tastiera
+                </h3>
+                <button onclick="toggleShortcutsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-xs">
+                <div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Inserimento Intelligente</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Suggerimenti Progetti / Sfere</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">#</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Suggerimenti Date e Giorni</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">@</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Suggerimenti Priorità (p1, p2, p3)</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">p</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Navigazione suggerimenti</span>
+                            <div class="flex gap-1">
+                                <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">↑</kbd>
+                                <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">↓</kbd>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Conferma suggerimento (senza creare task)</span>
+                            <div class="flex gap-1">
+                                <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">Invio</kbd>
+                                <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">Tab</kbd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Navigazione Rapida Globale</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Nuova Task</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">N</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Nuovo Blocco</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">B</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Vai a Task Manager</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">T</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Vai a Calendario</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">C</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Torna alla Home</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">H</kbd>
+                        </div>
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                            <span class="text-slate-700 dark:text-slate-300">Chiudi Modali</span>
+                            <kbd class="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-mono font-bold shadow-2xs">Esc</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-end">
+                <button onclick="toggleShortcutsModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow-sm transition active:scale-95">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moduli Applicativi Life Hub OS (Zero Setup - Funzionamento nativo via doppio clic) -->
+    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/smartInput.js"></script>
+    <script src="js/subtasks.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/calendar.js"></script>
+    <script src="js/entities.js"></script>
+    <script src="js/contacts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

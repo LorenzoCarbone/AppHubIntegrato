@@ -1,0 +1,2654 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Hub - OS</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#1e293b',
+                        darkpanel: '#334155',
+                        darkborder: '#475569',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Quill Editor (Rich Text) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s; }
+        .panel { border-radius: 12px; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+        .panel-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); cursor: pointer; }
+        
+        /* Animazioni Globali */
+        .page-fade { animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes pageFadeIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+        
+        .modal-animate { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        @keyframes modalPop { 0% { opacity: 0; transform: scale(0.95) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* --- NOTIFICHE TOAST --- */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #3b82f6; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; pointer-events: auto; }
+        .toast.error { background: #ef4444; }
+        .toast.success { background: #10b981; }
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+        /* --- FOCUS MODE APPUNTI (ZEN MODE) --- */
+        .focus-mode-active { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 9999; background: var(--bg-color, #f8fafc) !important; padding: 40px !important; margin: 0 !important; border-radius: 0 !important; overflow-y: auto; }
+        .dark .focus-mode-active { --bg-color: #0f172a; }
+        .focus-mode-active .ql-container { height: calc(100vh - 150px) !important; max-width: 900px; margin: 0 auto; font-size: 18px !important; border: none !important; }
+        .focus-mode-active .ql-toolbar { max-width: 900px; margin: 0 auto 20px auto; border-bottom: 2px solid #e2e8f0 !important; background: transparent; }
+
+        /* Animazione Check Task Completata */
+        .task-completing-anim { animation: taskComplete 0.3s ease-out forwards; }
+        @keyframes taskComplete { 
+            0% { transform: scale(1); filter: brightness(1); } 
+            50% { transform: scale(0.97); filter: brightness(1.1); } 
+            100% { transform: scale(1); filter: brightness(0.9) grayscale(0.5); opacity: 0.5; } 
+        }
+
+        /* Checkbox circolare per tasks & blocchi */
+        .task-checkbox { appearance: none; min-width: 1.25rem; width: 1.25rem; min-height: 1.25rem; height: 1.25rem; border: 2px solid; border-radius: 50%; cursor: pointer; position: relative; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); background: transparent; flex-shrink: 0; }
+        .dark .task-checkbox { border-color: #64748b; }
+        .task-checkbox:checked { background-color: #f59e0b !important; border-color: #f59e0b !important; transform: scale(1.05); }
+        .task-checkbox:checked::after { content: '✔'; position: absolute; color: white; font-size: 10px; top: -1px; left: 3px; font-weight: bold; }
+        
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .drop-zone { border: 2px dashed transparent; transition: all 0.2s ease; }
+        body.is-dragging .drop-zone { border-color: #cbd5e1; background-color: rgba(0,0,0,0.015); }
+        .dark body.is-dragging .drop-zone { border-color: #475569; background-color: rgba(255,255,255,0.015); }
+        .drag-over { border-color: #3b82f6 !important; background-color: rgba(59, 130, 246, 0.08) !important; border-radius: 12px; opacity: 1 !important;}
+
+        .word-wrap { overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .input-base { width: 100%; border-radius: 8px; padding: 0.6rem 0.85rem; font-size: 0.875rem; transition: all 0.2s; outline: none; border: 1px solid; }
+        .dark .input-base { background-color: #1e293b; border-color: #475569; color: #f8fafc; }
+        .input-base { background-color: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
+        .dark .input-base:focus { border-color: #60a5fa; box-shadow: 0 0 0 1px #60a5fa; }
+        .input-base:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+        
+        .tm-nav-item { padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; font-weight: 600; color: #475569; margin-bottom: 0.2rem; }
+        .dark .tm-nav-item { color: #cbd5e1; }
+        .dark .tm-nav-item:hover { background-color: rgba(255,255,255,0.05); transform: translateX(3px); }
+        .tm-nav-item:hover { background-color: rgba(0,0,0,0.03); transform: translateX(3px); }
+        .dark .tm-nav-item.active { background-color: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+        .tm-nav-item.active { background-color: #e0f2fe; color: #0284c7; }
+
+        .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #e2e8f0 !important; background: transparent; padding: 8px 0 !important; }
+        .dark .ql-toolbar.ql-snow { border-bottom-color: #475569 !important; }
+        .ql-container.ql-snow { border: none !important; font-family: inherit; font-size: 14px; padding: 0.5rem 0; line-height: 1.6; }
+        .dark .ql-snow .ql-stroke { stroke: #cbd5e1; }
+        .dark .ql-snow .ql-fill, .dark .ql-snow .ql-stroke.ql-fill { fill: #cbd5e1; }
+        .dark .ql-snow .ql-picker { color: #cbd5e1; }
+        
+        .glass-header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .dark .glass-header { background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .glass-header { background: rgba(255, 255, 255, 0.8); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        
+        .tm-sidebar-mobile { position: fixed; top: 0; left: 0; bottom: 0; width: 85%; max-width: 320px; z-index: 60; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 4px 0 25px rgba(0,0,0,0.15); }
+        .tm-sidebar-mobile.open { transform: translateX(0); }
+        .tm-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; backdrop-filter: blur(2px); }
+        .tm-overlay.open { opacity: 1; pointer-events: auto; }
+
+        @media (min-width: 768px) {
+            .tm-sidebar-mobile { position: static; transform: none; width: 17rem; box-shadow: none; z-index: auto; transition: none; }
+            .tm-overlay { display: none; }
+            .tm-nav-item { padding: 0.6rem 0.8rem; } 
+        }
+
+        #mobileNotesModal { z-index: 60; }
+        .mobile-ql-container { height: calc(100vh - 140px); overflow-y: auto; }
+        .ql-toolbar { display: flex; flex-wrap: wrap; }
+        .ql-editor { min-height: 120px; max-height: 35vh; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        @media (min-width: 768px) { .ql-editor { max-height: 60vh; } }
+        
+        @keyframes slideUpAdd { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up-add { animation: slideUpAdd 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        @keyframes fadeInAdd { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in-add { animation: fadeInAdd 0.25s ease-out forwards; }
+
+        /* Stili specifici Calendario / Blocchi */
+        .block-focus { border-left: 4px solid #6366f1; background: #eef2ff; color: #312e81; }
+        .dark .block-focus { background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border-left-color: #818cf8; }
+        
+        .block-routine { border-left: 4px solid #94a3b8; background: #f8fafc; color: #334155; }
+        .dark .block-routine { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; border-left-color: #64748b; }
+        
+        /* Pausa Arancione */
+        .block-break { border-left: 4px solid #f97316; background: #fff7ed; color: #7c2d12; }
+        .dark .block-break { background: rgba(249, 115, 22, 0.15); color: #fdba74; border-left-color: #fb923c; }
+
+        /* Stile Eventi Google Calendar */
+        .block-gcal { border-left: 4px solid #3b82f6; background: #eff6ff; color: #1e3a8a; }
+        .dark .block-gcal { background: rgba(59, 130, 246, 0.1); color: #bfdbfe; border-left-color: #60a5fa; }
+        
+        .calendar-col { min-width: 280px; width: calc(100vw - 2rem); scroll-snap-align: start; flex-shrink: 0; }
+        @media (min-width: 768px) { .calendar-col { width: 320px; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 flex flex-col relative pb-10">
+    <div id="toast-container"></div>
+
+    <header class="sticky top-0 z-40 w-full glass-header mb-8 px-4 md:px-8 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hidden-in-tm transition-all">
+        <div id="breadcrumbs" class="flex flex-wrap gap-2 items-center text-sm font-semibold text-slate-500 dark:text-slate-300"></div>
+        <div class="flex flex-wrap gap-2 md:gap-3 items-center text-sm font-medium">
+            <button onclick="navigate('global_calendar')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-calendar-alt mr-1 text-emerald-500"></i> Calendario</button>
+            <button onclick="navigate('global_tasks')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-check-double mr-1 text-blue-500"></i> Tasks</button>
+            <button onclick="navigate('global_contacts')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-address-book mr-1 text-purple-500"></i> Rubrica</button>
+            <div class="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1 hidden md:block"></div>
+            <button onclick="toggleTheme()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Cambia Tema"><i class="fas fa-moon text-base dark:hidden"></i><i class="fas fa-sun text-base hidden dark:block text-amber-400"></i></button>
+            <button onclick="openImportModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Importazione Massiva"><i class="fas fa-file-import text-base"></i></button>
+            <button onclick="forceSync()" id="syncBtn" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Sincronizza Cloud"><i class="fas fa-cloud-sync text-base"></i></button>
+            <button onclick="toggleSettings()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Impostazioni"><i class="fas fa-cog text-base"></i></button>
+        </div>
+    </header>
+
+    <main id="app-content" class="w-full max-w-[1400px] mx-auto flex-1 px-4 md:px-8 page-fade"></main>
+
+    <!-- MOBILE QUICK ADD MODAL (Task Manager) -->
+    <div id="mobileQuickAddModal" class="fixed inset-0 z-[100] hidden flex-col justify-end">
+        <div class="absolute inset-0 bg-slate-900/50 animate-fade-in-add backdrop-blur-sm" onclick="closeMobileQuickAdd()"></div>
+        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-5 shadow-2xl flex flex-col gap-4 animate-slide-up-add border-t border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-1">
+                <h3 class="font-bold text-slate-800 dark:text-white text-lg">Nuova Task</h3>
+                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="text" id="gtInMobile" class="input-base text-base py-3.5 font-semibold bg-slate-50 dark:bg-slate-800/50 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition" placeholder="Cosa devi fare?" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()">
+            <div class="flex gap-3">
+                 <select id="gtPriMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg"><option value="0">Nessuna Prio</option><option value="1">Bassa Prio</option><option value="2">Media Prio</option><option value="3">Alta Prio</option></select>
+                 <input type="date" id="gtDateMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg">
+            </div>
+            <div id="mobileCtxContainer"></div>
+            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98]"><i class="fas fa-arrow-up mr-2"></i> Aggiungi</button>
+        </div>
+    </div>
+
+    <!-- Modale Appunti Fullscreen (Mobile) -->
+    <div id="mobileNotesModal" class="fixed inset-0 bg-slate-50 dark:bg-darkbg hidden flex-col z-[60]">
+        <div class="glass-header px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-darkborder shadow-sm">
+            <h2 id="mobileNotesTitle" class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2"><i class="fas fa-pen-nib text-blue-500"></i> Appunti</h2>
+            <div class="flex gap-2">
+                <button onclick="closeMobileNotes()" class="text-slate-600 dark:text-slate-300 font-bold px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition rounded-lg text-xs">Chiudi</button>
+                <button onclick="saveMobileNotes()" class="text-white font-bold px-4 py-2 bg-blue-600 hover:bg-blue-700 transition rounded-lg shadow text-xs">Salva</button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-hidden p-3">
+            <div class="bg-white dark:bg-darkpanel rounded-xl border border-slate-200 dark:border-darkborder shadow-inner h-full flex flex-col p-2">
+                 <div id="quill-mobile-editor" class="mobile-ql-container"></div>
+            </div>
+        </div>
+        <div class="p-3 border-t border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel flex justify-center">
+            <button onclick="archiveMobileNotes()" class="text-xs font-bold text-slate-500 dark:text-slate-400 py-3 w-full rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-file-archive mr-2"></i> Archivia Foglio Corrente</button>
+        </div>
+    </div>
+
+    <!-- Modal Archivio Letto/Scritto -->
+    <div id="archiveViewModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-4xl flex flex-col h-[85vh] modal-animate">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="archiveViewTitle" class="text-xl font-bold">Archivio Appunti</h2>
+                <span id="archiveViewDate" class="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md"></span>
+            </div>
+            <div class="flex-1 bg-slate-50 dark:bg-darkbg rounded border border-slate-200 dark:border-darkborder p-4 overflow-hidden flex flex-col shadow-inner">
+                <div id="quill-archive-editor" class="flex-1 overflow-y-auto"></div>
+            </div>
+            <div class="flex justify-between items-center mt-5 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <p id="archiveEditIndicator" class="text-[10px] font-bold text-amber-500 hidden bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-200 dark:border-amber-900/50"><i class="fas fa-pencil-alt mr-1"></i> Modificato</p>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeArchiveModal()" class="px-4 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">Chiudi</button>
+                    <button onclick="saveArchiveEdit()" class="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva Modifiche</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importazione Dati -->
+    <div id="importModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-2xl modal-animate">
+            <h2 class="text-lg font-bold mb-2">Importazione Massiva (JSON)</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Incolla qui il codice JSON per generare o recuperare i tuoi dati.</p>
+            <textarea id="importDataArea" class="input-base font-mono text-xs h-64 mb-4" placeholder='{ "spheres": [...], "projects": [...] }'></textarea>
+            <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <button onclick="closeImportModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                <button onclick="executeImport()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Importa e Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Settings Supabase & Google Calendar -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
+            <h2 class="text-lg font-bold mb-5"><i class="fas fa-cog text-slate-500 mr-2"></i> Impostazioni Generali</h2>
+            
+            <div class="space-y-4 mb-6">
+                <div class="pb-3 border-b border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-database text-blue-500 mr-2"></i> Database Supabase</h3>
+                    <div class="space-y-3">
+                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Project URL</label><input type="text" id="supabaseUrl" class="input-base" placeholder="https://xyz.supabase.co"></div>
+                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Anon Key (API)</label><input type="password" id="anonKey" class="input-base"></div>
+                    </div>
+                </div>
+                
+                <div class="pt-2">
+                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fab fa-google text-emerald-500 mr-2"></i> Integrazione Google Calendar</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">ID Calendari (separati da virgola)</label>
+                            <input type="text" id="gcalIdSettings" class="input-base" placeholder="es. tua.email@gmail.com, it.italian#holiday@group.v.calendar.google.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">API Key Google Calendar</label>
+                            <input type="password" id="gcalApiSettings" class="input-base" placeholder="AIzaSy...">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-3 leading-tight bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700"><i class="fas fa-info-circle mr-1"></i> Per ID usa l'indirizzo email del tuo calendario. Per la API Key: Google Cloud Console > API e Servizi > Credenziali > Crea API Key (Abilita 'Google Calendar API' nella libreria). Assicurati che i tuoi calendari siano spuntati come 'pubblici' nelle loro impostazioni base.</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button onclick="factoryReset()" class="text-red-500 hover:text-red-600 text-xs font-bold flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-exclamation-triangle mr-2"></i> Factory Reset</button>
+                <div class="flex gap-2">
+                    <button onclick="toggleSettings()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Chiudi</button>
+                    <button onclick="saveSettings()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Entità -->
+    <div id="entityModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
+            <h2 id="emTitle" class="text-lg font-bold mb-5">Modifica</h2>
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Nome</label><input type="text" id="emName" class="input-base"></div>
+                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Icona</label><input type="text" id="emIcon" class="input-base text-center" placeholder="fa-folder"></div>
+                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Colore</label><input type="color" id="emColor" class="w-full h-[42px] bg-transparent cursor-pointer rounded-lg border border-slate-200 dark:border-darkborder p-1"></div>
+                </div>
+
+                <div id="emProjectFields" class="hidden space-y-4 pt-2">
+                    <div class="flex gap-3">
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Tipologia</label><select id="emType" class="input-base"><option value="Costante">Costante</option><option value="A termine">A termine</option><option value="Ciclico">Ciclico</option></select></div>
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Status</label><select id="emStatus" class="input-base"><option value="Nuovo">Nuovo</option><option value="Attivo">Attivo</option><option value="In corso">In corso</option><option value="Completato">Completato</option><option value="In pausa">In pausa</option></select></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Inizio</label><input type="date" id="emStartDate" class="input-base text-slate-500 dark:text-slate-400"></div>
+                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Fine</label><input type="date" id="emEndDate" class="input-base text-slate-500 dark:text-slate-400"></div>
+                    </div>
+                    <div id="emRelocationArea" class="pt-4 border-t border-slate-200 dark:border-darkborder hidden mt-4">
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400" id="emParentLabel">Sposta in...</label>
+                        <select id="emParentSelect" class="input-base"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-8 pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button id="emDeleteBtn" onclick="deleteCurrentEntity()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-trash-alt mr-2"></i> Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeEntityModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveEntityModal()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Rubrica -->
+    <div id="contactModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-sm modal-animate">
+            <h2 id="cmTitle" class="text-lg font-bold mb-5 flex items-center"><i class="fas fa-user-circle text-purple-500 mr-2"></i> Contatto</h2>
+            <div class="space-y-4">
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">NOME</label><input type="text" id="cmName" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">RUOLO</label><input type="text" id="cmRole" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">ORGANIZZAZIONE</label><input type="text" id="cmOrg" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">TELEFONO</label><input type="text" id="cmPhone" class="input-base"></div>
+                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">EMAIL</label><input type="email" id="cmEmail" class="input-base"></div>
+            </div>
+            <div class="flex justify-between items-center mt-8 pt-5 border-t border-slate-200 dark:border-darkborder">
+                <button id="cmDeleteBtn" onclick="deleteContact()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeContactModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveContact()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Time Block (Calendario) -->
+    <div id="blockModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-start pt-10 md:items-center md:pt-0 backdrop-blur-sm z-50 p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-5 w-full max-w-md modal-animate my-auto">
+            <h2 id="bmTitle" class="text-lg font-bold mb-4 flex items-center"><i class="fas fa-clock text-blue-500 mr-2"></i> Programma Blocco</h2>
+            
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Tipologia</label>
+                        <select id="bmType" class="input-base text-sm font-bold py-2" onchange="toggleBlockTypeFields()">
+                            <option value="simple">Testo Semplice</option>
+                            <option value="task">Collega a Task</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Categoria</label>
+                        <select id="bmCat" class="input-base text-sm font-bold py-2">
+                            <option value="focus">💻 Focus / Studio</option>
+                            <option value="routine">🔄 Routine / Faccende</option>
+                            <option value="break">☕ Pausa / Svago / Pasti</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="bmSimpleArea">
+                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Cosa devi fare?</label>
+                    <input type="text" id="bmTextTitle" class="input-base py-2" placeholder="Es. Studiare Diritto Privato">
+                </div>
+
+                <div id="bmTaskArea" class="hidden">
+                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Seleziona Task Esistenti</label>
+                    <div id="bmTaskAreaList" class="input-base p-2 max-h-36 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-800/50">
+                        <!-- Lista checkbox popolata in JS -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Dalle</label>
+                        <input type="time" id="bmStart" class="input-base py-2 font-bold w-28">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Alle</label>
+                        <input type="time" id="bmEnd" class="input-base py-2 font-bold w-28">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Data Inizio</label>
+                        <input type="date" id="bmDate" class="input-base py-2 text-sm font-bold">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Note (Opzionale)</label>
+                    <textarea id="bmNotes" class="input-base text-sm py-2" rows="2" placeholder="Aggiungi dettagli o appunti per questo blocco..."></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <label class="flex items-center gap-2 cursor-pointer mb-3">
+                        <input type="checkbox" id="bmIsRecurring" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" onchange="toggleRecurrenceFields()">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Evento Ciclico / Ripetitivo</span>
+                    </label>
+                    
+                    <div id="bmRecurrenceArea" class="hidden bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
+                        <select id="bmRecType" class="input-base text-sm py-1.5" onchange="toggleRecurrenceDetails()">
+                            <option value="daily">Ogni giorno</option>
+                            <option value="weekly">Giorni specifici della settimana</option>
+                            <option value="interval">A intervallo fisso</option>
+                        </select>
+                        
+                        <div id="bmRecWeekly" class="hidden flex flex-wrap gap-2">
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="1"> Lun</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="2"> Mar</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="3"> Mer</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="4"> Gio</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="5"> Ven</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="6"> Sab</label>
+                            <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" class="bm-day-chk" value="0"> Dom</label>
+                        </div>
+                        
+                        <div id="bmRecInterval" class="hidden flex items-center gap-2">
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Ripeti ogni</span>
+                            <input type="number" id="bmIntervalNum" class="input-base w-20 py-1 text-center" min="2" value="2">
+                            <span class="text-xs text-slate-600 dark:text-slate-400">giorni</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <button id="bmDeleteBtn" onclick="deleteBlock()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeBlockModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
+                    <button onclick="saveBlock()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showToast(message, type = 'default') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'toastOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        window.alert = function(msg) { showToast(msg, 'error'); };
+
+        function toggleFocusMode(editorId) {
+            const container = document.getElementById(editorId).parentElement;
+            container.classList.toggle('focus-mode-active');
+            if(container.classList.contains('focus-mode-active')) {
+                showToast("Zen Mode attivato. Premi Esc per uscire.", "success");
+                const escHandler = function(e) {
+                    if(e.key === 'Escape') {
+                        container.classList.remove('focus-mode-active');
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+            }
+        }
+
+        function applyTheme() {
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            render(); 
+        }
+        applyTheme();
+
+        // --- MOTORE DATI ---
+        class LifeHubDataManager {
+            constructor() {
+                this.supabaseUrl = localStorage.getItem('hub_supabase_url') || 'https://bbskvjxrutsrznwcrlmi.supabase.co';
+                this.anonKey = localStorage.getItem('hub_anon_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2t2anhydXRzcnpud2NybG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMzIwMDIsImV4cCI6MjEwODYwODAwMn0.l_nFrRcMWn6LDzyI8AJEoc1_J33hAePmNbXTDolVvxU';
+                
+                // Variabili Google Calendar
+                this.gcalId = localStorage.getItem('hub_gcal_id') || '';
+                this.gcalApiKey = localStorage.getItem('hub_gcal_apikey') || '';
+                this.gcalCache = [];
+                
+                this.saveTimeout = null;
+                this.isSyncing = false;
+                
+                this.defaultData = {
+                    version: "5.1",
+                    spheres: [], projects: [], subprojects: [], tasks: [], contacts: [],
+                    calendarBlocks: [],
+                    gcalCompleted: [],
+                    pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}]
+                };
+                
+                this.data = JSON.parse(JSON.stringify(this.defaultData));
+            }
+
+            isConfigured() { return this.supabaseUrl.length > 0 && this.anonKey.length > 0; }
+
+            async initialize() {
+                if (!this.isConfigured()) {
+                    this.loadLocal();
+                    return;
+                }
+                const btn = document.getElementById('syncBtn');
+                if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin text-base"></i>';
+                
+                try {
+                    const res = await fetch(`${this.supabaseUrl}/rest/v1/app_states?app_name=eq.life_hub&select=data`, {
+                        headers: { 'apikey': this.anonKey, 'Authorization': `Bearer ${this.anonKey}` },
+                        cache: 'no-store'
+                    });
+                    if (!res.ok) throw new Error("Errore API Supabase");
+                    
+                    const rows = await res.json();
+                    if (rows && rows.length > 0) {
+                        this.data = this.migrateData(rows[0].data);
+                        this.saveLocal();
+                    } else {
+                        this.pushToCloud();
+                    }
+                    if(btn) btn.innerHTML = '<i class="fas fa-check text-green-500 text-base"></i>';
+                } catch (error) {
+                    console.error("Supabase Load Error:", error);
+                    this.loadLocal(); 
+                    if(btn) btn.innerHTML = '<i class="fas fa-exclamation-triangle text-amber-500 text-base"></i>';
+                }
+                if(btn) setTimeout(() => btn.innerHTML = '<i class="fas fa-cloud-sync text-base"></i>', 2000);
+                render();
+            }
+
+            // Funzione asincrona nativa per recuperare gli eventi di Google Calendar
+            async fetchGCalEvents() {
+                if(!this.gcalApiKey || !this.gcalId) return;
+                const cals = this.gcalId.split(',').map(s=>s.trim()).filter(Boolean);
+                if(cals.length === 0) return;
+                
+                let minD = new Date(); minD.setDate(minD.getDate() - 2); minD.setHours(0,0,0,0);
+                let maxD = new Date(); maxD.setDate(maxD.getDate() + 7); maxD.setHours(23,59,59,999);
+                
+                let allEvents = [];
+                for(let cal of cals) {
+                    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events?key=${this.gcalApiKey}&timeMin=${minD.toISOString()}&timeMax=${maxD.toISOString()}&singleEvents=true&orderBy=startTime`;
+                    try {
+                        const res = await fetch(url);
+                        if(!res.ok) continue;
+                        const data = await res.json();
+                        if(data.items) {
+                            const events = data.items.map(item => {
+                                let start = item.start.dateTime || item.start.date;
+                                let end = item.end.dateTime || item.end.date;
+                                let isAllDay = !item.start.dateTime;
+                                
+                                let startDateStr = start.split('T')[0];
+                                let startTime = isAllDay ? "Tutto il giorno" : start.split('T')[1].substring(0,5);
+                                let endTime = isAllDay ? "" : end.split('T')[1].substring(0,5);
+                                
+                                return {
+                                    id: 'gcal_' + item.id,
+                                    isGcal: true,
+                                    title: item.summary || 'Evento Google Calendar',
+                                    date: startDateStr,
+                                    startTime: startTime,
+                                    endTime: endTime,
+                                    category: 'gcal',
+                                    isAllDay: isAllDay,
+                                    link: item.htmlLink,
+                                    notes: item.description ? item.description.replace(/<[^>]*>?/gm, '').substring(0,250) + (item.description.length > 250 ? '...' : '') : ''
+                                };
+                            });
+                            allEvents.push(...events);
+                        }
+                    } catch(e) { console.error("Gcal sync error for cal:", cal, e); }
+                }
+                this.gcalCache = allEvents;
+            }
+
+            triggerSave() {
+                this.saveLocal();
+                if (this.saveTimeout) clearTimeout(this.saveTimeout);
+                this.saveTimeout = setTimeout(() => { this.pushToCloud(); }, 2500);
+            }
+
+            async pushToCloud() {
+                if (!this.isConfigured() || this.isSyncing) return;
+                this.isSyncing = true;
+                const btn = document.getElementById('syncBtn');
+                if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin text-base"></i>';
+
+                try {
+                    const res = await fetch(`${this.supabaseUrl}/rest/v1/app_states`, {
+                        method: 'POST',
+                        headers: { 
+                            'apikey': this.anonKey, 
+                            'Authorization': `Bearer ${this.anonKey}`, 
+                            'Content-Type': 'application/json',
+                            'Prefer': 'resolution=merge-duplicates'
+                        },
+                        body: JSON.stringify({ app_name: 'life_hub', data: this.data })
+                    });
+                    if (!res.ok) throw new Error("Supabase Push failed");
+                    if(btn) btn.innerHTML = '<i class="fas fa-check text-green-500 text-base"></i>';
+                } catch (error) {
+                    console.error("Supabase Save Error:", error);
+                    if(btn) btn.innerHTML = '<i class="fas fa-times text-red-500 text-base"></i>';
+                } finally {
+                    this.isSyncing = false;
+                    if(btn) setTimeout(() => btn.innerHTML = '<i class="fas fa-cloud-sync text-base"></i>', 2000);
+                }
+            }
+
+            loadLocal() {
+                const local = localStorage.getItem('hub_local_data');
+                if (local) this.data = this.migrateData(JSON.parse(local));
+                else this.data = JSON.parse(JSON.stringify(this.defaultData));
+                render();
+            }
+
+            saveLocal() { localStorage.setItem('hub_local_data', JSON.stringify(this.data)); }
+
+            migrateData(d) {
+                if (!d || Object.keys(d).length === 0) return JSON.parse(JSON.stringify(this.defaultData));
+                let n = { version: "5.1", spheres: [], projects: [], subprojects: [], tasks: d.tasks || [], contacts: d.contacts || [], calendarBlocks: d.calendarBlocks || [] };
+                n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
+                n.gcalCompleted = d.gcalCompleted || [];
+                
+                if (d.version !== "4.5" && d.version !== "5.0" && d.version !== "5.1" && d.spheres && d.spheres.length > 0 && d.spheres[0].projects !== undefined) {
+                    d.spheres.forEach((s, sIdx) => {
+                        n.spheres.push({ id: s.id, name: s.name, icon: s.icon || 'fa-folder', color: mapColor(s.color), order: s.order||sIdx, notes: s.notes||'', permanentNotes: s.permanentNotes||'', updates: s.updates||[] });
+                        if (s.projects) {
+                            s.projects.forEach((p, pIdx) => {
+                                n.projects.push({ id: p.id, sphereId: s.id, name: p.name, icon: p.icon || 'fa-folder', color: p.color, type: p.type, status: p.status, pinned: p.pinned, pinnedLevelId: p.pinnedLevelId||null, archived: p.archived||false, notes: p.notes, permanentNotes: p.permanentNotes||'', updates: p.updates||[], startDate: p.startDate||'', endDate: p.endDate||'', order: p.order||pIdx, pinnedOrder: p.pinnedOrder||pIdx });
+                                if (p.subprojects) {
+                                    p.subprojects.forEach((sp, spIdx) => {
+                                        n.subprojects.push({ id: sp.id, projectId: p.id, name: sp.name, icon: sp.icon || 'fa-file-alt', color: sp.color, type: sp.type||'A termine', status: sp.status||'Attivo', pinned: sp.pinned||false, pinnedLevelId: sp.pinnedLevelId||null, archived: sp.archived||false, notes: sp.notes, permanentNotes: sp.permanentNotes||'', updates: sp.updates||[], startDate: sp.startDate||'', endDate: sp.endDate||'', order: sp.order||spIdx, pinnedOrder: sp.pinnedOrder||spIdx });
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    n.spheres = (d.spheres || []).map(s => ({...s, color: mapColor(s.color)}));
+                    n.projects = (d.projects || []);
+                    n.subprojects = (d.subprojects || []);
+                }
+                return n;
+            }
+            
+            importJSON(jsonText) {
+                const parsed = JSON.parse(jsonText);
+                if(parsed.spheres) this.data.spheres.push(...parsed.spheres);
+                if(parsed.projects) this.data.projects.push(...parsed.projects);
+                if(parsed.subprojects) this.data.subprojects.push(...parsed.subprojects);
+                if(parsed.tasks) this.data.tasks.push(...parsed.tasks);
+                if(parsed.contacts) this.data.contacts.push(...parsed.contacts);
+                if(parsed.calendarBlocks) this.data.calendarBlocks.push(...parsed.calendarBlocks);
+                if(parsed.gcalCompleted) this.data.gcalCompleted.push(...parsed.gcalCompleted);
+                this.triggerSave();
+            }
+            
+            reset() {
+                this.data = JSON.parse(JSON.stringify(this.defaultData));
+                this.triggerSave();
+            }
+        }
+
+        const AppData = new LifeHubDataManager();
+        const state = { 
+            view: 'home', 
+            path: { sphereId: null, projId: null, subprojId: null }, 
+            ui: { showArchived: false, tmView: 'all', showCompletedTasks: false, homeTaskFilter: 'all', homeContextFilter: 'all', calSelectedDate: getISODate(new Date()) },
+            get data() { return AppData.data; },
+            set data(val) { AppData.data = val; }
+        };
+        
+        let tmListSettings = JSON.parse(localStorage.getItem('hub_tm_settings')) || {};
+
+        let editState = { mode: 'create', type: 'sphere', id: null, sId: null, pId: null };
+        let contactEditId = null;
+        let editingTaskId = null;
+        let currentArchiveEdit = { type: null, entityId: null, updateId: null };
+        let archiveQuill = null;
+        let dragSource = null;
+
+        // CALENDAR GLOBALS
+        let blockEditId = null;
+        let blockEditDate = null; 
+
+        // --- UTILS DATE ---
+        function getISODate(dateObj) {
+            const offset = dateObj.getTimezoneOffset() * 60000;
+            return new Date(dateObj - offset).toISOString().split('T')[0];
+        }
+        function getDayNameShort(dateObj) {
+            const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+            return days[dateObj.getDay()];
+        }
+        function formatDisplayDate(dateStr) {
+            const d = new Date(dateStr);
+            const today = getISODate(new Date());
+            const yesterday = getISODate(new Date(new Date().setDate(new Date().getDate() - 1)));
+            const tomorrow = getISODate(new Date(new Date().setDate(new Date().getDate() + 1)));
+            
+            let prefix = "";
+            if(dateStr === today) prefix = "Oggi • ";
+            else if(dateStr === tomorrow) prefix = "Domani • ";
+            else if(dateStr === yesterday) prefix = "Ieri • ";
+
+            return prefix + getDayNameShort(d) + " " + d.getDate() + "/" + (d.getMonth()+1);
+        }
+
+        async function forceSync() { 
+            if(confirm("Vuoi SCARICARE i dati dal cloud (OK) o FORZARE il caricamento dei dati locali sul cloud (Annulla)?")) {
+                await AppData.initialize(); 
+                if (state.view === 'global_calendar' && AppData.gcalApiKey && AppData.gcalId) {
+                    await AppData.fetchGCalEvents();
+                    render();
+                }
+            } else {
+                AppData.pushToCloud(); 
+            }
+        }
+
+        function mapColor(c) {
+            if(!c) return '#94a3b8';
+            if(c.startsWith('#')) return c;
+            if(c.includes('emerald') || c.includes('green')) return '#10b981';
+            if(c.includes('amber') || c.includes('yellow')) return '#f59e0b';
+            if(c.includes('purple')) return '#a855f7';
+            if(c.includes('red')) return '#ef4444';
+            if(c.includes('blue')) return '#3b82f6';
+            return '#94a3b8'; 
+        }
+
+        function toggleNavFolder(e, id) {
+            e.stopPropagation();
+            document.getElementById(id).classList.toggle('hidden');
+            e.target.classList.toggle('fa-chevron-down');
+            e.target.classList.toggle('fa-chevron-right');
+        }
+        
+        function handleNotesClick(type, id) {
+            if (window.innerWidth < 768) openMobileNotes(type, id);
+            else toggleNotes();
+        }
+
+        function toggleNotes() {
+            const container = document.getElementById('notes-container');
+            const btn = document.getElementById('toggle-notes-btn');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden'); container.classList.add('flex');
+                btn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Nascondi Appunti';
+            } else {
+                container.classList.add('hidden'); container.classList.remove('flex');
+                btn.innerHTML = '<i class="fas fa-chevron-down mr-1 hidden md:inline"></i> Mostra Appunti';
+            }
+        }
+
+        let mobileNotesContext = { type: null, id: null, quill: null };
+        function openMobileNotes(type, id) {
+            const entity = getEntity(type, id);
+            if(!entity) return;
+            mobileNotesContext = { type, id };
+            document.getElementById('mobileNotesTitle').innerHTML = `<i class="fas fa-pen-nib text-blue-500 mr-2"></i> Appunti - ${entity.name}`;
+            document.getElementById('mobileNotesModal').classList.remove('hidden');
+            document.getElementById('mobileNotesModal').classList.add('flex');
+            
+            if (!mobileNotesContext.quill) {
+                const tOpts = [['bold', 'italic', 'underline', 'strike'], ['blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'color': [] }, { 'background': [] }], ['link'], ['clean']];
+                mobileNotesContext.quill = new Quill('#quill-mobile-editor', { theme: 'snow', modules: { toolbar: tOpts }, placeholder: 'Inizia a scrivere...' });
+            }
+            mobileNotesContext.quill.root.innerHTML = entity.notes || '';
+        }
+        function closeMobileNotes() { 
+            document.getElementById('mobileNotesModal').classList.add('hidden'); 
+            document.getElementById('mobileNotesModal').classList.remove('flex');
+            render(); 
+        }
+        function saveMobileNotes() {
+            if(!mobileNotesContext.id) return;
+            const entity = getEntity(mobileNotesContext.type, mobileNotesContext.id);
+            if(entity) {
+                entity.notes = mobileNotesContext.quill.root.innerHTML;
+                AppData.triggerSave();
+                showToast("Appunti salvati", "success");
+            }
+        }
+        function archiveMobileNotes() {
+            if(!mobileNotesContext.id) return;
+            saveMobileNotes(); 
+            archiveNotes(mobileNotesContext.type, mobileNotesContext.id);
+            closeMobileNotes();
+        }
+
+        // --- CALENDARIO / TIME MANAGEMENT LOGIC ---
+
+        function isBlockOnDate(block, dateStr) {
+            if (block.isGcal) return block.date === dateStr; 
+            
+            if (!block.isRecurring) {
+                return block.date === dateStr;
+            }
+            // Recurring logic
+            if (dateStr < block.date) return false; 
+            
+            const targetDate = new Date(dateStr);
+            const startDate = new Date(block.date);
+
+            if (block.recurrence.type === 'daily') return true;
+            if (block.recurrence.type === 'weekly') {
+                return block.recurrence.days.includes(targetDate.getDay());
+            }
+            if (block.recurrence.type === 'interval') {
+                const diffTime = Math.abs(targetDate - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                return diffDays % block.recurrence.interval === 0;
+            }
+            return false;
+        }
+
+        function toggleBlockTypeFields() {
+            const type = document.getElementById('bmType').value;
+            if(type === 'simple') {
+                document.getElementById('bmSimpleArea').classList.remove('hidden');
+                document.getElementById('bmTaskArea').classList.add('hidden');
+            } else {
+                document.getElementById('bmSimpleArea').classList.add('hidden');
+                document.getElementById('bmTaskArea').classList.remove('hidden');
+            }
+        }
+
+        function toggleRecurrenceFields() {
+            const isRec = document.getElementById('bmIsRecurring').checked;
+            const area = document.getElementById('bmRecurrenceArea');
+            if(isRec) area.classList.remove('hidden'); else area.classList.add('hidden');
+        }
+
+        function toggleRecurrenceDetails() {
+            const rType = document.getElementById('bmRecType').value;
+            document.getElementById('bmRecWeekly').classList.add('hidden');
+            document.getElementById('bmRecInterval').classList.add('hidden');
+            if(rType === 'weekly') document.getElementById('bmRecWeekly').classList.remove('hidden');
+            if(rType === 'interval') document.getElementById('bmRecInterval').classList.remove('hidden');
+        }
+
+        function openBlockModal(id = null, dateStr = null) {
+            blockEditId = id;
+            blockEditDate = dateStr || getISODate(new Date());
+
+            // Popola il selettore Task multiplo
+            let taskOpts = '';
+            state.data.tasks.filter(t => !t.completed).forEach(t => {
+                taskOpts += `<label class="flex items-center gap-2 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded cursor-pointer transition border border-transparent hover:border-slate-200 dark:hover:border-slate-600"><input type="checkbox" class="bm-task-chk w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" value="${t.id}"> <span class="text-xs font-medium text-slate-700 dark:text-slate-300 leading-tight">${t.title}</span></label>`;
+            });
+            document.getElementById('bmTaskAreaList').innerHTML = taskOpts || '<p class="text-xs text-slate-400 italic p-2">Nessuna task attiva disponibile.</p>';
+
+            const modal = document.getElementById('blockModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            if (id) {
+                const b = state.data.calendarBlocks.find(x => x.id === id);
+                if(!b) return;
+                document.getElementById('bmTitle').innerHTML = '<i class="fas fa-edit text-blue-500 mr-2"></i> Modifica Blocco';
+                document.getElementById('bmType').value = b.type;
+                document.getElementById('bmCat').value = b.category || 'focus';
+                document.getElementById('bmStart').value = b.startTime;
+                document.getElementById('bmEnd').value = b.endTime;
+                document.getElementById('bmDate').value = b.date; 
+                document.getElementById('bmNotes').value = b.notes || '';
+                
+                if (b.type === 'simple') {
+                    document.getElementById('bmTextTitle').value = b.title;
+                } else {
+                    const taskIds = b.taskIds || (b.taskId ? [b.taskId] : []);
+                    document.querySelectorAll('.bm-task-chk').forEach(chk => {
+                        if(taskIds.includes(chk.value)) chk.checked = true;
+                    });
+                }
+
+                document.getElementById('bmIsRecurring').checked = b.isRecurring;
+                if(b.isRecurring && b.recurrence) {
+                    document.getElementById('bmRecType').value = b.recurrence.type;
+                    if(b.recurrence.type === 'weekly') {
+                        document.querySelectorAll('.bm-day-chk').forEach(chk => {
+                            chk.checked = b.recurrence.days.includes(parseInt(chk.value));
+                        });
+                    }
+                    if(b.recurrence.type === 'interval') document.getElementById('bmIntervalNum').value = b.recurrence.interval;
+                }
+                document.getElementById('bmDeleteBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('bmTitle').innerHTML = '<i class="fas fa-plus-circle text-blue-500 mr-2"></i> Nuovo Blocco';
+                document.getElementById('bmType').value = 'simple';
+                document.getElementById('bmCat').value = 'focus';
+                document.getElementById('bmTextTitle').value = '';
+                document.getElementById('bmNotes').value = '';
+                document.getElementById('bmStart').value = '09:00';
+                document.getElementById('bmEnd').value = '10:00';
+                document.getElementById('bmDate').value = blockEditDate;
+                
+                document.getElementById('bmIsRecurring').checked = false;
+                document.getElementById('bmRecType').value = 'daily';
+                document.querySelectorAll('.bm-day-chk').forEach(c => c.checked = false);
+                document.getElementById('bmIntervalNum').value = '2';
+                
+                document.getElementById('bmDeleteBtn').classList.add('hidden');
+            }
+            toggleBlockTypeFields();
+            toggleRecurrenceFields();
+            toggleRecurrenceDetails();
+        }
+
+        function closeBlockModal() {
+            document.getElementById('blockModal').classList.add('hidden');
+            document.getElementById('blockModal').classList.remove('flex');
+        }
+
+        function saveBlock() {
+            const type = document.getElementById('bmType').value;
+            const category = document.getElementById('bmCat').value;
+            const start = document.getElementById('bmStart').value;
+            const end = document.getElementById('bmEnd').value;
+            const date = document.getElementById('bmDate').value;
+            const isRec = document.getElementById('bmIsRecurring').checked;
+            const notes = document.getElementById('bmNotes').value.trim();
+            
+            let title = "", taskIds = [];
+            if(type === 'simple') {
+                title = document.getElementById('bmTextTitle').value.trim();
+                if(!title) { showToast("Inserisci cosa devi fare", "error"); return; }
+            } else {
+                document.querySelectorAll('.bm-task-chk:checked').forEach(c => taskIds.push(c.value));
+                if(taskIds.length === 0) { showToast("Seleziona almeno una task", "error"); return; }
+                if (taskIds.length === 1) {
+                    const t = state.data.tasks.find(x => x.id === taskIds[0]);
+                    title = t ? t.title : 'Task sconosciuta';
+                } else {
+                    title = `${taskIds.length} Task collegate`;
+                }
+            }
+
+            if(!start || !end || !date) { showToast("Compila orari e date", "error"); return; }
+            if(start >= end) { showToast("L'orario di fine deve essere dopo l'inizio", "error"); return; }
+
+            let recurrenceObj = null;
+            if(isRec) {
+                const rType = document.getElementById('bmRecType').value;
+                recurrenceObj = { type: rType };
+                if(rType === 'weekly') {
+                    let days = [];
+                    document.querySelectorAll('.bm-day-chk').forEach(c => { if(c.checked) days.push(parseInt(c.value)) });
+                    if(days.length === 0) { showToast("Seleziona almeno un giorno per la ripetizione settimanale", "error"); return; }
+                    recurrenceObj.days = days;
+                } else if(rType === 'interval') {
+                    const intv = parseInt(document.getElementById('bmIntervalNum').value);
+                    if(intv < 1 || isNaN(intv)) { showToast("Intervallo non valido", "error"); return; }
+                    recurrenceObj.interval = intv;
+                }
+            }
+
+            const payload = { title, type, taskId: taskIds[0], taskIds, category, startTime: start, endTime: end, date, isRecurring: isRec, recurrence: recurrenceObj, notes };
+
+            if(blockEditId) {
+                let b = state.data.calendarBlocks.find(x => x.id === blockEditId);
+                if(b) Object.assign(b, payload);
+                showToast("Blocco modificato", "success");
+            } else {
+                state.data.calendarBlocks.push({ id: 'cb_'+Date.now(), ...payload, completedDates: [] });
+                showToast("Blocco aggiunto", "success");
+            }
+
+            closeBlockModal(); AppData.triggerSave(); render();
+        }
+
+        function deleteBlock() {
+            if(!blockEditId) return;
+            if(confirm("Eliminare questo blocco? Se ciclico verrà rimosso da tutti i giorni.")) {
+                state.data.calendarBlocks = state.data.calendarBlocks.filter(b => b.id !== blockEditId);
+                closeBlockModal(); AppData.triggerSave(); render();
+                showToast("Blocco eliminato", "success");
+            }
+        }
+
+        function toggleBlockCompleted(id, dateStr) {
+            // Check Google Calendar specifici
+            if(id.startsWith('gcal_')) {
+                if(!state.data.gcalCompleted) state.data.gcalCompleted = [];
+                const key = id + '_' + dateStr;
+                const idx = state.data.gcalCompleted.indexOf(key);
+                if(idx > -1) state.data.gcalCompleted.splice(idx, 1);
+                else state.data.gcalCompleted.push(key);
+                AppData.triggerSave(); render();
+                return;
+            }
+
+            const b = state.data.calendarBlocks.find(x => x.id === id);
+            if(!b) return;
+            
+            if(!b.completedDates) b.completedDates = [];
+            const idx = b.completedDates.indexOf(dateStr);
+            if(idx > -1) {
+                b.completedDates.splice(idx, 1);
+            } else {
+                b.completedDates.push(dateStr);
+                // Completa tutte le task associate se non è ricorrente
+                if(b.type === 'task' && !b.isRecurring) {
+                    const tIds = b.taskIds || (b.taskId ? [b.taskId] : []);
+                    let tasksCompleted = 0;
+                    tIds.forEach(tid => {
+                        const t = state.data.tasks.find(x => x.id === tid);
+                        if(t && !t.completed) { t.completed = true; tasksCompleted++; }
+                    });
+                    if(tasksCompleted > 0) showToast(`${tasksCompleted} task marcate completate`, "success");
+                }
+            }
+            AppData.triggerSave(); render();
+        }
+
+        function renderCalendar() {
+            let daysArr = [];
+            let baseDate = new Date();
+            for(let i = -1; i <= 5; i++) {
+                let d = new Date(baseDate);
+                d.setDate(baseDate.getDate() + i);
+                daysArr.push(getISODate(d));
+            }
+
+            if(!daysArr.includes(state.ui.calSelectedDate)) state.ui.calSelectedDate = daysArr[1]; 
+
+            let mobileTabsHtml = `<div class="flex overflow-x-auto no-scrollbar gap-2 px-4 py-3 md:hidden border-b border-slate-200 dark:border-darkborder bg-white dark:bg-slate-800">`;
+            daysArr.forEach(dStr => {
+                const active = dStr === state.ui.calSelectedDate;
+                const dObj = new Date(dStr);
+                const dayName = getDayNameShort(dObj);
+                const dayNum = dObj.getDate();
+                const btnClass = active ? "bg-emerald-500 text-white shadow-md border-emerald-500" : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300";
+                
+                let label = dayName;
+                if(dStr === daysArr[1]) label = "Oggi";
+                else if(dStr === daysArr[0]) label = "Ieri";
+
+                mobileTabsHtml += `
+                    <button onclick="state.ui.calSelectedDate='${dStr}'; render();" class="flex flex-col items-center justify-center min-w-[70px] px-3 py-2 rounded-xl border transition-all ${btnClass}">
+                        <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 opacity-80">${label}</span>
+                        <span class="text-lg font-black leading-none">${dayNum}</span>
+                    </button>`;
+            });
+            mobileTabsHtml += `</div>`;
+
+            const renderDayColumn = (dateStr, isMobileTarget = false) => {
+                const displayTitle = formatDisplayDate(dateStr);
+                const isToday = dateStr === daysArr[1];
+                let blocks = state.data.calendarBlocks.filter(b => isBlockOnDate(b, dateStr));
+                
+                // Meschia i blocchi del Life Hub con quelli provenienti da Google Calendar
+                if(AppData.gcalCache && AppData.gcalCache.length > 0) {
+                    let gEvents = AppData.gcalCache.filter(e => e.date === dateStr);
+                    blocks.push(...gEvents);
+                }
+
+                // Ordina per orario
+                blocks.sort((a,b) => a.startTime.localeCompare(b.startTime));
+
+                let blocksHtml = '';
+                if(blocks.length === 0) {
+                    blocksHtml = `<div class="text-center py-10 opacity-40 italic text-sm text-slate-500"><i class="fas fa-coffee text-2xl mb-2"></i><br>Niente in programma</div>`;
+                } else {
+                    blocks.forEach(b => {
+                        let isDone = false;
+                        if(b.isGcal) {
+                            isDone = state.data.gcalCompleted && state.data.gcalCompleted.includes(b.id + '_' + dateStr);
+                        } else {
+                            isDone = b.completedDates && b.completedDates.includes(dateStr);
+                        }
+                        
+                        const catClass = b.isGcal ? 'block-gcal' : "block-" + (b.category || 'routine');
+                        let icon = b.isGcal ? 'fab fa-google' : (b.type === 'task' ? 'fa-link' : (b.category === 'focus' ? 'fa-laptop-code' : (b.category === 'break' ? 'fa-mug-hot' : 'fa-list-ul')));
+                        
+                        let extraHtml = '';
+                        if(b.type === 'task' && b.taskIds && b.taskIds.length > 0) {
+                            extraHtml += `<div class="mt-1.5 space-y-1 pl-1 border-l-2 border-slate-200 dark:border-slate-600/50">`;
+                            b.taskIds.forEach(tid => {
+                                const t = state.data.tasks.find(x => x.id === tid);
+                                if(t) extraHtml += `<div class="text-[10px] flex items-start gap-1.5 opacity-90 text-slate-700 dark:text-slate-300"><i class="fas fa-check-square mt-0.5 opacity-50"></i> <span class="leading-tight">${t.title}</span></div>`;
+                            });
+                            extraHtml += `</div>`;
+                        }
+                        if(b.notes) {
+                            extraHtml += `<div class="text-[10px] text-slate-600 dark:text-slate-400 opacity-90 mt-2 bg-slate-100/50 dark:bg-slate-800/30 p-1.5 rounded whitespace-pre-wrap leading-tight max-h-20 overflow-y-auto"><i class="fas fa-align-left mr-1.5 opacity-50"></i>${b.notes}</div>`;
+                        }
+
+                        const onClickAction = b.isGcal ? (b.link ? `window.open('${b.link}', '_blank')` : '') : `openBlockModal('${b.id}', '${dateStr}')`;
+                        const cursorStyle = b.isGcal ? (b.link ? 'cursor:pointer' : 'cursor:default') : 'cursor:pointer';
+
+                        blocksHtml += `
+                            <div class="panel p-3 mb-3 flex items-start gap-3 transition-all relative group ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}">
+                                <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 border-current checked:!bg-current checked:!border-current" style="color:inherit" ${isDone ? 'checked' : ''} onclick="toggleBlockCompleted('${b.id}', '${dateStr}')">
+                                <div class="flex-1 min-w-0" onclick="${onClickAction}" style="${cursorStyle}">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-[10px] font-black uppercase tracking-wider opacity-80">${b.startTime}${b.endTime ? ' - '+b.endTime : ''}</span>
+                                        ${b.isRecurring ? `<i class="fas fa-sync-alt text-[9px] opacity-60"></i>` : ''}
+                                    </div>
+                                    <p class="font-bold text-sm leading-tight word-wrap mb-1 ${isDone ? 'line-through opacity-70' : ''}"><i class="fas ${icon} text-[10px] mr-1.5 opacity-60"></i>${b.title}</p>
+                                    ${extraHtml}
+                                </div>
+                            </div>`;
+                    });
+                }
+
+                const mobileVisibility = isMobileTarget ? 'block md:flex' : 'hidden md:flex';
+                const colHeaderColor = isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300';
+                const colHeaderBg = isToday ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
+
+                return `
+                    <div class="calendar-col flex-col h-full ${mobileVisibility} pb-20 md:pb-0">
+                        <div class="flex justify-between items-center p-3 mb-4 rounded-xl border shadow-sm ${colHeaderBg}">
+                            <h3 class="font-bold text-sm ${colHeaderColor}">${displayTitle}</h3>
+                            <button onclick="openBlockModal(null, '${dateStr}')" class="text-xs w-6 h-6 rounded-full bg-white dark:bg-darkbg shadow text-slate-500 hover:text-blue-500 transition flex items-center justify-center active:scale-95"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-1 no-scrollbar space-y-1">
+                            ${blocksHtml}
+                        </div>
+                    </div>`;
+            };
+
+            let desktopColsHtml = `<div class="flex flex-row gap-5 md:gap-6 overflow-x-auto snap-x md:snap-none w-full h-[calc(100vh-250px)] md:h-[calc(100vh-160px)] px-4 md:px-0">`;
+            daysArr.forEach(d => {
+                desktopColsHtml += renderDayColumn(d, d === state.ui.calSelectedDate);
+            });
+            desktopColsHtml += `</div>`;
+
+            return `
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-4 md:mb-6 hidden md:flex">
+                        <h2 class="text-2xl font-bold flex items-center text-slate-800 dark:text-white tracking-tight"><i class="fas fa-calendar-alt text-emerald-500 mr-3"></i> Time Management</h2>
+                    </div>
+                    ${mobileTabsHtml}
+                    <div class="mt-4 md:mt-0 flex-1">
+                        ${desktopColsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // --- MOBILE QUICK ADD ---
+        function openMobileQuickAdd() {
+            const ctxValue = state.ui.tmView.startsWith('p_') || state.ui.tmView.startsWith('sp_') || state.ui.tmView.startsWith('s_') ? state.ui.tmView.replace(/^[ps_]+/, '') : '';
+            const ctxOpts = generateCtxOpts(ctxValue);
+            document.getElementById('mobileCtxContainer').innerHTML = `<select id="gtCtxMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg mt-3">${ctxOpts}</select>`;
+            
+            document.getElementById('mobileQuickAddModal').classList.remove('hidden');
+            document.getElementById('mobileQuickAddModal').classList.add('flex');
+            setTimeout(() => document.getElementById('gtInMobile').focus(), 100);
+        }
+        function closeMobileQuickAdd() {
+            document.getElementById('mobileQuickAddModal').classList.add('hidden');
+            document.getElementById('mobileQuickAddModal').classList.remove('flex');
+        }
+        function addTaskFromGlobalMobile() {
+            const tIn = document.getElementById('gtInMobile'), pIn = document.getElementById('gtPriMobile'), dIn = document.getElementById('gtDateMobile'), cIn = document.getElementById('gtCtxMobile');
+            let ctxValue = cIn ? cIn.value : '';
+            
+            if(!tIn.value.trim()) return;
+            state.data.tasks.push({ id: 't_'+Date.now(), title: tIn.value.trim(), completed: false, priority: parseInt(pIn.value), dueDate: dIn.value, contextId: ctxValue });
+            
+            tIn.value = ''; dIn.value = ''; pIn.value = '0';
+            closeMobileQuickAdd();
+            showToast("Task creata", "success");
+            AppData.triggerSave(); render();
+        }
+
+        function toggleArchivedView() { state.ui.showArchived = !state.ui.showArchived; render(); }
+
+        function toggleSettings() {
+            const m = document.getElementById('settingsModal');
+            if(m.classList.contains('hidden')) {
+                document.getElementById('supabaseUrl').value = AppData.supabaseUrl;
+                document.getElementById('anonKey').value = AppData.anonKey;
+                document.getElementById('gcalIdSettings').value = AppData.gcalId;
+                document.getElementById('gcalApiSettings').value = AppData.gcalApiKey;
+                m.classList.remove('hidden');
+            } else { m.classList.add('hidden'); }
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('anonKey').value.trim();
+            const gcalId = document.getElementById('gcalIdSettings').value.trim();
+            const gcalApi = document.getElementById('gcalApiSettings').value.trim();
+            
+            localStorage.setItem('hub_supabase_url', url);
+            localStorage.setItem('hub_anon_key', key);
+            localStorage.setItem('hub_gcal_id', gcalId);
+            localStorage.setItem('hub_gcal_apikey', gcalApi);
+            
+            AppData.supabaseUrl = url; AppData.anonKey = key; AppData.gcalId = gcalId; AppData.gcalApiKey = gcalApi;
+            
+            toggleSettings();
+            AppData.initialize();
+            
+            if(state.view === 'global_calendar' && gcalId && gcalApi) {
+                AppData.fetchGCalEvents().then(() => render());
+            }
+            showToast("Impostazioni salvate", "success");
+        }
+
+        function factoryReset() { 
+            if(confirm("ATTENZIONE: Questo svuoterà completamente il database locale e il cloud. Sei sicuro?")) { 
+                AppData.reset(); navigate('home'); toggleSettings(); 
+                showToast("Database resettato", "success");
+            } 
+        }
+
+        function openImportModal() { document.getElementById('importDataArea').value = ''; document.getElementById('importModal').classList.remove('hidden'); }
+        function closeImportModal() { document.getElementById('importModal').classList.add('hidden'); }
+        function executeImport() {
+            const jsonText = document.getElementById('importDataArea').value;
+            if(!jsonText.trim()) return;
+            try {
+                AppData.importJSON(jsonText);
+                render();
+                closeImportModal();
+                showToast("Dati importati e salvati con successo!", "success");
+            } catch(e) {
+                showToast("Errore nel formato JSON. Assicurati che il codice sia valido.", "error");
+                console.error(e);
+            }
+        }
+
+        function openEntityModal(mode, type, sId=null, pId=null, spId=null) {
+            editState = { mode, type, id: (mode==='edit' ? (type==='sphere'?sId : (type==='project'?pId : spId)) : null), sId, pId };
+            
+            document.getElementById('emTitle').innerHTML = mode === 'create' ? `<i class="fas fa-plus-circle text-blue-500 mr-2"></i> Nuovo ${type}` : `<i class="fas fa-edit text-blue-500 mr-2"></i> Modifica ${type}`;
+            document.getElementById('entityModal').classList.remove('hidden');
+            document.getElementById('emDeleteBtn').classList.toggle('hidden', mode === 'create');
+            
+            const pFields = document.getElementById('emProjectFields');
+            const reloArea = document.getElementById('emRelocationArea');
+            pFields.classList.toggle('hidden', type === 'sphere');
+            reloArea.classList.toggle('hidden', mode === 'create' || type === 'sphere');
+
+            if(mode === 'create') {
+                document.getElementById('emName').value = ''; document.getElementById('emIcon').value = type==='sphere' ? 'fa-folder' : (type==='project' ? 'fa-folder-open' : 'fa-file-alt');
+                document.getElementById('emColor').value = type==='sphere' ? '#3b82f6' : '#94a3b8';
+                if(type !== 'sphere') {
+                    document.getElementById('emType').value = 'A termine'; document.getElementById('emStatus').value = 'Nuovo';
+                    document.getElementById('emStartDate').value = ''; document.getElementById('emEndDate').value = '';
+                }
+            } else {
+                const e = getEntity(type, editState.id);
+                if(e) {
+                    document.getElementById('emName').value = e.name; document.getElementById('emIcon').value = e.icon; document.getElementById('emColor').value = mapColor(e.color);
+                    if(type !== 'sphere') {
+                        document.getElementById('emType').value = e.type || 'A termine'; document.getElementById('emStatus').value = e.status || 'Attivo';
+                        document.getElementById('emStartDate').value = e.startDate || ''; document.getElementById('emEndDate').value = e.endDate || '';
+                        
+                        const sel = document.getElementById('emParentSelect');
+                        sel.innerHTML = '';
+                        if(type === 'project') {
+                            document.getElementById('emParentLabel').innerText = 'Sposta in Sfera:';
+                            state.data.spheres.forEach(s => sel.innerHTML += `<option value="${s.id}" ${s.id===e.sphereId?'selected':''}>${s.name}</option>`);
+                        } else if(type === 'subproject') {
+                            document.getElementById('emParentLabel').innerText = 'Sposta in Progetto:';
+                            state.data.projects.forEach(p => {
+                                const ps = getEntity('sphere', p.sphereId);
+                                sel.innerHTML += `<option value="${p.id}" ${p.id===e.projectId?'selected':''}>${ps ? ps.name : 'Orfano'} > ${p.name}</option>`;
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        function closeEntityModal() { document.getElementById('entityModal').classList.add('hidden'); }
+        
+        function saveEntityModal() {
+            const name = document.getElementById('emName').value.trim();
+            if(!name) { showToast("Inserisci un nome valido.", "error"); return; }
+            
+            const baseObj = { name, icon: document.getElementById('emIcon').value, color: document.getElementById('emColor').value };
+            let extraObj = {};
+            if(editState.type !== 'sphere') {
+                extraObj = { type: document.getElementById('emType').value, status: document.getElementById('emStatus').value, startDate: document.getElementById('emStartDate').value, endDate: document.getElementById('emEndDate').value };
+            }
+
+            // Fallback robusti per gli ID genitore
+            let currentSId = editState.sId || state.path.sphereId;
+            let currentPId = editState.pId || state.path.projId;
+
+            if(editState.mode === 'create') {
+                const newId = editState.type.charAt(0) + '_' + Date.now();
+                if(editState.type === 'sphere') {
+                    state.data.spheres.push({ id: newId, ...baseObj, order: state.data.spheres.length, notes: '', permanentNotes: '', updates: [] });
+                    navigate('sphere', newId);
+                }
+                else if(editState.type === 'project') {
+                    if(!currentSId) { showToast("Errore: Impossibile determinare la Sfera madre.", "error"); return; }
+                    state.data.projects.push({ id: newId, sphereId: currentSId, ...baseObj, ...extraObj, pinned: false, pinnedLevelId: null, archived: false, order: getChildren('sphere', currentSId).length, notes: '', permanentNotes: '', updates: [] });
+                    navigate('project', currentSId, newId);
+                }
+                else {
+                    if(!currentPId) { showToast("Errore: Impossibile determinare il Progetto madre.", "error"); return; }
+                    state.data.subprojects.push({ id: newId, projectId: currentPId, ...baseObj, ...extraObj, pinned: false, pinnedLevelId: null, archived: false, order: getChildren('project', currentPId).length, notes: '', permanentNotes: '', updates: [] });
+                    navigate('subproject', currentSId, currentPId, newId);
+                }
+                
+                showToast("Creato con successo", "success");
+            } else {
+                const e = getEntity(editState.type, editState.id);
+                if(e) {
+                    Object.assign(e, baseObj, extraObj);
+                    if(editState.type !== 'sphere') {
+                        const newParent = document.getElementById('emParentSelect').value;
+                        if(editState.type === 'project' && e.sphereId !== newParent) {
+                            e.sphereId = newParent;
+                            e.order = getChildren('sphere', newParent).length;
+                            if(state.path.projId === e.id) navigate('project', newParent, e.id);
+                        } else if(editState.type === 'subproject' && e.projectId !== newParent) {
+                            e.projectId = newParent;
+                            e.order = getChildren('project', newParent).length;
+                            if(state.path.subprojId === e.id) {
+                                const targetProj = getEntity('project', newParent);
+                                if(targetProj) navigate('subproject', targetProj.sphereId, newParent, e.id);
+                            }
+                        }
+                    }
+                }
+                showToast("Modifiche salvate", "success");
+            }
+            closeEntityModal(); AppData.triggerSave(); render();
+        }
+
+        function deleteCurrentEntity() {
+            if(!confirm("Eliminare definitivamente? Verranno eliminati anche tutti i contenuti all'interno.")) return;
+            const id = editState.id;
+            if(editState.type === 'sphere') {
+                state.data.spheres = state.data.spheres.filter(x => x.id !== id);
+                const projs = state.data.projects.filter(x => x.sphereId === id).map(x=>x.id);
+                state.data.projects = state.data.projects.filter(x => x.sphereId !== id);
+                state.data.subprojects = state.data.subprojects.filter(x => !projs.includes(x.projectId));
+                navigate('home');
+            } else if(editState.type === 'project') {
+                state.data.projects = state.data.projects.filter(x => x.id !== id);
+                state.data.subprojects = state.data.subprojects.filter(x => x.projectId !== id);
+                navigate('sphere', editState.sId || state.path.sphereId);
+            } else {
+                state.data.subprojects = state.data.subprojects.filter(x => x.id !== id);
+                navigate('project', editState.sId || state.path.sphereId, editState.pId || state.path.projId);
+            }
+            showToast("Eliminato", "success");
+            closeEntityModal(); AppData.triggerSave(); render();
+        }
+
+        async function navigate(view, sId=null, pId=null, spId=null) { 
+            state.view = view; 
+            state.path = { sphereId: sId, projId: pId, subprojId: spId }; 
+            editingTaskId = null; 
+            
+            const headers = document.querySelectorAll('.hidden-in-tm');
+            headers.forEach(h => {
+                if(['global_tasks', 'global_calendar'].includes(view)) h.classList.add('hidden', 'md:flex');
+                else h.classList.remove('hidden', 'md:flex');
+            });
+            
+            render(); 
+
+            // Se siamo nel Calendario e l'utente ha configurato le API, fetcha e re-renderizza istantaneamente
+            if(view === 'global_calendar' && AppData.gcalApiKey && AppData.gcalId) {
+                await AppData.fetchGCalEvents();
+                render();
+            }
+        }
+
+        function render() {
+            renderBreadcrumbs();
+            const c = document.getElementById('app-content');
+            
+            // Trigger animation re-flow
+            c.classList.remove('page-fade');
+            void c.offsetWidth;
+            c.classList.add('page-fade');
+
+            if(state.view === 'home') c.innerHTML = renderDashboard();
+            else if(state.view === 'sphere') c.innerHTML = renderSphere();
+            else if(state.view === 'project') c.innerHTML = renderProject();
+            else if(state.view === 'subproject') c.innerHTML = renderSubproject();
+            else if(state.view === 'global_tasks') c.innerHTML = renderAdvancedTaskManager();
+            else if(state.view === 'global_contacts') c.innerHTML = renderGlobalContacts();
+            else if(state.view === 'global_calendar') c.innerHTML = renderCalendar(); 
+            
+            initQuillEditors(); 
+        }
+
+        function getEntity(type, id) { 
+            if (!state.data[type + 's']) return null;
+            return state.data[type + 's'].find(x => x.id === id) || null; 
+        }
+        
+        function getChildren(parentType, parentId, sortProp = 'order') { 
+            if(parentType === 'sphere') return state.data.projects.filter(p => p.sphereId === parentId).sort((a,b)=>(a[sortProp]||0)-(b[sortProp]||0));
+            if(parentType === 'project') return state.data.subprojects.filter(sp => sp.projectId === parentId).sort((a,b)=>(a[sortProp]||0)-(b[sortProp]||0));
+            return [];
+        }
+        
+        function renderBreadcrumbs() {
+            const nav = document.getElementById('breadcrumbs');
+            let html = `<span class="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 transition" onclick="navigate('home')"><i class="fas fa-home text-xs mb-[1px]"></i> Home</span>`;
+            if (['global_contacts','global_tasks', 'global_calendar'].includes(state.view)) {
+                const labels = { global_tasks: 'Task Manager', global_contacts: 'Rubrica', global_calendar: 'Time Management' };
+                html += ` <i class="fas fa-chevron-right text-[9px] opacity-40 mx-1.5"></i> <span class="text-slate-800 dark:text-slate-200 font-bold">${labels[state.view]}</span>`;
+            } else if (state.path.sphereId) {
+                const s = getEntity('sphere', state.path.sphereId);
+                if(s) {
+                    html += ` <i class="fas fa-chevron-right text-[9px] opacity-40 mx-1.5"></i> <span class="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition" onclick="navigate('sphere','${s.id}')" style="color: ${s.color}">${s.name}</span>`;
+                    if (state.path.projId) {
+                        const p = getEntity('project', state.path.projId);
+                        if(p) {
+                            html += ` <i class="fas fa-chevron-right text-[9px] opacity-40 mx-1.5"></i> <span class="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition text-slate-700 dark:text-slate-300" onclick="navigate('project','${s.id}','${p.id}')">${p.name}</span>`;
+                            if (state.path.subprojId) {
+                                const sp = getEntity('subproject', state.path.subprojId);
+                                if(sp) html += ` <i class="fas fa-chevron-right text-[9px] opacity-40 mx-1.5"></i> <span class="text-slate-900 dark:text-white font-bold">${sp.name}</span>`;
+                            }
+                        }
+                    }
+                }
+            }
+            nav.innerHTML = html;
+        }
+
+        // --- DRAG & DROP LOGIC ---
+        function onDragStart(e, id, type, listType) { 
+            dragSource = { id, type, listType }; 
+            e.dataTransfer.effectAllowed = 'move'; 
+            document.body.classList.add('is-dragging');
+            setTimeout(() => e.target.classList.add('opacity-40'), 0); 
+        }
+        function onDragEnd(e) { 
+            e.target.classList.remove('opacity-40'); 
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); 
+            document.body.classList.remove('is-dragging');
+            dragSource = null; 
+        }
+        function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if(!e.currentTarget.classList.contains('drag-over')) e.currentTarget.classList.add('drag-over'); }
+        function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        
+        function onDrop(e, targetId, targetType, listType) {
+            e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+            document.body.classList.remove('is-dragging');
+            if(!dragSource) return;
+            
+            const isPinnedDrag = dragSource.listType.startsWith('dashboard_pinned_') && listType.startsWith('dashboard_pinned_');
+            if(!isPinnedDrag && dragSource.listType !== listType) return;
+            
+            const srcId = dragSource.id;
+            if(srcId === targetId && dragSource.type === targetType) return;
+
+            let list = [];
+            const prop = (listType.startsWith('dashboard_pinned_')) ? 'pinnedOrder' : 'order';
+
+            if(isPinnedDrag) {
+                const targetLevelId = listType.replace('dashboard_pinned_', '');
+                const draggedItem = getEntity(dragSource.type, srcId);
+                if(draggedItem) draggedItem.pinnedLevelId = targetLevelId;
+
+                list = [...state.data.projects.filter(p=>p.pinned && !p.archived && (p.pinnedLevelId === targetLevelId || (!p.pinnedLevelId && targetLevelId === 'pl_default'))),
+                        ...state.data.subprojects.filter(sp=>sp.pinned && !sp.archived && (sp.pinnedLevelId === targetLevelId || (!sp.pinnedLevelId && targetLevelId === 'pl_default')))]
+                        .sort((a,b) => (a.pinnedOrder||0) - (b.pinnedOrder||0));
+
+                if(targetId) {
+                    const targetIdx = list.findIndex(x => x.id === targetId);
+                    const draggedIdx = list.findIndex(x => x.id === srcId);
+                    if(draggedIdx !== -1) list.splice(draggedIdx, 1);
+                    const newTargetIdx = list.findIndex(x => x.id === targetId);
+                    list.splice(newTargetIdx !== -1 ? newTargetIdx : list.length, 0, draggedItem);
+                } else {
+                    const draggedIdx = list.findIndex(x => x.id === srcId);
+                    if(draggedIdx !== -1) list.splice(draggedIdx, 1);
+                    list.push(draggedItem);
+                }
+            }
+            else if(listType === 'sphere_pinned') list = state.data.projects.filter(p => p.sphereId === state.path.sphereId && p.pinned && p.archived === state.ui.showArchived).sort((a,b) => (a.order||0) - (b.order||0));
+            else if(listType === 'sphere_unpinned') list = state.data.projects.filter(p => p.sphereId === state.path.sphereId && !p.pinned && p.archived === state.ui.showArchived).sort((a,b) => (a.order||0) - (b.order||0));
+            else if(listType === 'project_pinned') list = state.data.subprojects.filter(sp => sp.projectId === state.path.projId && sp.pinned && sp.archived === state.ui.showArchived).sort((a,b) => (a.order||0) - (b.order||0));
+            else if(listType === 'project_unpinned') list = state.data.subprojects.filter(sp => sp.projectId === state.path.projId && !sp.pinned && sp.archived === state.ui.showArchived).sort((a,b) => (a.order||0) - (b.order||0));
+            
+            if(!isPinnedDrag) {
+                const draggedIdx = list.findIndex(x => x.id === srcId), targetIdx = list.findIndex(x => x.id === targetId);
+                if(draggedIdx === -1 || targetIdx === -1) return;
+                const draggedObj = list.splice(draggedIdx, 1)[0];
+                list.splice(targetIdx, 0, draggedObj);
+            }
+
+            list.forEach((item, index) => {
+                if(item.projectId !== undefined) {
+                    let obj = state.data.subprojects.find(x => x.id === item.id);
+                    if(obj) obj[prop] = index;
+                } else if(item.sphereId !== undefined) {
+                    let obj = state.data.projects.find(x => x.id === item.id);
+                    if(obj) obj[prop] = index;
+                } else {
+                    let obj = state.data.spheres.find(x => x.id === item.id);
+                    if(obj) obj[prop] = index;
+                }
+            });
+            AppData.triggerSave(); render();
+        }
+
+        function createDraggableCardHtml(title, sub, type, sId, pId, spId, colorHex, listType, itemObj) {
+            const id = type === 'project' ? pId : spId;
+            const icon = itemObj.icon || (type === 'project' ? 'fa-folder' : 'fa-file-alt');
+            return `
+                <div draggable="true" ondragstart="onDragStart(event, '${id}', '${type}', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${id}', '${type}', '${listType}')"
+                     onclick="navigate('${type}', '${sId}', '${pId}', '${spId}')" class="panel panel-hover p-4 flex justify-between items-center relative group draggable mb-4 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm border-l-[5px]" style="border-left-color: ${colorHex}">
+                    <div class="pl-1 word-wrap flex-1">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center">
+                            ${itemObj.pinned ? '<i class="fas fa-star text-amber-500 text-[10px] mr-1.5"></i>' : ''} <i class="fas ${icon} text-slate-400 dark:text-slate-500 mr-2 text-[13px]"></i> ${title}
+                        </h3>
+                        <p class="text-[10px] font-bold text-slate-500 mt-1.5 uppercase tracking-widest">${sub}</p>
+                    </div>
+                    <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition items-center">
+                        <button onclick="event.stopPropagation(); toggleArchiveEntity('${type}', '${id}')" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Archivia"><i class="fas fa-archive text-[11px]"></i></button>
+                        <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-1 cursor-grab p-1"></i>
+                    </div>
+                </div>`;
+        }
+
+        function addPinnedLevel() {
+            const name = prompt("Nome del nuovo livello in evidenza:");
+            if(name && name.trim()) {
+                state.data.pinnedLevels.push({id: 'pl_'+Date.now(), name: name.trim()});
+                AppData.triggerSave(); render();
+            }
+        }
+        function renamePinnedLevel(id) {
+            const lvl = state.data.pinnedLevels.find(l => l.id === id);
+            if(!lvl) return;
+            const name = prompt("Rinomina livello:", lvl.name);
+            if(name && name.trim()) {
+                lvl.name = name.trim();
+                AppData.triggerSave(); render();
+            }
+        }
+        function deletePinnedLevel(id) {
+            if(id === 'pl_default') return; 
+            if(confirm("Eliminare questo livello? Gli elementi torneranno nel livello predefinito.")) {
+                state.data.pinnedLevels = state.data.pinnedLevels.filter(l => l.id !== id);
+                state.data.projects.forEach(p => { if(p.pinnedLevelId === id) p.pinnedLevelId = 'pl_default'; });
+                state.data.subprojects.forEach(sp => { if(sp.pinnedLevelId === id) sp.pinnedLevelId = 'pl_default'; });
+                AppData.triggerSave(); render();
+            }
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            let pinnedSectionsHtml = '', spheresHtml = '';
+            
+            state.data.spheres.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s => {
+                spheresHtml += `<div onclick="navigate('sphere', '${s.id}')" class="panel panel-hover p-4 flex flex-col items-center justify-center text-center h-28 border-t-[5px] bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm" style="border-top-color: ${s.color}">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110" style="background-color: ${s.color}20"><i class="fas ${s.icon} text-xl" style="color: ${s.color}"></i></div>
+                    <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">${s.name}</h3>
+                </div>`;
+            });
+            
+            state.data.pinnedLevels.forEach(level => {
+                let itemsInLevel = [...state.data.projects.filter(p=>p.pinned && !p.archived && (p.pinnedLevelId === level.id || (!p.pinnedLevelId && level.id === 'pl_default'))),
+                                    ...state.data.subprojects.filter(sp=>sp.pinned && !sp.archived && (sp.pinnedLevelId === level.id || (!sp.pinnedLevelId && level.id === 'pl_default')))]
+                                    .sort((a,b)=>(a.pinnedOrder||0)-(b.pinnedOrder||0));
+                
+                let cardsHtml = '';
+                itemsInLevel.forEach(item => {
+                    if(item.projectId) { 
+                        const p = getEntity('project', item.projectId); 
+                        const s = p ? getEntity('sphere', p.sphereId) : null;
+                        const color = item.color || (p?p.color:null) || (s?s.color:null) || '#94a3b8';
+                        const pName = p ? p.name : 'Sconosciuto';
+                        cardsHtml += createDraggableCardHtml(item.name, `${pName} (Sub)`, 'subproject', s?s.id:null, p?p.id:null, item.id, color, `dashboard_pinned_${level.id}`, item);
+                    } else { 
+                        const s = getEntity('sphere', item.sphereId);
+                        const color = item.color || (s?s.color:null) || '#94a3b8';
+                        const sName = s ? s.name : 'Sconosciuto';
+                        cardsHtml += createDraggableCardHtml(item.name, sName, 'project', s?s.id:null, item.id, null, color, `dashboard_pinned_${level.id}`, item);
+                    }
+                });
+
+                pinnedSectionsHtml += `
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4 group">
+                            <h2 class="text-[11px] font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest"><i class="fas fa-layer-group text-amber-500 mr-2 text-xs"></i> ${level.name}</h2>
+                            <div class="opacity-0 group-hover:opacity-100 transition flex gap-1">
+                                <button onclick="renamePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-blue-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-edit"></i></button>
+                                ${level.id !== 'pl_default' ? `<button onclick="deletePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-trash"></i></button>` : ''}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 min-h-[60px] p-2 -m-2 rounded-xl drop-zone" 
+                             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, null, null, 'dashboard_pinned_${level.id}')">
+                            ${cardsHtml || `<p class="text-xs text-slate-400 italic col-span-2 pt-2">Trascina qui i progetti in evidenza.</p>`}
+                        </div>
+                    </div>`;
+            });
+
+            pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-3 border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 rounded-xl mb-4"><i class="fas fa-plus mr-1"></i> Aggiungi Livello</button>`;
+
+            let ctxFilterOpts = `<option value="all">Tutti i Contesti</option>`;
+            state.data.spheres.forEach(s => {
+                ctxFilterOpts += `<option value="${s.id}" ${state.ui.homeContextFilter===s.id?'selected':''}>● ${s.name}</option>`;
+                state.data.projects.filter(p=>p.sphereId===s.id).forEach(p => {
+                    ctxFilterOpts += `<option value="${p.id}" ${state.ui.homeContextFilter===p.id?'selected':''}>  📁 ${p.name}</option>`;
+                });
+            });
+
+            return `
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="xl:col-span-2 space-y-10">
+                        <section>
+                            ${pinnedSectionsHtml}
+                        </section>
+                        <section>
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-[11px] font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest"><i class="fas fa-globe text-blue-500 mr-2 text-xs"></i> Le tue Sfere</h2>
+                                <button onclick="openEntityModal('create', 'sphere')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition flex items-center bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuova Sfera</button>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">${spheresHtml}</div>
+                        </section>
+                    </div>
+                    <div class="panel p-6 h-[700px] flex flex-col bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                        <div class="flex flex-col border-b border-slate-200 dark:border-darkborder pb-4 mb-5 gap-3">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Task Attivi</h2>
+                                <button onclick="navigate('global_tasks')" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline transition">Vedi Tutti</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <select class="input-base text-[10px] font-bold py-1 px-2 flex-1" onchange="state.ui.homeTaskFilter = this.value; render();">
+                                    <option value="all" ${state.ui.homeTaskFilter==='all'?'selected':''}>Tutte le date</option>
+                                    <option value="today" ${state.ui.homeTaskFilter==='today'?'selected':''}>Oggi</option>
+                                    <option value="next7" ${state.ui.homeTaskFilter==='next7'?'selected':''}>7 Giorni</option>
+                                    <option value="inbox" ${state.ui.homeTaskFilter==='inbox'?'selected':''}>Inbox</option>
+                                </select>
+                                <select class="input-base text-[10px] font-bold py-1 px-2 flex-1" onchange="state.ui.homeContextFilter = this.value; render();">
+                                    ${ctxFilterOpts}
+                                </select>
+                            </div>
+                        </div>
+                        ${renderInlineTasks(null, true, false)} 
+                    </div>
+                </div>`;
+        }
+
+        // --- ENTITY VIEWS & NOTES ---
+        function archiveNotes(type, entityId) {
+            const e = getEntity(type, entityId);
+            if(!e) return;
+            const content = e.notes;
+            if(!content || content.trim() === '' || content === '<p><br></p>') {
+                showToast("Il foglio corrente è vuoto.", "default");
+                return;
+            }
+            if(!e.updates) e.updates = [];
+            e.updates.unshift({ id: 'upd_'+Date.now(), date: getISODate(new Date()), content: content });
+            e.notes = ''; 
+            AppData.triggerSave();
+            render();
+            showToast("Foglio archiviato con successo", "success");
+        }
+
+        function deleteArchivedNote(type, entityId, updateId) {
+            if(!confirm("Sei sicuro di voler eliminare questa nota archiviata?")) return;
+            const e = getEntity(type, entityId);
+            if(e && e.updates) {
+                e.updates = e.updates.filter(u => u.id !== updateId);
+                AppData.triggerSave();
+                render();
+                showToast("Nota eliminata", "success");
+            }
+        }
+
+        function openArchiveModal(type, entityId, updateId) {
+            const e = getEntity(type, entityId);
+            if(!e || !e.updates) return;
+            const upd = e.updates.find(u => u.id === updateId);
+            if(!upd) return;
+
+            currentArchiveEdit = { type, entityId, updateId };
+            document.getElementById('archiveViewDate').innerText = "Data: " + upd.date;
+            document.getElementById('archiveEditIndicator').classList.add('hidden');
+            
+            document.getElementById('archiveViewModal').classList.remove('hidden');
+            document.getElementById('archiveViewModal').classList.add('flex');
+
+            if(!archiveQuill) {
+                const tOpts = [['bold', 'italic', 'underline', 'strike'], ['blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'color': [] }, { 'background': [] }], ['link'], ['clean']];
+                archiveQuill = new Quill('#quill-archive-editor', { theme: 'snow', modules: { toolbar: tOpts } });
+                archiveQuill.on('text-change', function(delta, oldDelta, source) {
+                    if(source === 'user') document.getElementById('archiveEditIndicator').classList.remove('hidden');
+                });
+            }
+            archiveQuill.root.innerHTML = upd.content;
+        }
+
+        function closeArchiveModal() {
+            document.getElementById('archiveViewModal').classList.add('hidden');
+            document.getElementById('archiveViewModal').classList.remove('flex');
+            currentArchiveEdit = { type: null, entityId: null, updateId: null };
+        }
+
+        function saveArchiveEdit() {
+            if(!currentArchiveEdit.entityId) return;
+            const e = getEntity(currentArchiveEdit.type, currentArchiveEdit.entityId);
+            if(e && e.updates) {
+                const upd = e.updates.find(u => u.id === currentArchiveEdit.updateId);
+                if(upd) {
+                    upd.content = archiveQuill.root.innerHTML;
+                    AppData.triggerSave();
+                    document.getElementById('archiveEditIndicator').classList.add('hidden');
+                    showToast("Archivio aggiornato", "success");
+                    render();
+                }
+            }
+        }
+
+        function renderArchivedNotes(updates, type, entityId) {
+            if(!updates || updates.length === 0) return '';
+            let html = `
+                <div class="mt-8 pt-6 border-t border-slate-200 dark:border-darkborder">
+                    <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-4"><i class="fas fa-history mr-2 text-sm"></i> Storico Appunti Archiviati</h3>
+                    <div class="space-y-3">
+            `;
+            updates.forEach(u => {
+                let preview = u.content.replace(/<[^>]*>?/gm, '').substring(0, 80) + '...';
+                if(preview.trim() === '...') preview = 'Contenuto multimediale o formattato';
+                html += `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-[#202938] border border-slate-200 dark:border-darkborder rounded-xl group hover:shadow-sm transition">
+                        <div class="flex-1 min-w-0 cursor-pointer" onclick="openArchiveModal('${type}', '${entityId}', '${u.id}')">
+                            <div class="text-[10px] font-bold text-slate-500 mb-1"><i class="far fa-calendar-alt mr-1"></i> ${u.date}</div>
+                            <div class="text-xs text-slate-600 dark:text-slate-300 truncate">${preview}</div>
+                        </div>
+                        <div class="flex gap-1 ml-3 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="openArchiveModal('${type}', '${entityId}', '${u.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition"><i class="fas fa-expand-alt"></i></button>
+                            <button onclick="deleteArchivedNote('${type}', '${entityId}', '${u.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+            return html;
+        }
+
+        function renderSphere() {
+            const s = getEntity('sphere', state.path.sphereId);
+            if(!s) return `<div class="text-center p-10"><p>Sfera non trovata.</p></div>`;
+            const projs = getChildren('sphere', s.id);
+            const pinned = projs.filter(p => p.pinned && p.archived === state.ui.showArchived);
+            const unpinned = projs.filter(p => !p.pinned && p.archived === state.ui.showArchived);
+            
+            const renderProjList = (list, listType) => list.map(p => {
+                const color = p.color || s.color;
+                return `
+                <div draggable="true" ondragstart="onDragStart(event, '${p.id}', 'project', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${p.id}', 'project', '${listType}')"
+                     class="panel panel-hover p-4 flex justify-between items-start mb-4 border-l-[5px] group draggable bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm" style="border-left-color: ${color}">
+                    <div class="word-wrap flex-1" onclick="navigate('project', '${s.id}', '${p.id}')">
+                        <h3 class="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100 mb-2">${p.pinned ? `<i class="fas fa-star text-amber-500 text-[10px]"></i>` : ''} <i class="fas ${p.icon||'fa-folder'} text-slate-400 dark:text-slate-500 mr-1 text-[13px]"></i> ${p.name}</h3>
+                        <div class="flex gap-2 text-[10px] font-bold mt-1">
+                            <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.type}</span> 
+                            <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.status}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="togglePin('project', '${p.id}')" class="text-slate-400 hover:text-amber-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Fissa"><i class="fas fa-star text-xs"></i></button>
+                        <button onclick="toggleArchiveEntity('project', '${p.id}')" class="text-slate-400 hover:text-blue-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Archivia"><i class="fas fa-archive text-xs"></i></button>
+                        <button onclick="openEntityModal('edit', 'project', '${s.id}', '${p.id}')" class="text-slate-400 hover:text-slate-800 dark:hover:text-white p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i class="fas fa-edit text-xs"></i></button>
+                        <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-2 cursor-grab p-1"></i>
+                    </div>
+                </div>`}).join('');
+
+            return `
+                <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-5 border-b border-slate-200 dark:border-darkborder gap-4">
+                    <h2 class="text-3xl font-bold flex items-center tracking-tight" style="color: ${s.color}"><i class="fas ${s.icon} mr-3 opacity-80"></i> ${s.name}</h2>
+                    <div class="flex flex-wrap gap-2.5 text-sm relative z-20">
+                        <button onclick="toggleArchivedView()" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-archive mr-1.5"></i> ${state.ui.showArchived ? 'Mostra Attivi' : 'Mostra Archivio'}</button>
+                        <button onclick="openEntityModal('edit', 'sphere', '${s.id}')" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-edit mr-1.5"></i> Impostazioni</button>
+                        <button onclick="openEntityModal('create', 'project', '${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-xs rounded-lg font-bold shadow transition active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuovo Progetto</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div class="xl:col-span-3 space-y-6">
+                        <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder border-t-[5px]" style="border-top-color: ${s.color}">
+                            <h3 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-4"><i class="fas fa-info-circle mr-1.5"></i> Informazioni Generali</h3>
+                            <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
+                                <div id="quill-perm-editor-sphere" class="min-h-[60px]"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
+                                <h3 class="text-[11px] font-bold text-amber-500 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-star mr-1.5"></i> Progetti In Evidenza</h3>
+                                <div class="space-y-4">${renderProjList(pinned, 'sphere_pinned') || `<p class="text-xs text-slate-400 italic">Niente in evidenza.</p>`}</div>
+                            </div>
+                            <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
+                                <h3 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-folder mr-1.5"></i> ${state.ui.showArchived ? 'Archivio Progetti' : 'Tutti i Progetti'}</h3>
+                                <div class="space-y-4">${renderProjList(unpinned, 'sphere_unpinned') || `<p class="text-xs text-slate-400 italic">Nessun progetto in questa sezione.</p>`}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                            <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-3 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Sfera</h3>
+                            ${renderInlineTasks(s.id)}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderProject() {
+            const p = getEntity('project', state.path.projId);
+            if(!p) return `<div class="text-center p-10"><p>Progetto non trovato.</p></div>`;
+            const s = getEntity('sphere', state.path.sphereId);
+            const subs = getChildren('project', p.id);
+            const pinned = subs.filter(sp => sp.pinned && sp.archived === state.ui.showArchived);
+            const unpinned = subs.filter(sp => !sp.pinned && sp.archived === state.ui.showArchived);
+            const prjColor = p.color || (s?s.color:'#94a3b8');
+            
+            const renderSubList = (list, listType) => list.map(sp => {
+                const spColor = sp.color || p.color || (s?s.color:'#94a3b8');
+                return `
+                <div draggable="true" ondragstart="onDragStart(event, '${sp.id}', 'subproject', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${sp.id}', 'subproject', '${listType}')"
+                     class="panel panel-hover p-4 flex justify-between items-center mb-3 border-l-[5px] group draggable bg-slate-50 dark:bg-[#202938] border border-slate-200 dark:border-darkborder" style="border-left-color: ${spColor}" onclick="navigate('subproject', '${s?s.id:null}', '${p.id}', '${sp.id}')">
+                    <div class="word-wrap flex-1">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                            ${sp.pinned ? '<i class="fas fa-star text-amber-500 text-[10px]"></i>' : ''} <i class="fas ${sp.icon||'fa-file-alt'} text-slate-400 dark:text-slate-500 text-xs"></i> ${sp.name}
+                        </h4>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="event.stopPropagation(); togglePin('subproject', '${sp.id}')" class="text-slate-400 hover:text-amber-500 p-2.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-star text-[11px]"></i></button>
+                        <button onclick="event.stopPropagation(); toggleArchiveEntity('subproject', '${sp.id}')" class="text-slate-400 hover:text-blue-500 p-2.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-archive text-[11px]"></i></button>
+                        <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-2 cursor-grab p-1"></i>
+                    </div>
+                </div>`}).join('');
+
+            return `
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div class="xl:col-span-3 space-y-6">
+                        <div class="panel flex flex-col bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder border-t-[6px]" style="border-top-color: ${prjColor}">
+                            <div class="p-6 md:p-8 border-b border-slate-200 dark:border-darkborder relative">
+                                <div class="absolute top-6 md:top-8 right-6 md:right-8 flex gap-2 text-sm z-10">
+                                    <button onclick="togglePin('project', '${p.id}')" class="text-slate-400 hover:text-amber-500 transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" title="Fissa in alto"><i class="fas fa-star ${p.pinned ? 'text-amber-500':''}"></i></button>
+                                    <button onclick="toggleArchiveEntity('project', '${p.id}')" class="text-slate-400 hover:text-blue-500 transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" title="Archivia Progetto"><i class="fas fa-archive"></i></button>
+                                    <button onclick="openEntityModal('edit', 'project', '${s?s.id:null}', '${p.id}')" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" title="Modifica"><i class="fas fa-edit"></i></button>
+                                </div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-700" style="color:${s?s.color:'#94a3b8'}">${s?s.name:'Sconosciuta'}</span>
+                                </div>
+                                <h2 class="text-3xl font-bold mb-4 pr-32 text-slate-900 dark:text-white tracking-tight"><i class="fas ${p.icon||'fa-folder'} mr-3 opacity-70"></i> ${p.name}</h2>
+                                <div class="flex flex-wrap gap-3 text-xs font-bold text-slate-500">
+                                    <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${p.type}</span>
+                                    <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${p.status}</span>
+                                    ${p.archived ? `<span class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-3 py-1.5 rounded-md"><i class="fas fa-archive mr-1.5"></i>Archiviato</span>` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="p-6 md:p-8">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest"><i class="fas fa-book-open text-blue-500 mr-2 text-sm"></i> Quaderno Appunti</h3>
+                                    <button onclick="handleNotesClick('project', '${p.id}')" id="toggle-notes-btn" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 transition"><i class="fas fa-chevron-down mr-1.5 hidden md:inline"></i> Mostra Appunti</button>
+                                </div>
+                                
+                                <div id="notes-container" class="hidden flex-col gap-8 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50">
+                                    <div>
+                                        <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-3"><i class="fas fa-thumbtack mr-2 text-sm"></i> Appunti Permanenti</h3>
+                                        <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
+                                            <div id="quill-perm-editor-project" class="min-h-[100px]"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center"><i class="fas fa-pen-nib mr-2 text-sm"></i> Foglio Appunti Libero</h3>
+                                            <div class="flex gap-2">
+                                                <button onclick="toggleFocusMode('quill-editor-project')" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-expand"></i> Zen Mode</button>
+                                                <button onclick="archiveNotes('project', '${p.id}')" class="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg transition shadow-sm active:scale-95"><i class="fas fa-file-archive mr-1.5"></i> Archivia</button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
+                                            <div id="quill-editor-project" class="min-h-[200px]"></div>
+                                        </div>
+                                    </div>
+                                    ${renderArchivedNotes(p.updates, 'project', p.id)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel p-6 md:p-8 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
+                            <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-darkborder">
+                                <h3 class="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-sitemap text-blue-500 mr-2 text-sm"></i> Sottoprogetti</h3>
+                                <div class="flex gap-2.5 text-sm z-10 relative">
+                                    <button onclick="toggleArchivedView()" class="text-[10px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white px-3 py-1.5 rounded-lg border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-[#202938] transition active:scale-95"><i class="fas fa-archive mr-1.5"></i> ${state.ui.showArchived ? 'Attivi':'Archivio'}</button>
+                                    <button onclick="openEntityModal('create', 'subproject', '${s?s.id:null}', '${p.id}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] px-4 py-1.5 rounded-lg shadow transition active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuovo</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-3">
+                                    ${pinned.length > 0 ? `<h4 class="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-3 flex items-center"><i class="fas fa-star mr-1.5"></i> In Evidenza</h4>${renderSubList(pinned, 'project_pinned')}` : ''}
+                                </div>
+                                <div class="space-y-3">
+                                    <h4 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">${state.ui.showArchived ? 'Archiviati' : 'Tutti i Sottoprogetti'}</h4>
+                                    ${renderSubList(unpinned, 'project_unpinned') || `<p class="text-sm text-slate-400 italic">Nessun sottoprogetto.</p>`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                            <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-4 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Progetto</h3>
+                            ${renderInlineTasks(p.id)}
+                        </div>
+                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                            <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-200 dark:border-darkborder">
+                                <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-users text-purple-500 mr-2 text-sm"></i> Contatti</h3>
+                                <button onclick="openContactModal(null, '${p.id}')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline transition p-1"><i class="fas fa-plus"></i></button>
+                            </div>
+                            ${renderContextContacts(p.id)}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderSubproject() {
+            const sp = getEntity('subproject', state.path.subprojId);
+            if(!sp) return `<div class="text-center p-10"><p>Sottoprogetto non trovato.</p></div>`;
+            const p = getEntity('project', sp.projectId);
+            const s = p ? getEntity('sphere', p.sphereId) : null;
+            const spColor = sp.color || (p?p.color:null) || (s?s.color:'#94a3b8');
+
+            return `
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div class="xl:col-span-3 space-y-6">
+                        <div class="panel flex flex-col bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder border-t-[6px]" style="border-top-color: ${spColor}">
+                            <div class="p-6 md:p-8 border-b border-slate-200 dark:border-darkborder relative">
+                                <div class="absolute top-6 md:top-8 right-6 md:right-8 flex gap-2 text-sm z-10">
+                                    <button onclick="togglePin('subproject', '${sp.id}')" class="text-slate-400 hover:text-amber-500 transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" title="Fissa in alto"><i class="fas fa-star ${sp.pinned ? 'text-amber-500':''}"></i></button>
+                                    <button onclick="toggleArchiveEntity('subproject', '${sp.id}')" class="text-slate-400 hover:text-blue-500 transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" title="Archivia"><i class="fas fa-archive"></i></button>
+                                    <button onclick="openEntityModal('edit', 'subproject', '${s?s.id:null}', '${p?p.id:null}', '${sp.id}')" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-edit"></i></button>
+                                </div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-700" style="color:${spColor}">${p?p.name:'Sconosciuto'}</span>
+                                </div>
+                                <h2 class="text-3xl font-bold mb-4 pr-32 text-slate-900 dark:text-white tracking-tight"><i class="fas ${sp.icon||'fa-file-alt'} mr-3 opacity-70"></i> ${sp.name}</h2>
+                                <div class="flex gap-3 text-xs font-bold text-slate-500">
+                                    <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.type || 'A termine'}</span>
+                                    <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.status || 'Attivo'}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="p-6 md:p-8">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest"><i class="fas fa-book-open text-blue-500 mr-2 text-sm"></i> Quaderno Appunti</h3>
+                                    <button onclick="handleNotesClick('subproject', '${sp.id}')" id="toggle-notes-btn" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 transition"><i class="fas fa-chevron-down mr-1.5 hidden md:inline"></i> Mostra Appunti</button>
+                                </div>
+                                
+                                <div id="notes-container" class="hidden flex-col gap-8 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50">
+                                    <div>
+                                        <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-3"><i class="fas fa-thumbtack mr-2 text-sm"></i> Appunti Permanenti</h3>
+                                        <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
+                                            <div id="quill-perm-editor-subproject" class="min-h-[100px]"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center"><i class="fas fa-pen-nib mr-2 text-sm"></i> Foglio Appunti Libero</h3>
+                                            <div class="flex gap-2">
+                                                <button onclick="toggleFocusMode('quill-editor-subproject')" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-expand"></i> Zen Mode</button>
+                                                <button onclick="archiveNotes('subproject', '${sp.id}')" class="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg transition shadow-sm active:scale-95"><i class="fas fa-file-archive mr-1.5"></i> Archivia</button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
+                                            <div id="quill-editor-subproject" class="min-h-[200px]"></div>
+                                        </div>
+                                    </div>
+                                    ${renderArchivedNotes(sp.updates, 'subproject', sp.id)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                            <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-4 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Specifici</h3>
+                            ${renderInlineTasks(sp.id)}
+                        </div>
+                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                            <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-200 dark:border-darkborder">
+                                <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-users text-purple-500 mr-2 text-sm"></i> Contatti</h3>
+                                <button onclick="openContactModal(null, '${sp.id}')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline transition p-1"><i class="fas fa-plus"></i></button>
+                            </div>
+                            ${renderContextContacts(sp.id)}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function initQuillEditors() {
+            const tOpts = [['bold', 'italic', 'underline', 'strike'], ['blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'color': [] }, { 'background': [] }], ['link'], ['clean']];
+            
+            ['sphere', 'project', 'subproject'].forEach(type => {
+                const id = type === 'sphere' ? state.path.sphereId : (type === 'project' ? state.path.projId : state.path.subprojId);
+                if (!id) return;
+                const entity = getEntity(type, id);
+                if(!entity) return;
+
+                if (type !== 'sphere') {
+                    const el = document.getElementById(`quill-editor-${type}`);
+                    if (el) {
+                        el.__quill = new Quill(el, { theme: 'snow', modules: { toolbar: tOpts }, placeholder: 'Inizia a scrivere nel foglio libero...' });
+                        el.__quill.root.innerHTML = entity.notes || '';
+                        el.__quill.on('text-change', function(delta, oldDelta, source) { 
+                            if (source === 'user') {
+                                entity.notes = el.__quill.root.innerHTML; 
+                                AppData.triggerSave(); 
+                            }
+                        });
+                    }
+                }
+
+                const permEl = document.getElementById(`quill-perm-editor-${type}`);
+                if (permEl) {
+                    permEl.__quill = new Quill(permEl, { theme: 'snow', modules: { toolbar: tOpts }, placeholder: 'Scrivi qui le informazioni chiave permanenti...' });
+                    permEl.__quill.root.innerHTML = entity.permanentNotes || '';
+                    permEl.__quill.on('text-change', function(delta, oldDelta, source) { 
+                        if (source === 'user') {
+                            entity.permanentNotes = permEl.__quill.root.innerHTML; 
+                            AppData.triggerSave(); 
+                        }
+                    });
+                }
+            });
+        }
+
+        function togglePin(type, id) { 
+            const e = getEntity(type, id);
+            if(e) { e.pinned = !e.pinned; AppData.triggerSave(); render(); }
+        }
+        function toggleArchiveEntity(type, id) { 
+            const e = getEntity(type, id);
+            if(e) { e.archived = !e.archived; AppData.triggerSave(); render(); }
+        }
+
+        // --- TASKS ---
+        function getContextInfo(cId) {
+            if(!cId) return {name: 'Inbox', color: '#94a3b8'};
+            let s = getEntity('sphere', cId); if(s) return {name: s.name, color: s.color};
+            let p = getEntity('project', cId); if(p) { let ps = getEntity('sphere', p.sphereId); return {name: p.name, color: p.color || (ps?ps.color:'#94a3b8')}; }
+            let sp = getEntity('subproject', cId); 
+            if(sp) {
+                let pp = getEntity('project', sp.projectId);
+                let ps = pp ? getEntity('sphere', pp.sphereId) : null;
+                return {name: sp.name, color: sp.color || (pp?pp.color:null) || (ps?ps.color:'#94a3b8')};
+            }
+            return {name: 'Sconosciuto', color: '#94a3b8'};
+        }
+
+        function generateCtxOpts(selectedId) {
+            let opts = `<option value="">📥 Inbox (Nessun contesto)</option>`;
+            state.data.spheres.forEach(s => {
+                opts += `<optgroup label="Sfera: ${s.name}">`;
+                opts += `<option value="${s.id}" ${s.id===selectedId?'selected':''}>● Sfera: ${s.name}</option>`;
+                state.data.projects.filter(p=>p.sphereId===s.id).forEach(p => {
+                    opts += `<option value="${p.id}" ${p.id===selectedId?'selected':''}>  📁 ${p.name}</option>`;
+                    state.data.subprojects.filter(sp=>sp.projectId===p.id).forEach(sp => { 
+                        opts += `<option value="${sp.id}" ${sp.id===selectedId?'selected':''}>    ↳ 📄 ${sp.name}</option>`; 
+                    });
+                });
+                opts += `</optgroup>`;
+            });
+            return opts;
+        }
+
+        function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true) {
+            let validCtxIds = [];
+            if (contextId) {
+                validCtxIds = [contextId];
+                const s = getEntity('sphere', contextId);
+                const p = getEntity('project', contextId);
+                if (s) {
+                    getChildren('sphere', s.id).forEach(proj => {
+                        validCtxIds.push(proj.id);
+                        getChildren('project', proj.id).forEach(sub => validCtxIds.push(sub.id));
+                    });
+                } else if (p) {
+                    getChildren('project', p.id).forEach(sub => validCtxIds.push(sub.id));
+                }
+            }
+
+            let tasks = contextId ? state.data.tasks.filter(t => validCtxIds.includes(t.contextId)) : [...state.data.tasks];
+
+            if (showGlobal && !contextId) {
+                const filter = state.ui.homeTaskFilter || 'all';
+                const ctxFilter = state.ui.homeContextFilter || 'all';
+                const todayStr = getISODate(new Date());
+
+                if (ctxFilter !== 'all') {
+                    let globalValidCtxIds = [ctxFilter];
+                    const gs = getEntity('sphere', ctxFilter);
+                    const gp = getEntity('project', ctxFilter);
+                    if (gs) {
+                        getChildren('sphere', gs.id).forEach(proj => {
+                            globalValidCtxIds.push(proj.id);
+                            getChildren('project', proj.id).forEach(sub => globalValidCtxIds.push(sub.id));
+                        });
+                    } else if (gp) {
+                        getChildren('project', gp.id).forEach(sub => globalValidCtxIds.push(sub.id));
+                    }
+                    tasks = tasks.filter(t => globalValidCtxIds.includes(t.contextId));
+                }
+
+                if(filter === 'today') { tasks = tasks.filter(t => t.dueDate === todayStr); }
+                else if(filter === 'next7') { 
+                    const today = new Date();
+                    const nextWeek = new Date();
+                    nextWeek.setDate(today.getDate() + 7);
+                    const tStr = getISODate(today);
+                    const nStr = getISODate(nextWeek);
+                    tasks = tasks.filter(t => t.dueDate >= tStr && t.dueDate <= nStr); 
+                }
+                else if(filter === 'inbox') { tasks = tasks.filter(t => !t.contextId); }
+            }
+
+            const hasCompleted = tasks.some(t => t.completed);
+            if(!state.ui.showCompletedTasks) tasks = tasks.filter(t => !t.completed);
+            tasks.sort((a,b) => a.completed - b.completed || b.priority - a.priority);
+
+            const listCtxOpts = generateCtxOpts(contextId || '');
+
+            let html = `
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="tIn_${contextId||'g'}" class="input-base flex-1 font-semibold text-sm py-2" placeholder="Aggiungi una nuova task..." onkeypress="if(event.key === 'Enter') addTask('${contextId||''}')">
+                    <select id="tCtx_${contextId||'g'}" class="input-base w-32 text-xs font-bold hidden sm:block">${listCtxOpts}</select>
+                    <button onclick="addTask('${contextId||''}')" class="bg-blue-600 hover:bg-blue-700 px-4 rounded-lg text-white transition shadow-sm active:scale-95"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="space-y-2.5 max-h-[350px] overflow-y-auto pr-2">`;
+            
+            if(tasks.length === 0) html += `<p class="text-xs text-slate-400 text-center py-6 italic">Nessun task in questa lista.</p>`;
+            
+            tasks.forEach(t => {
+                const ctx = getContextInfo(t.contextId);
+                
+                let cbClass = "";
+                if(t.priority === 3) cbClass = "border-red-400 checked:bg-red-500 checked:border-red-500";
+                else if(t.priority === 2) cbClass = "border-amber-400 checked:bg-amber-500 checked:border-amber-500";
+                else if(t.priority === 1) cbClass = "border-blue-400 checked:bg-blue-500 checked:border-blue-500";
+                
+                const ctxBorder = ctx.color !== '#94a3b8' ? `border-left-color: ${ctx.color};` : `border-left-color: transparent;`;
+
+                if (editingTaskId === t.id) {
+                    html += `
+                        <div class="flex flex-col gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-600 shadow-inner">
+                            <input type="text" id="etTitle_${t.id}" value="${t.title}" class="input-base font-bold text-sm py-1.5">
+                            <div class="flex flex-wrap gap-2">
+                                <select id="etPri_${t.id}" class="input-base w-24 text-xs font-bold py-1.5"><option value="0" ${t.priority===0?'selected':''}>No Prio</option><option value="1" ${t.priority===1?'selected':''}>Bassa</option><option value="2" ${t.priority===2?'selected':''}>Media</option><option value="3" ${t.priority===3?'selected':''}>Alta</option></select>
+                                <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-1.5">
+                                <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-1.5">${generateCtxOpts(t.contextId)}</select>
+                            </div>
+                            <div class="flex justify-end gap-2 mt-2">
+                                <button onclick="editingTaskId=null; render()" class="text-xs font-bold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-200 dark:bg-slate-700 transition">Annulla</button>
+                                <button onclick="saveTaskEdit('${t.id}', 'etCtx_${t.id}')" class="text-xs font-bold px-5 py-2 rounded-lg bg-blue-600 text-white shadow-sm transition active:scale-95">Salva</button>
+                            </div>
+                        </div>`;
+                } else {
+                    html += `
+                        <div id="taskRow_${t.id}" class="panel p-2 md:p-2.5 flex items-center gap-3 bg-slate-50 dark:bg-[#202938] border border-slate-200 dark:border-darkborder rounded-xl hover:shadow-md transition group border-l-[3px] ${t.completed ? 'opacity-50 grayscale' : ''}" style="${ctxBorder}">
+                            <input type="checkbox" class="task-checkbox shrink-0 mt-0 ml-1 ${cbClass}" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}')">
+                            <div class="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium word-wrap leading-tight">${t.title}</p>
+                                ${(t.dueDate || (t.contextId && showGlobal)) ? `
+                                <div class="flex items-center gap-2.5 shrink-0 mt-1 sm:mt-0">
+                                    ${showGlobal && t.contextId ? `<span class="text-[9px] uppercase font-bold tracking-wider truncate px-2 py-0.5 rounded border" style="color:${ctx.color}; border-color:${ctx.color}40; background-color:${ctx.color}10">${ctx.name}</span>` : ''}
+                                    ${t.dueDate ? `<span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold"><i class="far fa-calendar mr-1.5"></i>${t.dueDate}</span>` : ''}
+                                </div>` : ''}
+                            </div>
+                            <div class="flex items-center opacity-0 group-hover:opacity-100 transition mr-1">
+                                <button class="text-slate-400 hover:text-blue-500 text-sm p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition" onclick="editTask('${t.id}')"><i class="fas fa-edit"></i></button>
+                                <button class="text-slate-400 hover:text-red-500 text-sm p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition" onclick="deleteTask('${t.id}')"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>`;
+                }
+            });
+
+            if(showCompletedOption && hasCompleted) {
+                html += `<div class="mt-5 text-center border-t border-slate-200 dark:border-darkborder pt-4"><button onclick="state.ui.showCompletedTasks = !state.ui.showCompletedTasks; render();" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg">${state.ui.showCompletedTasks ? 'Nascondi completati' : 'Mostra completati'}</button></div>`;
+            }
+            return html + `</div>`;
+        }
+
+        function toggleTmSidebar() {
+            const sidebar = document.getElementById('tmSidebar');
+            const overlay = document.getElementById('tmOverlayInner');
+            
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                if(overlay) overlay.classList.remove('open');
+            } else {
+                sidebar.classList.add('open');
+                if(overlay) overlay.classList.add('open');
+            }
+        }
+
+        function setListSetting(key, value) {
+            const listId = state.ui.tmView;
+            if(!tmListSettings[listId]) tmListSettings[listId] = { groupBy: 'priority', sortBy: 'priority' };
+            tmListSettings[listId][key] = value;
+            localStorage.setItem('hub_tm_settings', JSON.stringify(tmListSettings));
+            render();
+        }
+
+        function renderAdvancedTaskManager() {
+            let navHtml = `
+                <div class="flex items-center gap-3 p-5 mb-2 md:hidden border-b border-slate-200 dark:border-slate-700">
+                    <button onclick="navigate('home')" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-lg transition hover:text-blue-500 shadow-sm active:scale-95"><i class="fas fa-home"></i></button>
+                    <div class="font-bold text-slate-800 dark:text-white flex-1 leading-tight text-sm">Dashboard<br><span class="text-[10px] text-slate-400 font-normal">Torna alla home</span></div>
+                    <button onclick="toggleTmSidebar()" class="p-2 text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full w-9 h-9 flex items-center justify-center transition active:scale-95"><i class="fas fa-times text-sm"></i></button>
+                </div>
+                
+                <div class="mb-6 space-y-1 mt-4 md:mt-0 px-3 md:px-0">
+                    <div class="tm-nav-item ${state.ui.tmView==='all'?'active':''}" onclick="state.ui.tmView='all'; toggleTmSidebar(); render();"><i class="fas fa-layer-group w-5 text-blue-500 text-center"></i> Tutte le task</div>
+                    <div class="tm-nav-item ${state.ui.tmView==='inbox'?'active':''}" onclick="state.ui.tmView='inbox'; toggleTmSidebar(); render();"><i class="fas fa-inbox w-5 text-slate-500 text-center"></i> Posta in arrivo</div>
+                    <div class="tm-nav-item ${state.ui.tmView==='today'?'active':''}" onclick="state.ui.tmView='today'; toggleTmSidebar(); render();"><i class="fas fa-calendar-day w-5 text-amber-500 text-center"></i> Oggi</div>
+                    <div class="tm-nav-item ${state.ui.tmView==='next7'?'active':''}" onclick="state.ui.tmView='next7'; toggleTmSidebar(); render();"><i class="fas fa-calendar-alt w-5 text-purple-500 text-center"></i> Prossimi 7 Giorni</div>
+                </div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-5 md:px-2 border-t border-slate-200 dark:border-slate-700 pt-5">Le Tue Liste</div>
+                <div class="space-y-1 max-h-[60vh] overflow-y-auto px-3 md:px-0 pb-20">`;
+            
+            state.data.spheres.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s => {
+                navHtml += `<div class="mb-2">
+                            <div class="flex items-center group"><i class="fas fa-chevron-down text-[11px] text-slate-400 cursor-pointer w-8 text-center hover:text-slate-800 dark:hover:text-white transition p-2" onclick="toggleNavFolder(event, 'nav_s_${s.id}')"></i><div class="tm-nav-item flex-1 ${state.ui.tmView==='s_'+s.id?'active':''}" onclick="state.ui.tmView='s_${s.id}'; toggleTmSidebar(); render();" style="color: ${state.ui.tmView==='s_'+s.id ? s.color : ''}"><i class="fas ${s.icon} w-5 text-center" style="color:${s.color}"></i> ${s.name}</div></div>
+                            <div id="nav_s_${s.id}" class="pl-3 ml-4 mt-1 mb-2 space-y-1">`;
+                
+                getChildren('sphere', s.id).filter(p=>!p.archived).forEach(p => {
+                    const subs = getChildren('project', p.id).filter(sp=>!sp.archived);
+                    navHtml += `<div>`;
+                    if(subs.length > 0) {
+                        navHtml += `<div class="flex items-center group"><i class="fas fa-chevron-down text-[10px] text-slate-400 cursor-pointer w-8 text-center hover:text-slate-800 dark:hover:text-white transition p-2" onclick="toggleNavFolder(event, 'nav_p_${p.id}')"></i><div class="tm-nav-item flex-1 text-sm ${state.ui.tmView==='p_'+p.id?'active':''}" onclick="state.ui.tmView='p_${p.id}'; toggleTmSidebar(); render();"><i class="fas ${p.icon||'fa-folder'} w-5 text-center text-slate-400"></i> ${p.name}</div></div>`;
+                        navHtml += `<div id="nav_p_${p.id}" class="pl-3 ml-4 mt-1 space-y-1">`;
+                        subs.forEach(sp => {
+                            navHtml += `<div class="flex items-center ml-1"><div class="tm-nav-item flex-1 text-xs ${state.ui.tmView==='sp_'+sp.id?'active':''}" onclick="state.ui.tmView='sp_'+sp.id'; toggleTmSidebar(); render();"><i class="fas ${sp.icon||'fa-file-alt'} w-5 text-center text-slate-400"></i> ${sp.name}</div></div>`;
+                        });
+                        navHtml += `</div>`;
+                    } else {
+                        navHtml += `<div class="flex items-center group"><div class="w-8"></div><div class="tm-nav-item flex-1 text-sm ${state.ui.tmView==='p_'+p.id?'active':''}" onclick="state.ui.tmView='p_${p.id}'; toggleTmSidebar(); render();"><i class="fas ${p.icon||'fa-folder'} w-5 text-center text-slate-400"></i> ${p.name}</div></div>`;
+                    }
+                    navHtml += `</div>`;
+                });
+                navHtml += `</div></div>`;
+            });
+            navHtml += `</div>`;
+
+            let currentCtxId = "";
+            if(state.ui.tmView.startsWith('s_')) currentCtxId = state.ui.tmView.replace('s_','');
+            else if(state.ui.tmView.startsWith('p_')) currentCtxId = state.ui.tmView.replace('p_','');
+            else if(state.ui.tmView.startsWith('sp_')) currentCtxId = state.ui.tmView.replace('sp_','');
+
+            let ctxOpts = generateCtxOpts(currentCtxId);
+            let tasks = [...state.data.tasks];
+            const todayStr = getISODate(new Date());
+            let listTitle = "Tutte le task";
+
+            if(state.ui.tmView === 'today') { tasks = tasks.filter(t => t.dueDate === todayStr); listTitle = "Oggi"; }
+            else if(state.ui.tmView === 'next7') { 
+                const today = new Date();
+                const nextWeek = new Date();
+                nextWeek.setDate(today.getDate() + 7);
+                const tStr = getISODate(today);
+                const nStr = getISODate(nextWeek);
+                tasks = tasks.filter(t => t.dueDate >= tStr && t.dueDate <= nStr); 
+                listTitle = "Prossimi 7 Giorni"; 
+            }
+            else if(state.ui.tmView === 'inbox') { tasks = tasks.filter(t => !t.contextId); listTitle = "Posta in arrivo"; }
+            else if(state.ui.tmView === 'all') { listTitle = "Tutte le task"; }
+            else if(state.ui.tmView.startsWith('s_')) { 
+                const id = state.ui.tmView.replace('s_',''); 
+                tasks = tasks.filter(t => {
+                    if(t.contextId === id) return true;
+                    let p = getEntity('project', t.contextId);
+                    if(p && p.sphereId === id) return true;
+                    let sp = getEntity('subproject', t.contextId);
+                    if(sp) { let pp = getEntity('project', sp.projectId); if(pp && pp.sphereId === id) return true; }
+                    return false;
+                }); 
+                let sObj = getEntity('sphere', id); listTitle = sObj ? sObj.name : 'Lista'; 
+            }
+            else if(state.ui.tmView.startsWith('p_')) { 
+                const id = state.ui.tmView.replace('p_',''); 
+                tasks = tasks.filter(t => t.contextId === id || (getEntity('subproject', t.contextId)?.projectId === id)); 
+                let pObj = getEntity('project', id); listTitle = pObj ? pObj.name : 'Lista'; 
+            }
+            else if(state.ui.tmView.startsWith('sp_')) { 
+                const id = state.ui.tmView.replace('sp_',''); 
+                tasks = tasks.filter(t => t.contextId === id); 
+                let spObj = getEntity('subproject', id); listTitle = spObj ? spObj.name : 'Lista'; 
+            }
+
+            const listConf = tmListSettings[state.ui.tmView] || { groupBy: 'priority', sortBy: 'priority' };
+            const hasCompleted = tasks.some(t => t.completed);
+            if(!state.ui.showCompletedTasks) tasks = tasks.filter(t => !t.completed);
+
+            tasks.sort((a,b) => {
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                if(listConf.sortBy === 'priority') return b.priority - a.priority;
+                if(listConf.sortBy === 'date') return (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31');
+                if(listConf.sortBy === 'name') return a.title.localeCompare(b.title);
+                return 0;
+            });
+
+            let groups = {};
+            if(listConf.groupBy === 'priority') {
+                groups = { "Alta": [], "Media": [], "Bassa": [], "Nessuna": [] };
+                tasks.forEach(t => {
+                    if(t.priority === 3) groups["Alta"].push(t);
+                    else if(t.priority === 2) groups["Media"].push(t);
+                    else if(t.priority === 1) groups["Bassa"].push(t);
+                    else groups["Nessuna"].push(t);
+                });
+            } else if (listConf.groupBy === 'date') {
+                groups = { "Oggi": [], "Prossimamente": [], "Senza Data": [] };
+                tasks.forEach(t => {
+                    if(!t.dueDate) groups["Senza Data"].push(t);
+                    else if(t.dueDate === todayStr) groups["Oggi"].push(t);
+                    else groups["Prossimamente"].push(t);
+                });
+            } else if (listConf.groupBy === 'none') {
+                groups = { "": tasks }; 
+            }
+
+            let tasksHtml = '';
+            if(tasks.length === 0) tasksHtml = `<div class="text-center py-20 text-slate-400"><i class="fas fa-clipboard-check text-6xl mb-5 opacity-20"></i><p class="font-bold text-sm">Tutto completato per ora!</p></div>`;
+            else {
+                for (const [groupName, groupTasks] of Object.entries(groups)) {
+                    if(groupTasks.length === 0) continue;
+                    
+                    let groupColor = "text-slate-500";
+                    if(groupName === "Alta") groupColor = "text-red-500";
+                    if(groupName === "Media") groupColor = "text-amber-500";
+                    if(groupName === "Bassa") groupColor = "text-blue-500";
+
+                    if(groupName !== "") {
+                        tasksHtml += `<div class="flex justify-between items-center px-2 mb-3 mt-6"><h3 class="text-xs font-bold ${groupColor} uppercase tracking-wider">${groupName}</h3><span class="text-[10px] text-slate-400 font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">${groupTasks.length}</span></div>`;
+                    }
+                    
+                    tasksHtml += `<div class="bg-white dark:bg-darkpanel rounded-2xl shadow-sm border border-slate-100 dark:border-darkborder overflow-hidden mb-5">`;
+                    
+                    groupTasks.forEach((t, idx) => {
+                        const ctx = getContextInfo(t.contextId);
+                        const isLast = idx === groupTasks.length - 1;
+                        const borderBottom = isLast ? '' : 'border-b border-slate-100 dark:border-slate-700/50';
+                        const ctxBorder = ctx.color !== '#94a3b8' ? `border-left-color: ${ctx.color};` : `border-left-color: transparent;`;
+                        
+                        if (editingTaskId === t.id) {
+                            tasksHtml += `
+                                <div class="p-3 bg-slate-50 dark:bg-[#1a1c23] ${borderBottom} flex flex-col gap-3">
+                                    <input type="text" id="etTitle_${t.id}" value="${t.title}" class="input-base font-bold text-base py-2">
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <select id="etPri_${t.id}" class="input-base w-28 text-xs font-bold py-2"><option value="0" ${t.priority===0?'selected':''}>No Prio</option><option value="1" ${t.priority===1?'selected':''}>Bassa</option><option value="2" ${t.priority===2?'selected':''}>Media</option><option value="3" ${t.priority===3?'selected':''}>Alta</option></select>
+                                        <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-2">
+                                        <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-2">${generateCtxOpts(t.contextId)}</select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 mt-2">
+                                        <button onclick="editingTaskId=null; render()" class="text-[11px] font-bold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-200 dark:bg-slate-700 transition">Annulla</button>
+                                        <button onclick="saveTaskEdit('${t.id}', 'etCtx_${t.id}')" class="text-[11px] font-bold px-5 py-2 rounded-lg bg-blue-600 text-white shadow transition active:scale-95">Salva</button>
+                                    </div>
+                                </div>`;
+                        } else {
+                            let cbClass = "";
+                            if(t.priority === 3) cbClass = "border-red-400 checked:bg-red-500 checked:border-red-500";
+                            else if(t.priority === 2) cbClass = "border-amber-400 checked:bg-amber-500 checked:border-amber-500";
+                            else if(t.priority === 1) cbClass = "border-blue-400 checked:bg-blue-500 checked:border-blue-500";
+
+                            tasksHtml += `
+                                <div id="taskRow_${t.id}" class="p-2.5 md:p-3 flex items-center gap-3 ${borderBottom} group hover:bg-slate-50 dark:hover:bg-[#202938] transition-colors border-l-[3px] ${t.completed ? 'opacity-50 grayscale' : ''}" style="${ctxBorder}">
+                                    <input type="checkbox" class="task-checkbox shrink-0 mt-0 ml-1 ${cbClass}" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}')">
+                                    <div class="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                                        <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium word-wrap leading-tight">${t.title}</p>
+                                        ${(t.dueDate || t.contextId) ? `
+                                        <div class="flex items-center gap-2.5 shrink-0 mt-1 sm:mt-0">
+                                            ${t.dueDate ? `<span class="text-[10px] text-slate-400 font-bold"><i class="far fa-calendar mr-1.5"></i>${t.dueDate}</span>` : ''}
+                                            ${t.contextId ? `<span class="text-[9px] text-slate-400 font-bold truncate bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700"><i class="fas fa-folder mr-1.5 opacity-50"></i>${ctx.name}</span>` : ''}
+                                        </div>` : ''}
+                                    </div>
+                                    <div class="flex items-center opacity-0 group-hover:opacity-100 transition ml-2">
+                                        <button onclick="editTask('${t.id}')" class="text-slate-400 hover:text-blue-500 p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-edit text-[12px]"></i></button>
+                                        <button onclick="deleteTask('${t.id}')" class="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i class="fas fa-trash-alt text-[12px]"></i></button>
+                                    </div>
+                                </div>`;
+                        }
+                    });
+                    tasksHtml += `</div>`;
+                }
+            }
+
+            if(hasCompleted) {
+                tasksHtml += `<div class="mt-8 text-center pb-6"><button onclick="state.ui.showCompletedTasks = !state.ui.showCompletedTasks; render();" class="text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition bg-slate-200 dark:bg-slate-800 px-4 py-2 rounded-lg shadow-sm active:scale-95">${state.ui.showCompletedTasks ? 'Nascondi completati' : 'Mostra completati'}</button></div>`;
+            }
+
+            return `
+                <div class="fixed inset-0 md:relative flex overflow-hidden bg-slate-50 dark:bg-darkbg md:rounded-2xl md:border border-slate-200 dark:border-darkborder md:shadow-2xl md:min-h-[85vh] z-[60] md:z-auto">
+                    
+                    <div id="tmOverlayInner" class="tm-overlay md:hidden" style="z-index: 50;" onclick="toggleTmSidebar()"></div>
+
+                    <!-- SIDEBAR -->
+                    <div id="tmSidebar" class="tm-sidebar-mobile bg-[#eff4f9] dark:bg-[#13151a] md:border-r border-slate-200 dark:border-darkborder md:p-5 shrink-0 overflow-y-auto" style="z-index: 60;">
+                        ${navHtml}
+                    </div>
+
+                    <!-- MAIN AREA -->
+                    <div class="flex-1 flex flex-col bg-[#fdfaf5] dark:bg-darkpanel overflow-hidden w-full relative">
+                        
+                        <!-- HEADER MOBILE -->
+                        <div class="flex items-center justify-between p-4 md:px-8 md:pt-8 bg-white dark:bg-slate-800 md:bg-transparent z-10 shrink-0 border-b border-slate-200 dark:border-slate-700 md:border-none shadow-sm md:shadow-none">
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <button onclick="navigate('home')" class="md:hidden text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 text-xl p-2 sm:p-1 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"><i class="fas fa-arrow-left"></i></button>
+                                <button onclick="toggleTmSidebar()" class="md:hidden text-slate-600 dark:text-slate-300 text-xl p-2 sm:p-1 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"><i class="fas fa-bars"></i></button>
+                                <h2 class="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center"><i class="far fa-clipboard text-slate-400 mr-2 hidden md:inline-block"></i> ${listTitle}</h2>
+                            </div>
+                            
+                            <div class="relative group">
+                                <button class="text-slate-500 hover:text-slate-800 dark:hover:text-white p-2.5 text-lg rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition"><i class="fas fa-ellipsis-v"></i></button>
+                                <div class="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-3">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Raggruppa per</div>
+                                    <select class="input-base text-sm font-bold mb-4" onchange="setListSetting('groupBy', this.value)">
+                                        <option value="none" ${listConf.groupBy==='none'?'selected':''}>Nessuno</option>
+                                        <option value="priority" ${listConf.groupBy==='priority'?'selected':''}>Priorità</option>
+                                        <option value="date" ${listConf.groupBy==='date'?'selected':''}>Data</option>
+                                    </select>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Ordina per</div>
+                                    <select class="input-base text-sm font-bold" onchange="setListSetting('sortBy', this.value)">
+                                        <option value="priority" ${listConf.sortBy==='priority'?'selected':''}>Priorità</option>
+                                        <option value="date" ${listConf.sortBy==='date'?'selected':''}>Data</option>
+                                        <option value="name" ${listConf.sortBy==='name'?'selected':''}>Nome</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- BARRA INSERIMENTO TASK (Desktop) -->
+                        <div class="hidden md:flex mx-8 mb-6 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row gap-3 shadow-sm">
+                            <input type="text" id="gtIn" class="input-base flex-1 min-w-[200px] font-semibold text-sm py-2 px-3 border-transparent bg-transparent" placeholder="Scrivi un nuovo task..." onkeypress="if(event.key==='Enter') addTaskFromGlobal()">
+                            <select id="gtCtx" class="input-base w-36 text-xs font-bold py-2">${ctxOpts}</select>
+                            <select id="gtPri" class="input-base w-28 text-xs font-bold py-2"><option value="0">No Prio</option><option value="1">Bassa</option><option value="2">Media</option><option value="3">Alta</option></select>
+                            <input type="date" id="gtDate" class="input-base w-[130px] text-xs font-bold py-2">
+                            <button onclick="addTaskFromGlobal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-bold shadow transition active:scale-95"><i class="fas fa-plus"></i></button>
+                        </div>
+
+                        <!-- LISTA TASKS SCROLLABILE -->
+                        <div class="flex-1 overflow-y-auto px-4 md:px-8 pb-24 pt-4 md:pt-0">
+                            ${tasksHtml}
+                        </div>
+
+                        <!-- FLOATING ACTION BUTTON (Mobile) -->
+                        <div class="fixed bottom-8 right-6 md:hidden z-[35]">
+                            <button onclick="openMobileQuickAdd()" class="w-14 h-14 bg-blue-600 hover:bg-blue-700 rounded-full text-white text-2xl shadow-[0_4px_20px_rgba(37,99,235,0.5)] flex items-center justify-center transition-transform active:scale-90">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function addTask(cId) {
+            const tIn = document.getElementById(`tIn_${cId||'g'}`);
+            const ctxSelect = document.getElementById(`tCtx_${cId||'g'}`);
+            if(!tIn.value.trim()) return;
+            const finalCtx = ctxSelect ? ctxSelect.value : (cId || '');
+            state.data.tasks.push({ id: 't_'+Date.now(), title: tIn.value.trim(), completed: false, priority: 0, dueDate: '', contextId: finalCtx });
+            showToast("Task creata", "success");
+            AppData.triggerSave(); render();
+        }
+        function addTaskFromGlobal() {
+            const tIn = document.getElementById('gtIn'), pIn = document.getElementById('gtPri'), dIn = document.getElementById('gtDate'), cIn = document.getElementById('gtCtx'); 
+            const ctxValue = cIn ? cIn.value : (state.ui.tmView.startsWith('p_') || state.ui.tmView.startsWith('sp_') || state.ui.tmView.startsWith('s_') ? state.ui.tmView.replace(/^[ps_]+/, '') : '');
+            
+            if(!tIn.value.trim()) return;
+            state.data.tasks.push({ id: 't_'+Date.now(), title: tIn.value.trim(), completed: false, priority: parseInt(pIn.value), dueDate: dIn.value, contextId: ctxValue });
+            
+            showToast("Task creata", "success");
+            AppData.triggerSave(); render();
+        }
+        function toggleTask(id) { 
+            const t = state.data.tasks.find(x => x.id === id); 
+            if(!t) return; 
+            
+            const taskEl = document.getElementById('taskRow_' + id);
+            if(taskEl) {
+                if(!t.completed) taskEl.classList.add('task-completing-anim');
+                setTimeout(() => {
+                    t.completed = !t.completed; 
+                    AppData.triggerSave(); 
+                    render();
+                }, 250);
+            } else {
+                t.completed = !t.completed; 
+                AppData.triggerSave(); 
+                render(); 
+            }
+        }
+        function deleteTask(id) { state.data.tasks = state.data.tasks.filter(x => x.id !== id); showToast("Task eliminata", "success"); AppData.triggerSave(); render(); }
+        
+        function editTask(id) { editingTaskId = id; render(); }
+        function saveTaskEdit(id, contextElementId) {
+            const t = state.data.tasks.find(x => x.id === id);
+            if(!t) return;
+            const titleInput = document.getElementById('etTitle_' + id);
+            if(titleInput.value.trim()) t.title = titleInput.value.trim();
+            t.priority = parseInt(document.getElementById('etPri_' + id).value);
+            t.dueDate = document.getElementById('etDate_' + id).value;
+            if(contextElementId) { t.contextId = document.getElementById(contextElementId).value; }
+            editingTaskId = null;
+            showToast("Modifiche salvate", "success");
+            AppData.triggerSave(); render();
+        }
+
+        // --- RUBRICA ---
+        function renderGlobalContacts() {
+            let html = `
+                <div class="flex justify-between items-center mb-8 pb-5 border-b border-slate-200 dark:border-darkborder">
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center tracking-tight"><i class="fas fa-address-book text-slate-400 dark:text-slate-500 mr-3"></i> Rubrica Globale</h2>
+                    <button onclick="openContactModal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-white text-sm font-bold shadow transition active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuovo Contatto</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">`;
+            if(state.data.contacts.length===0) html += `<p class="text-sm text-slate-500 col-span-full italic">Rubrica vuota.</p>`;
+            state.data.contacts.forEach(c => {
+                html += `
+                    <div class="panel p-6 flex flex-col gap-4 relative group bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow hover:shadow-md transition-shadow">
+                        <button onclick="openContactModal('${c.id}')" class="absolute top-4 right-4 text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-edit"></i></button>
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-2xl shadow-inner border border-slate-200 dark:border-slate-700"><i class="fas fa-user"></i></div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">${c.name}</p>
+                                <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider truncate mt-1">${c.role} ${c.org ? ` • ${c.org}` : ''}</p>
+                            </div>
+                        </div>
+                        <div class="text-xs font-medium text-slate-600 dark:text-slate-400 space-y-2 p-4 rounded-xl border border-slate-200 dark:border-darkborder bg-slate-50 dark:bg-[#202938]">
+                            ${c.phone ? `<p class="flex items-center"><i class="fas fa-phone mr-2.5 text-slate-400"></i> ${c.phone}</p>` : ''}
+                            ${c.email ? `<p class="flex items-center"><i class="fas fa-envelope mr-2.5 text-slate-400"></i> <a href="mailto:${c.email}" class="hover:text-blue-500 transition">${c.email}</a></p>` : ''}
+                            ${!c.phone && !c.email ? '<p class="italic text-[10px] opacity-50">Nessun recapito disponibile.</p>' : ''}
+                        </div>
+                    </div>`;
+            });
+            return html + `</div>`;
+        }
+
+        function renderContextContacts(cId) {
+            const contacts = state.data.contacts.filter(c => c.contextIds && c.contextIds.includes(cId));
+            const availableToLink = state.data.contacts.filter(c => !(c.contextIds && c.contextIds.includes(cId)));
+            
+            let html = `
+                <div class="flex gap-2 mb-5">
+                    <select id="linkContact_${cId}" class="input-base text-[11px] font-bold py-2 flex-1">
+                        <option value="">Collega dalla rubrica...</option>
+                        ${availableToLink.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                    </select>
+                    <button onclick="linkExistingContact('${cId}')" class="bg-blue-600 hover:bg-blue-700 px-4 rounded-lg text-white text-[11px] font-bold shadow-sm transition active:scale-95"><i class="fas fa-link"></i></button>
+                </div>
+                <div class="space-y-3">`;
+            if(contacts.length===0) html += `<p class="text-[11px] text-slate-500 italic">Nessun contatto collegato.</p>`;
+            
+            contacts.forEach(c => {
+                html += `
+                    <div class="p-4 bg-slate-50 dark:bg-[#202938] border border-slate-200 dark:border-darkborder rounded-xl relative group shadow-sm transition-shadow hover:shadow-md">
+                        <div class="flex items-center gap-3 mb-3 cursor-pointer" onclick="openContactModal('${c.id}')">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0 border border-slate-300 dark:border-slate-700"><i class="fas fa-user text-sm"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">${c.name}</p>
+                                <p class="text-[10px] text-slate-500 font-bold truncate uppercase tracking-widest mt-0.5">${c.role}</p>
+                            </div>
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-500 mt-2 pl-12 space-y-1.5">
+                            ${c.phone ? `<div class="flex items-center"><i class="fas fa-phone mr-2"></i> ${c.phone}</div>` : ''}
+                            ${c.email ? `<div class="flex items-center"><i class="fas fa-envelope mr-2"></i> <a href="mailto:${c.email}" class="hover:text-blue-500 transition" onclick="event.stopPropagation()">${c.email}</a></div>` : ''}
+                        </div>
+                        <button onclick="unlinkContact('${c.id}', '${cId}')" class="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" title="Scollega dal progetto"><i class="fas fa-unlink text-[11px]"></i></button>
+                    </div>`;
+            });
+            return html + `</div>`;
+        }
+
+        function linkExistingContact(cId) {
+            const select = document.getElementById('linkContact_' + cId);
+            if(!select.value) return;
+            const c = state.data.contacts.find(x => x.id === select.value);
+            if(c && (!c.contextIds || !c.contextIds.includes(cId))) {
+                if(!c.contextIds) c.contextIds = [];
+                c.contextIds.push(cId);
+                showToast("Contatto collegato", "success");
+                AppData.triggerSave(); render();
+            }
+        }
+        function unlinkContact(contactId, cId) {
+            const c = state.data.contacts.find(x => x.id === contactId);
+            if(c) { c.contextIds = c.contextIds.filter(id => id !== cId); showToast("Contatto scollegato", "success"); AppData.triggerSave(); render(); }
+        }
+
+        function openContactModal(cId=null, linkCtx=null) {
+            contactEditId = cId;
+            document.getElementById('contactModal').classList.remove('hidden');
+            document.getElementById('contactModal').classList.add('flex');
+            const btnDel = document.getElementById('cmDeleteBtn');
+            if(cId) {
+                const c = state.data.contacts.find(x => x.id === cId);
+                if(!c) return;
+                document.getElementById('cmTitle').innerHTML = '<i class="fas fa-user-edit text-blue-500 mr-2"></i> Modifica Contatto';
+                document.getElementById('cmName').value = c.name; document.getElementById('cmRole').value = c.role;
+                document.getElementById('cmOrg').value = c.org || ''; document.getElementById('cmPhone').value = c.phone || ''; document.getElementById('cmEmail').value = c.email || '';
+                btnDel.classList.remove('hidden');
+            } else {
+                document.getElementById('cmTitle').innerHTML = '<i class="fas fa-user-plus text-blue-500 mr-2"></i> Nuovo Contatto';
+                ['cmName','cmRole','cmOrg','cmPhone','cmEmail'].forEach(id => document.getElementById(id).value = '');
+                btnDel.classList.add('hidden');
+            }
+            localStorage.setItem('temp_ctx_link', linkCtx || '');
+        }
+        function closeContactModal() { 
+            document.getElementById('contactModal').classList.add('hidden'); 
+            document.getElementById('contactModal').classList.remove('flex'); 
+        }
+        function saveContact() {
+            const name = document.getElementById('cmName').value.trim(); 
+            if(!name) { showToast("Inserisci il nome", "error"); return; }
+            const payload = { name, role: document.getElementById('cmRole').value, org: document.getElementById('cmOrg').value, phone: document.getElementById('cmPhone').value, email: document.getElementById('cmEmail').value };
+            if(contactEditId) { 
+                let obj = state.data.contacts.find(x => x.id === contactEditId);
+                if(obj) Object.assign(obj, payload); 
+                showToast("Contatto modificato", "success");
+            } else {
+                const ctxLink = localStorage.getItem('temp_ctx_link');
+                state.data.contacts.push({ id: 'c_'+Date.now(), ...payload, contextIds: ctxLink ? [ctxLink] : [] });
+                showToast("Contatto salvato", "success");
+            }
+            closeContactModal(); AppData.triggerSave(); render();
+        }
+        function deleteContact() { if(confirm("Eliminare definitivamente?")) { state.data.contacts = state.data.contacts.filter(x => x.id !== contactEditId); closeContactModal(); showToast("Contatto eliminato", "success"); AppData.triggerSave(); render(); } }
+
+        // AVVIO
+        window.onload = () => AppData.initialize();
+    </script>
+</body>
+</html>

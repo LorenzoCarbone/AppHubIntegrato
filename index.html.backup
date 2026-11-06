@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub Personale</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #0B0F19;
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Ambient Background Glowing Orbs */
+        .ambient-blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            animation: float 20s infinite ease-in-out alternate;
+            opacity: 0.6;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(79,70,229,0.4) 0%, rgba(0,0,0,0) 70%);
+        }
+
+        .blob-2 {
+            bottom: -10%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(236,72,153,0.3) 0%, rgba(0,0,0,0) 70%);
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(5%, 10%) scale(1.1); }
+            100% { transform: translate(-5%, -5%) scale(0.9); }
+        }
+
+        /* Glassmorphism Styles */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.25);
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.1);
+        }
+
+        .glass-card:hover .card-icon {
+            transform: scale(1.1) rotate(-5deg);
+            color: #fff;
+        }
+
+        /* Entrance Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in-up {
+            opacity: 0;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Toast Notifications */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .toast-enter {
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .toast-exit {
+            animation: fadeOut 0.3s forwards;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0B0F19; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        /* Prevent link click when clicking action buttons */
+        .action-btn {
+            position: relative;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen text-slate-200 antialiased selection:bg-indigo-500/30">
+
+    <div class="ambient-blob blob-1"></div>
+    <div class="ambient-blob blob-2"></div>
+
+    <main class="container mx-auto px-6 py-16 md:py-24 max-w-6xl relative z-10">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6 animate-fade-in-up">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-300 mb-2">
+                    Hub Personale
+                </h1>
+                <p class="text-slate-400 text-lg">Il tuo centro di controllo per le applicazioni web.</p>
+            </div>
+            
+            <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+                <a href="https://github.com/LorenzoCarbone/apphub" target="_blank" rel="noopener noreferrer" class="glass-panel action-btn group relative flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm text-slate-300 hover:text-black hover:bg-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] border border-white/5" title="Codice Sorgente dell'Hub">
+                    <i class="ph ph-github-logo text-xl transition-transform group-hover:-rotate-12 duration-300"></i>
+                    <span class="hidden sm:inline">Codice Hub</span>
+                </a>
+
+                <div class="hidden sm:block w-px h-6 bg-white/10 mx-1"></div>
+                
+                <button onclick="manualSync()" id="syncBtn" class="glass-panel action-btn group relative flex items-center justify-center p-3 rounded-full text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]" title="Sincronizza ora">
+                    <i class="ph ph-arrows-clockwise text-2xl transition-transform duration-500"></i>
+                </button>
+                <button onclick="openSettings()" class="glass-panel action-btn group relative flex items-center justify-center p-3 rounded-full text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]" title="Impostazioni Sincronizzazione">
+                    <i class="ph ph-gear text-2xl transition-transform group-hover:rotate-90 duration-500"></i>
+                </button>
+                <button onclick="openAppModal()" class="glass-panel action-btn group relative flex items-center gap-2 px-6 py-3 rounded-full font-medium text-sm text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 hover:shadow-[0_0_20px_rgba(79,70,229,0.4)]">
+                    <i class="ph ph-plus-circle text-xl transition-transform group-hover:rotate-90 duration-300"></i>
+                    Aggiungi App
+                </button>
+            </div>
+        </header>
+
+        <div id="appsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
+                <i class="ph ph-spinner-gap animate-spin text-4xl text-indigo-400 mb-4"></i>
+                <p>Sincronizzazione in corso...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Aggiungi/Modifica App -->
+    <div id="appModal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal('appModal')"></div>
+        
+        <div class="glass-panel relative w-full max-w-md p-8 rounded-3xl shadow-2xl transform scale-95 transition-transform duration-300 mx-4 max-h-[90vh] overflow-y-auto" id="appModalContent">
+            <button onclick="closeModal('appModal')" class="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+            
+            <h2 id="appModalTitle" class="text-2xl font-bold mb-6 text-white">Aggiungi Collegamento</h2>
+            
+            <form id="appForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Titolo App</label>
+                    <input type="text" id="appTitle" required placeholder="Es. Gestione Valigia"
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">URL / Link</label>
+                    <input type="url" id="appUrl" required placeholder="https://..."
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Descrizione</label>
+                    <input type="text" id="appDesc" required placeholder="Breve descrizione..."
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Repository GitHub (Opzionale)</label>
+                    <input type="url" id="appRepo" placeholder="https://github.com/..."
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Icona (Nome Phosphor o URL)</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" id="appIcon" required placeholder="Es. suitcase oppure https://..."
+                               class="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                        <a href="https://phosphoricons.com/" target="_blank" class="p-3 bg-white/5 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Cerca Icone">
+                            <i class="ph ph-magnifying-glass text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <button type="submit" id="appSubmitBtn" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/25">
+                    Salva Collegamento
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modals settings e conferma -->
+    <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal('settingsModal')"></div>
+        <div class="glass-panel relative w-full max-w-md p-8 rounded-3xl shadow-2xl transform scale-95 transition-transform duration-300 mx-4" id="settingsModalContent">
+            <button onclick="closeModal('settingsModal')" class="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+            <div class="flex items-center gap-3 mb-6">
+                <i class="ph ph-github-logo text-3xl text-white"></i>
+                <h2 class="text-2xl font-bold text-white">Sincronizzazione Gist</h2>
+            </div>
+            <p class="text-sm text-slate-400 mb-6">Configura le credenziali GitHub per sincronizzare i tuoi collegamenti sul cloud.</p>
+            <form id="settingsForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">GitHub Personal Access Token</label>
+                    <input type="password" id="ghToken" placeholder="ghp_..."
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">ID del Gist (Opzionale)</label>
+                    <input type="text" id="gistId" placeholder="Es. 7d8f9a..."
+                           class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <button type="submit" class="w-full mt-4 bg-white/10 hover:bg-white/20 text-white font-medium py-3 rounded-xl transition-colors border border-white/10">
+                    Salva Impostazioni
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="fixed inset-0 z-[60] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeConfirmModal()"></div>
+        <div class="glass-panel relative w-full max-w-sm p-6 rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300 mx-4 text-center" id="confirmModalContent">
+            <div class="w-16 h-16 rounded-full bg-red-500/20 text-red-400 mx-auto flex items-center justify-center mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold mb-2 text-white">Sei sicuro?</h2>
+            <p class="text-sm text-slate-400 mb-6">Vuoi davvero eliminare questo collegamento?</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10">Annulla</button>
+                <button id="confirmDeleteBtn" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white transition-colors shadow-lg shadow-red-500/20">Elimina</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"></div>
+
+    <script>
+        const GIST_FILENAME = 'hub_links.json';
+        const defaultApps = [
+            { id: '1', title: 'Gestione Valigia', url: '#', desc: 'Organizzatore per il tuo prossimo viaggio.', icon: 'suitcase', repoUrl: 'https://github.com' },
+            { id: '2', title: 'Ricettario', url: '#', desc: 'Raccolta di ricette e appunti di cucina.', icon: 'carrot', repoUrl: '' },
+            { id: '3', title: 'Knowledge Base', url: '#', desc: 'Wiki personale e ricerche.', icon: 'brain', repoUrl: '' },
+            { id: '4', title: 'Gestione Task', url: '#', desc: 'Lista delle cose da fare quotidiane.', icon: 'check-square-offset', repoUrl: 'https://github.com' }
+        ];
+
+        let apps = [];
+        let itemToDelete = null;
+        let editingId = null; 
+
+        let githubToken = localStorage.getItem('hub_gh_token') || '';
+        let gistId = localStorage.getItem('hub_gist_id') || '';
+
+        const appsGrid = document.getElementById('appsGrid');
+        const appForm = document.getElementById('appForm');
+        const settingsForm = document.getElementById('settingsForm');
+        const syncBtnIcon = document.querySelector('#syncBtn i');
+
+        async function init() {
+            if (!githubToken) {
+                apps = [...defaultApps];
+                renderApps();
+                showToast('Stai visualizzando i collegamenti di default.', 'info');
+            } else {
+                await loadFromGist();
+            }
+        }
+
+        async function manualSync() {
+            if (!githubToken) {
+                showToast('Configura prima le impostazioni GitHub per sincronizzare.', 'warning');
+                return;
+            }
+            syncBtnIcon.classList.add('animate-spin');
+            await loadFromGist();
+            setTimeout(() => syncBtnIcon.classList.remove('animate-spin'), 500);
+        }
+
+        async function loadFromGist() {
+            try {
+                if (!gistId) throw new Error("Nessun Gist ID configurato. Verrà creato al primo salvataggio.");
+                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `token ${githubToken}` }
+                });
+                if (!response.ok) throw new Error('Impossibile scaricare il Gist. Verifica le credenziali.');
+                const data = await response.json();
+                if (data.files && data.files[GIST_FILENAME]) {
+                    apps = JSON.parse(data.files[GIST_FILENAME].content);
+                } else {
+                    apps = [...defaultApps];
+                }
+                renderApps();
+                showToast('Collegamenti sincronizzati con successo.', 'success');
+            } catch (error) {
+                apps = [...defaultApps];
+                renderApps();
+                showToast(error.message.includes('Nessun') ? error.message : 'Errore nel download. Mostro default.', 'warning');
+            }
+        }
+
+        async function saveToGist(newApps) {
+            if (!githubToken) {
+                showToast('Devi configurare il Token GitHub nelle impostazioni per salvare.', 'error');
+                return;
+            }
+            const payload = {
+                description: "Hub Personale App Links",
+                public: false,
+                files: { [GIST_FILENAME]: { content: JSON.stringify(newApps, null, 2) } }
+            };
+            try {
+                const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
+                const method = gistId ? 'PATCH' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `token ${githubToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Errore durante il salvataggio.');
+                const data = await response.json();
+                if (!gistId) {
+                    gistId = data.id;
+                    localStorage.setItem('hub_gist_id', gistId);
+                }
+                apps = newApps;
+                renderApps();
+                showToast('Modifiche salvate su GitHub!', 'success');
+            } catch (error) {
+                showToast('Errore di comunicazione con GitHub.', 'error');
+            }
+        }
+
+        function renderApps() {
+            appsGrid.innerHTML = '';
+            
+            if (apps.length === 0) {
+                appsGrid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400">Nessun collegamento presente.</div>`;
+                return;
+            }
+
+            apps.forEach((app, index) => {
+                const delay = Math.min(index * 50, 400); 
+                
+                const isUrl = app.icon.startsWith('http');
+                const iconRender = isUrl 
+                    ? `<img src="${app.icon}" class="w-8 h-8 object-contain transition-transform duration-300 card-icon" alt="icona" onerror="this.src='https://placehold.co/100x100/4f46e5/ffffff?text=App'">`
+                    : `<i class="ph ph-${app.icon} text-2xl text-indigo-300 card-icon transition-transform duration-300"></i>`;
+                
+                const repoLinkHtml = app.repoUrl && app.repoUrl.trim() !== '' ? `
+                    <a href="${app.repoUrl}" target="_blank" rel="noopener noreferrer" 
+                       class="action-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:bg-white hover:text-black hover:scale-110 transition-all duration-300 shadow-lg" 
+                       title="Vedi Codice Sorgente">
+                        <i class="ph ph-github-logo text-xl"></i>
+                    </a>
+                ` : `<div class="w-9 h-9"></div>`; 
+
+                const cardHtml = `
+                    <div class="animate-fade-in-up flex flex-col h-full" style="animation-delay: ${delay}ms">
+                        <div class="glass-card group relative flex flex-col flex-1 p-6 rounded-2xl overflow-hidden outline-none">
+                            
+                            <!-- Action Buttons Edit/Delete -->
+                            <div class="absolute top-4 right-4 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                <button onclick="openAppModal('${app.id}')" 
+                                    class="action-btn w-8 h-8 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors"
+                                    title="Modifica">
+                                    <i class="ph ph-pencil-simple text-lg"></i>
+                                </button>
+                                <button onclick="requestDelete('${app.id}')" 
+                                    class="action-btn w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+                                    title="Elimina">
+                                    <i class="ph ph-trash text-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Main Card Link Overlay -->
+                            <a href="${app.url}" target="_blank" rel="noopener noreferrer" class="absolute inset-0 z-10 block"></a>
+                            
+                            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-transparent to-purple-500/0 group-hover:from-indigo-500/10 group-hover:to-purple-500/10 transition-colors duration-500 z-0"></div>
+
+                            <div class="relative z-20 flex flex-col flex-1 pointer-events-none">
+                                <div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/30 transition-colors duration-300">
+                                    ${iconRender}
+                                </div>
+                                
+                                <h3 class="text-xl font-semibold text-white mb-2 group-hover:text-indigo-100 transition-colors pr-16">${app.title}</h3>
+                                <p class="text-sm text-slate-400 mb-6 leading-relaxed flex-1">${app.desc}</p>
+                                
+                                <!-- Card Footer (Open Link + Repo Link con hover effect) -->
+                                <div class="mt-auto flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 pointer-events-auto">
+                                    <div class="flex items-center text-xs font-medium text-indigo-300 pointer-events-none">
+                                        Apri Collegamento <i class="ph ph-arrow-right ml-1"></i>
+                                    </div>
+                                    ${repoLinkHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                appsGrid.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(modalId + 'Content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(modalId + 'Content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+        }
+
+        function openSettings() {
+            document.getElementById('ghToken').value = githubToken;
+            document.getElementById('gistId').value = gistId;
+            openModal('settingsModal');
+        }
+
+        function openAppModal(appId = null) {
+            editingId = appId;
+            const titleEl = document.getElementById('appModalTitle');
+            const submitBtn = document.getElementById('appSubmitBtn');
+
+            if (appId) {
+                const app = apps.find(a => a.id === appId);
+                if (app) {
+                    titleEl.textContent = 'Modifica Collegamento';
+                    submitBtn.textContent = 'Salva Modifiche';
+                    document.getElementById('appTitle').value = app.title;
+                    document.getElementById('appUrl').value = app.url;
+                    document.getElementById('appDesc').value = app.desc;
+                    document.getElementById('appRepo').value = app.repoUrl || '';
+                    document.getElementById('appIcon').value = app.icon;
+                }
+            } else {
+                titleEl.textContent = 'Aggiungi Collegamento';
+                submitBtn.textContent = 'Salva Collegamento';
+                appForm.reset();
+            }
+            
+            openModal('appModal');
+            setTimeout(() => document.getElementById('appTitle').focus(), 100);
+        }
+
+        function requestDelete(id) {
+            itemToDelete = id;
+            openModal('confirmModal');
+        }
+
+        function closeConfirmModal() {
+            itemToDelete = null;
+            closeModal('confirmModal');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (itemToDelete) {
+                const updatedApps = apps.filter(app => app.id !== itemToDelete);
+                saveToGist(updatedApps);
+                closeConfirmModal();
+            }
+        });
+
+        appForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            let iconVal = document.getElementById('appIcon').value.trim();
+            if(!iconVal.startsWith('http')) {
+                iconVal = iconVal.replace('ph-', '').replace('ph ', ''); 
+            }
+
+            const appData = {
+                title: document.getElementById('appTitle').value.trim(),
+                url: document.getElementById('appUrl').value.trim(),
+                desc: document.getElementById('appDesc').value.trim(),
+                repoUrl: document.getElementById('appRepo').value.trim(), // CORREZIONE: ORA IL VALORE VIENE ESTRATTO DAL FORM
+                icon: iconVal
+            };
+            
+            let updatedApps;
+
+            if (editingId) {
+                updatedApps = apps.map(app => 
+                    app.id === editingId ? { ...app, ...appData } : app
+                );
+            } else {
+                appData.id = Date.now().toString();
+                updatedApps = [...apps, appData];
+            }
+
+            saveToGist(updatedApps);
+            closeModal('appModal');
+        });
+
+        settingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newToken = document.getElementById('ghToken').value.trim();
+            const newGistId = document.getElementById('gistId').value.trim();
+            
+            if (newToken !== githubToken || newGistId !== gistId) {
+                githubToken = newToken;
+                gistId = newGistId;
+                
+                localStorage.setItem('hub_gh_token', githubToken);
+                localStorage.setItem('hub_gist_id', gistId);
+                
+                closeModal('settingsModal');
+                appsGrid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="ph ph-spinner-gap animate-spin text-4xl text-indigo-400 mb-4"></i>
+                        <p>Ricaricamento dei dati...</p>
+                    </div>
+                `;
+                init();
+            } else {
+                closeModal('settingsModal');
+            }
+        });
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            
+            let colors = 'bg-slate-800 border-slate-700 text-white';
+            let icon = 'ph-info';
+            
+            if (type === 'success') { colors = 'bg-emerald-900/90 border-emerald-500/50 text-emerald-100'; icon = 'ph-check-circle'; }
+            if (type === 'error') { colors = 'bg-red-900/90 border-red-500/50 text-red-100'; icon = 'ph-warning-circle'; }
+            if (type === 'warning') { colors = 'bg-amber-900/90 border-amber-500/50 text-amber-100'; icon = 'ph-warning'; }
+
+            const toast = document.createElement('div');
+            toast.className = `toast-enter flex items-center gap-3 px-5 py-3 rounded-xl border backdrop-blur-md shadow-2xl ${colors}`;
+            toast.innerHTML = `
+                <i class="ph ${icon} text-2xl"></i>
+                <p class="text-sm font-medium pr-4">${message}</p>
+                <button class="ml-auto opacity-70 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()">
+                    <i class="ph ph-x"></i>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 4000);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ['appModal', 'settingsModal'].forEach(id => {
+                    if (!document.getElementById(id).classList.contains('opacity-0')) closeModal(id);
+                });
+                if (!document.getElementById('confirmModal').classList.contains('opacity-0')) closeConfirmModal();
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

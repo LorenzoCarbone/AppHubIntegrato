@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PackSync App - Valigia Intelligente</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --mise-color: #fef3c7;
+            --valigia-color: #dcfce7;
+            --skip-color: #f8fafc;
+            --forse-color: #faf5ff;
+            --forse-border: #d8b4fe;
+            --buy-color: #fee2e2;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 15px; padding-bottom: 90px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .header-app { text-align: center; margin-bottom: 20px; }
+        h1 { color: var(--primary); margin: 0 0 5px 0; font-size: 1.8em; letter-spacing: -0.5px; font-weight: 800;}
+        .sync-status { font-size: 0.85em; color: #16a34a; font-weight: 600;}
+
+        /* Icone SVG */
+        .svg-icon { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .svg-mini { width: 16px; height: 16px; }
+
+        /* Menu Liste */
+        .list-selector-container { background: var(--card-bg); padding: 12px 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;}
+        .list-selector-container select { flex-grow: 1; min-width: 150px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 1.05em; font-weight: 600; color: var(--text-main); background-color: #f8fafc; cursor: pointer; outline: none;}
+        .list-selector-container select:focus { border-color: var(--primary); }
+        .list-actions { display: flex; gap: 4px; }
+
+        /* Bagagli (Sezioni) */
+        .section { background: var(--card-bg); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); transition: opacity 0.3s; }
+        .section.hidden-sec .section-body { display: none; }
+        .section.hidden-sec { opacity: 0.6; }
+        
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid var(--bg-color); }
+        
+        /* Modifica Titolo Smart */
+        .editable-title { display: flex; align-items: center; gap: 8px; flex-grow: 1; }
+        .editable-title span { font-size: 1.25em; font-weight: 800; line-height: 1.2; padding: 4px 8px; margin-left: -8px; border-radius: 8px; transition: 0.2s; cursor: text; }
+        .editable-title span:hover, [contenteditable="true"]:hover { background-color: #f1f5f9; }
+        [contenteditable="true"]:focus { outline: 2px solid var(--primary); background-color: #fff; }
+        
+        .sec-actions { display: flex; gap: 6px; }
+        .icon-btn { background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; padding: 8px; color: var(--text-muted); transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .icon-btn.danger:hover { background: #fee2e2; color: var(--danger); }
+
+        /* Sottosezioni (Tasche, ecc) */
+        .subsection { margin-top: 15px; padding-left: 12px; border-left: 3px solid var(--primary); }
+        .subsection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 5px 0; border-bottom: 1px dashed transparent;}
+        .subsection-header:hover { border-bottom-color: var(--border); }
+        .subsection-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; user-select: none; }
+        .subsection-title { font-size: 0.95em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; cursor: text; padding: 2px 6px; border-radius: 6px;}
+        .subsection-toggle { color: var(--text-muted); transition: transform 0.3s; cursor: pointer; padding: 4px; }
+        .subsection-actions { display: flex; gap: 4px; opacity: 0.4; transition: 0.2s; }
+        .subsection-header:hover .subsection-actions { opacity: 1; }
+        
+        .subsection.collapsed .subsection-body { display: none; }
+        .subsection.collapsed .subsection-toggle { transform: rotate(-90deg); }
+        .subsection.collapsed { border-left-color: #cbd5e1; }
+
+        /* Drag & Drop */
+        .item.dragging { opacity: 0.3; transform: scale(0.98); border: 2px dashed var(--primary); }
+        .item.drag-over-item { border-top: 3px solid var(--primary); }
+        .subsection-body.drag-over { background: #f1f5f9; border-radius: 8px; padding-bottom: 20px; }
+
+        /* Oggetti */
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 8px; border-radius: 10px; border: 1px solid var(--border); transition: all 0.2s ease; background: #fff; gap: 15px;}
+        
+        .item-header { display: flex; align-items: center; flex-grow: 1; gap: 10px; overflow: hidden; }
+        .drag-handle { cursor: grab; color: #cbd5e1; display: flex; align-items: center; justify-content: center; padding: 5px;}
+        .drag-handle:active { cursor: grabbing; }
+        .drag-handle:hover { color: var(--text-muted); }
+        
+        .item-name-area { display: flex; flex-direction: column; gap: 4px; flex-grow: 1;}
+        .item-name { font-weight: 600; line-height: 1.3; word-break: break-word; color: var(--text-main); font-size: 0.95em; cursor: text; padding: 4px; border-radius: 4px;}
+        
+        /* Tag Da Comprare */
+        .badge-buy { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7em; font-weight: 800; text-transform: uppercase; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 3px 8px; border-radius: 20px; width: fit-content; }
+        
+        .item-actions { display: flex; gap: 5px; opacity: 0.4; transition: 0.2s; }
+        .item:hover .item-actions { opacity: 1; }
+        .action-btn { background: none; border: none; padding: 6px; cursor: pointer; color: var(--text-muted); border-radius: 6px; display: flex; align-items: center;}
+        .action-btn:hover { background: #f1f5f9; color: var(--primary); }
+        .action-btn.active-buy { color: var(--danger); opacity: 1; background: #fef2f2;}
+        .action-btn.danger:hover { background: #fee2e2; color: var(--danger); opacity: 1;}
+
+        /* Controlli Checkbox (modificati in bottoni emoji) */
+        .controls { display: flex; gap: 8px; flex-shrink: 0;}
+        .control-label { display: flex; align-items: center; justify-content: center; font-size: 1.15em; cursor: pointer; user-select: none; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background-color: #f8fafc; transition: 0.1s;}
+        .control-label:hover { background-color: #e2e8f0; filter: brightness(0.95); transform: scale(1.05);}
+        .control-label:active { transform: scale(0.95); }
+        
+        /* Colori Stati Valigia */
+        .item.status-mise { background-color: var(--mise-color); border-color: #fcd34d; }
+        .item.status-valigia { background-color: var(--valigia-color); border-color: #86efac; }
+        .item.status-forse { background-color: var(--forse-color); border-color: var(--forse-border); }
+        .item.status-skip { background-color: var(--skip-color); opacity: 0.6; }
+        .item.status-skip .item-name { text-decoration: line-through; color: #94a3b8; }
+        .item.status-buy { border-color: #fca5a5; border-left: 4px solid var(--danger); }
+        
+        /* Sommari */
+        .missing-summary { font-size: 0.9em; color: #b91c1c; margin: 20px 0 10px 0; padding: 15px; background: #fef2f2; border-radius: 10px; border-left: 4px solid #ef4444; line-height: 1.5;}
+        .missing-summary strong { display: block; margin-bottom: 5px; font-size: 1.05em; color: #991b1b; }
+        .missing-summary-ok { background: #f0fdf4; border-left-color: #22c55e; color: #166534; }
+
+        /* Liste in fondo */
+        .summary-box { border-radius: 14px; padding: 20px; margin-top: 25px; box-shadow: var(--shadow); }
+        .to-buy-summary { background: #fff1f2; border: 1px solid #fecaca; }
+        .to-buy-summary .section-header { border-bottom-color: #fecaca; }
+        .to-buy-summary .section-header span { color: #b91c1c; display: flex; align-items: center; gap: 8px;}
+        
+        .forse-summary { background: var(--forse-color); border: 1px solid var(--forse-border); }
+        .forse-summary .section-header { border-bottom-color: #e9d5ff; }
+        .forse-summary .section-header span { color: #7e22ce; display: flex; align-items: center; gap: 8px;}
+        
+        .summary-list { padding-left: 20px; margin: 10px 0 0 0; line-height: 1.7; font-size: 0.95em; }
+        .to-buy-summary .summary-list { color: #7f1d1d; }
+        .forse-summary .summary-list { color: #581c87; }
+
+        /* Input In-line + Bottone Aggiungi */
+        .inline-add-container { display: flex; gap: 8px; margin-top: 5px; }
+        .inline-add-input { background-color: transparent; color: var(--text-main); flex-grow: 1; padding: 12px; font-size: 0.95em; border-radius: 8px; font-weight: 600; border: 2px dashed #cbd5e1; box-sizing: border-box; outline: none; transition: 0.2s; }
+        .inline-add-input:focus { border-color: var(--primary); background-color: #eff6ff; }
+        .inline-add-input::placeholder { color: var(--text-muted); font-weight: 700; opacity: 0.7; }
+        .inline-add-btn { background-color: var(--primary); color: white; border: none; border-radius: 8px; padding: 0 16px; font-size: 1.5em; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .inline-add-btn:hover { background-color: var(--primary-hover); transform: scale(1.05); }
+        .inline-add-btn:active { transform: scale(0.95); }
+
+        .footer-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-top: 15px;}
+        .btn-main { background-color: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; cursor: pointer; font-size: 0.95em; font-weight: 700; transition: 0.2s; flex: 1 1 calc(50% - 10px); min-width: 140px; text-align: center;}
+        .btn-main:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+        .btn-danger-main { background-color: white; color: var(--danger); border: 2px solid #fecaca; }
+        .btn-danger-main:hover { background-color: #fef2f2; border-color: var(--danger);}
+
+        /* Mobile Layout */
+        @media (max-width: 650px) {
+            .item { flex-direction: column; align-items: stretch; gap: 12px; padding: 12px; }
+            .item-actions { opacity: 1; justify-content: flex-end; }
+            .controls { display: flex; flex-wrap: wrap; justify-content: space-between; width: 100%; gap: 6px; }
+            .control-label { flex: 1 1 calc(25% - 6px); height: 42px; font-size: 1.3em;}
+            .subsection-actions { opacity: 1; }
+        }
+        
+        /* Modals */
+        dialog { border: none; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); padding: 25px; max-width: 340px; width: 90%; }
+        dialog::backdrop { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); }
+        dialog h3 { margin-top: 0; color: var(--text-main); margin-bottom: 20px; font-size: 1.4em;}
+        dialog label { font-size: 0.9em; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; display: block;}
+        dialog select, dialog input { width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid var(--border); border-radius: 8px; font-size: 1em; box-sizing: border-box; outline: none; transition: 0.2s;}
+        dialog select:focus, dialog input:focus { border-color: var(--primary); }
+        
+        .dialog-btns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;}
+        .dialog-btns button { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.95em; flex-grow: 1; transition: 0.2s;}
+        .btn-confirm { background: var(--primary); color: white; }
+        .btn-confirm:hover { background: var(--primary-hover); }
+        .btn-cancel { background: #f1f5f9; color: var(--text-muted); }
+        .btn-cancel:hover { background: #e2e8f0; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-app">
+        <h1>PackSync App</h1>
+        <div id="sync-status" class="sync-status">💾 Salvataggio Locale Attivo</div>
+    </div>
+
+    <div class="list-selector-container">
+        <svg class="svg-icon" style="color:var(--primary); display:block;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <select id="list-selector" onchange="switchList(this.value)"></select>
+        <div class="list-actions">
+            <button class="action-btn" title="Nuovo Scenario (Nuova Lista)" onclick="createNewList()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button class="action-btn" title="Rinomina Scenario" onclick="renameCurrentList()">
+                <svg class="svg-icon svg-mini" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+            <button class="action-btn danger" title="Elimina Scenario" onclick="deleteCurrentList()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="app-root"></div>
+    
+    <div id="footer" style="display:none;">
+        <div class="footer-actions">
+            <button class="btn-main" onclick="openSectionModal()">+ Nuovo Bagaglio</button>
+            <button class="btn-main btn-secondary" onclick="exportMarkdown()">📄 Export Notion (.md)</button>
+        </div>
+        <div class="footer-actions">
+            <button class="btn-main btn-secondary" onclick="exportData()">💾 Backup Dati (.json)</button>
+            <button class="btn-main btn-secondary" onclick="document.getElementById('import-file').click()">📂 Importa Backup</button>
+            <input type="file" id="import-file" style="display:none" accept=".json" onchange="importData(event)">
+            <button class="btn-main btn-danger-main" onclick="resetCurrentList()">Azzera Spunte</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Bagaglio -->
+<dialog id="modal-section">
+    <h3>Nuovo Bagaglio</h3>
+    <select id="new-sec-type" onchange="checkCustomOption()">
+        <option value="🎒 Zaino">🎒 Zaino</option>
+        <option value="🧳 Cabina / Trolley">🧳 Cabina / Trolley</option>
+        <option value="📦 Stiva / Valigia Grande">📦 Stiva / Valigia Grande</option>
+        <option value="🏔️ Zaino da Montagna">🏔️ Zaino da Montagna</option>
+        <option value="👜 Borsa">👜 Borsa</option>
+        <option value="👝 Beauty Case">👝 Beauty Case</option>
+        <option value="altro">Altro (Personalizzato)...</option>
+    </select>
+    <input type="text" id="new-sec-custom" placeholder="Es. Borsa Fotocamera" style="display:none;">
+    <div class="dialog-btns">
+        <button class="btn-cancel" onclick="closeModal('modal-section')">Annulla</button>
+        <button class="btn-confirm" onclick="confirmAddSection()">Aggiungi</button>
+    </div>
+</dialog>
+
+<script>
+    const ICONS = {
+        eye: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+        eyeOff: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`,
+        trash: `<svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+        plus: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
+        chevronDown: `<svg class="svg-icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+        cart: `<svg class="svg-icon svg-mini" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`,
+        grip: `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;"><path d="M9 5a2 2 0 11-4 0 2 2 0 014 0zm0 7a2 2 0 11-4 0 2 2 0 014 0zm0 7a2 2 0 11-4 0 2 2 0 014 0zm10-14a2 2 0 11-4 0 2 2 0 014 0zm0 7a2 2 0 11-4 0 2 2 0 014 0zm0 7a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`
+    };
+
+    const defaultData = {
+        "georgia": {
+            name: "🇬🇪 Georgia (Volontariato ESC)",
+            sections: [
+                {
+                    title: "🎒 Zaino (Sotto il sedile)", hidden: false,
+                    subsections: [
+                        { name: "Elettronica e Documenti", collapsed: false, items: [{ name: "Computer con caricatore e mouse"},{ name: "Powerbank"},{ name: "Caricabatterie"},{ name: "Cuffiette"},{ name: "Documenti"},{ name: "Assicurazione sanitaria"},{ name: "Portafogli"},{ name: "Soldi valuta locale"}] },
+                        { name: "Tasca ad Accesso Rapido", collapsed: false, items: [{ name: "Chiavi"},{ name: "Medicine"},{ name: "Borraccia"},{ name: "Occhiali"},{ name: "Occhiali da sole"},{ name: "Ombrello"},{ name: "Fazzoletti"}] },
+                        { name: "Varie e Beauty Rapido", collapsed: false, items: [{ name: "Libro"},{ name: "Lucchetto"},{ name: "Spazzolino"},{ name: "Dentifricio"},{ name: "Burro cacao"},{ name: "Silviette umidificate e disinfettanti"}] }
+                    ]
+                },
+                {
+                    title: "🧳 Cabina (Vestiario Base)", hidden: false,
+                    subsections: [
+                        { name: "Fondo", collapsed: false, items: [{ name: "Scarpe da passeggio"},{ name: "Pantaloni"},{ name: "Bermuda"},{ name: "Felpa"},{ name: "Giacca a vento / giacca"}, { name: "Pantaloni da trekking (Decathlon)"}] },
+                        { name: "Sopra", collapsed: false, items: [{ name: "Pigiama"},{ name: "Maglie"},{ name: "Polo/camice"},{ name: "Costume"}, { name: "Pile (Decathlon)"}] },
+                        { name: "Tasca e Incastri", collapsed: false, items: [{ name: "Panno in microfibra piccolo"},{ name: "Mutande"},{ name: "Calze"},{ name: "Cintura"}, { name: "Intimo in lana Merino (Decathlon)"}, { name: "Asciugamano in microfibra (Decathlon)"}] }
+                    ]
+                },
+                {
+                    title: "🏔️ Stiva (Zaino Grande/Attrezzatura)", hidden: false,
+                    subsections: [
+                        { name: "Fondo", collapsed: false, items: [{ name: "Nuovo Zaino 40L (Decathlon)"},{ name: "Scarpe da lavoro"},{ name: "Ciabatte"},{ name: "Sacco a pelo"},{ name: "Materassino"},{ name: "Accappatoio"},{ name: "Asciugamani"},{ name: "Lenzuola"}] },
+                        { name: "Sopra (Ingombranti)", collapsed: false, items: [{ name: "Federa"},{ name: "Pile/maglione pesante"}] },
+                        { name: "Tasca / Beauty Case (Liquidi)", collapsed: false, items: [{ name: "Beauty Case (Decathlon)"}, { name: "Crema solare"},{ name: "Deodorante"},{ name: "Shampoo"},{ name: "Bagno schiuma"},{ name: "Prodotto per capelli"},{ name: "Taglia unghie"},{ name: "Rasoio"},{ name: "Phon"},{ name: "Sapone lavaggio a mano"}] },
+                        { name: "Incastri / Lati", collapsed: false, items: [{ name: "Gavetta (Decathlon)"},{ name: "Sacchetti per panni sporchi"},{ name: "Piccola ciabatta multipresa"}] }
+                    ]
+                }
+            ]
+        },
+        "medioLungo": {
+            name: "Viaggi medio lunghi (2 sett - 2 mesi)",
+            sections: [
+                {
+                    title: "🎒 Zaino (Sotto il sedile)", hidden: false,
+                    subsections: [
+                        { name: "Elettronica e Documenti", collapsed: false, items: [{ name: "Computer con caricatore e mouse"},{ name: "Powerbank"},{ name: "Caricabatterie"},{ name: "Cuffiette"},{ name: "Documenti"},{ name: "Assicurazione sanitaria"},{ name: "Portafogli"},{ name: "Soldi valuta locale"}] },
+                        { name: "Tasca ad Accesso Rapido", collapsed: false, items: [{ name: "Chiavi"},{ name: "Medicine"},{ name: "Borraccia"},{ name: "Occhiali"},{ name: "Occhiali da sole"},{ name: "Ombrello"},{ name: "Fazzoletti"}] },
+                        { name: "Varie e Beauty Rapido", collapsed: false, items: [{ name: "Libro"},{ name: "Lucchetto"},{ name: "Spazzolino"},{ name: "Dentifricio"},{ name: "Burro cacao"},{ name: "Silviette umidificate e disinfettanti"}] }
+                    ]
+                },
+                {
+                    title: "🧳 Cabina (Vestiario Base)", hidden: false,
+                    subsections: [
+                        { name: "Fondo", collapsed: false, items: [{ name: "Scarpe da passeggio"},{ name: "Pantaloni"},{ name: "Bermuda"},{ name: "Felpa"},{ name: "Giacca a vento / giacca"}] },
+                        { name: "Sopra", collapsed: false, items: [{ name: "Pigiama"},{ name: "Maglie"},{ name: "Polo/camice"},{ name: "Costume"}] },
+                        { name: "Tasca e Incastri", collapsed: false, items: [{ name: "Panno in microfibra piccolo"},{ name: "Mutande"},{ name: "Calze"},{ name: "Cintura"}] }
+                    ]
+                },
+                {
+                    title: "🏔️ Stiva (Zaino Grande/Attrezzatura)", hidden: false,
+                    subsections: [
+                        { name: "Fondo", collapsed: false, items: [{ name: "Scarpe da lavoro"},{ name: "Ciabatte"},{ name: "Sacco a pelo"},{ name: "Materassino"},{ name: "Accappatoio"},{ name: "Asciugamani"},{ name: "Lenzuola"}] },
+                        { name: "Sopra (Ingombranti)", collapsed: false, items: [{ name: "Federa"},{ name: "Pile/maglione pesante"}] },
+                        { name: "Tasca / Beauty Case (Liquidi)", collapsed: false, items: [{ name: "Crema solare"},{ name: "Deodorante"},{ name: "Shampoo"},{ name: "Bagno schiuma"},{ name: "Prodotto per capelli"},{ name: "Taglia unghie"},{ name: "Rasoio"},{ name: "Phon"},{ name: "Sapone lavaggio a mano"}] },
+                        { name: "Incastri / Lati", collapsed: false, items: [{ name: "Sacchetti per panni sporchi"},{ name: "Gavetta"},{ name: "Piccola ciabatta multipresa"}] }
+                    ]
+                }
+            ]
+        },
+        "mare": {
+            name: "Lista valigia mare",
+            sections: [
+                {
+                    title: "🎒 Zaino", hidden: false,
+                    subsections: [
+                        { name: "Documenti e Tech", collapsed: false, items: [{ name: "Telefono"},{ name: "Caricabatterie"},{ name: "Powerbank"},{ name: "Cuffiette"},{ name: "Documenti"},{ name: "Portafogli"}] },
+                        { name: "Accesso Rapido / Tasche", collapsed: false, items: [{ name: "Borraccia"},{ name: "Occhiali da sole"},{ name: "Occhiali"},{ name: "Chiavi"},{ name: "Medicine"}] },
+                        { name: "Altro", collapsed: false, items: [{ name: "Libro"},{ name: "Taccuino"},{ name: "Pigiama"},{ name: "Rasoio"}] }
+                    ]
+                },
+                {
+                    title: "🧳 Valigia", hidden: false,
+                    subsections: [
+                        { name: "Fondo", collapsed: false, items: [{ name: "Scarpe"},{ name: "Infradito"},{ name: "Telo mare"},{ name: "Bermuda"},{ name: "Pantaloni"},{ name: "Felpa"},{ name: "Costumi"},{ name: "Accappatoio"},{ name: "Asciugamani"},{ name: "Lenzuola"}] },
+                        { name: "Sopra", collapsed: false, items: [ { name: "Maglie"}, { name: "Polo/camicia"} ] },
+                        { name: "Lato", collapsed: false, items: [ { name: "Cintura"} ] },
+                        { name: "Tasca (Beauty e Intimo)", collapsed: false, items: [{ name: "Mutande"},{ name: "Calze"},{ name: "Crema solare"},{ name: "Deodorante"},{ name: "Shampoo"},{ name: "Phon"},{ name: "Spazzolino"},{ name: "Dentifricio"}] }
+                    ]
+                }
+            ]
+        }
+    };
+
+    let appData = {};
+    let currentList = 'georgia'; 
+    let dragSrc = null;
+    let focusAfterRender = null; 
+
+    function normalizeData(data) {
+        if (!data) return JSON.parse(JSON.stringify(defaultData));
+        Object.keys(data).forEach(listKey => {
+            if(!data[listKey].sections) return;
+            data[listKey].sections.forEach(sec => {
+                if (sec.hidden === undefined) sec.hidden = false;
+                if (!sec.subsections) sec.subsections = [];
+                sec.subsections.forEach(sub => {
+                    if (sub.collapsed === undefined) sub.collapsed = false;
+                    if (!sub.items) sub.items = [];
+                    sub.items.forEach(item => {
+                        if (item.mise === undefined) item.mise = false;
+                        if (item.valigia === undefined) item.valigia = false;
+                        if (item.skip === undefined) item.skip = false;
+                        if (item.forse === undefined) item.forse = false;
+                        if (item.toBuy === undefined) item.toBuy = false;
+                    });
+                });
+            });
+        });
+        return data;
+    }
+
+    // --- MOTORE CLOUD SUPABASE PACKSYNC ---
+    const SB_VALIGE_URL = 'https://bbskvjxrutsrznwcrlmi.supabase.co';
+    const SB_VALIGE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2t2anhydXRzcnpud2NybG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMzIwMDIsImV4cCI6MjEwODYwODAwMn0.l_nFrRcMWn6LDzyI8AJEoc1_J33hAePmNbXTDolVvxU';
+    const SB_VALIGE_APP_NAME = 'valige_data';
+
+    let valigeSaveTimer = null;
+
+    function setSyncStatus(status, text) {
+        const dot = document.getElementById('syncDot');
+        const txt = document.getElementById('syncText');
+        if (!dot || !txt) return;
+        txt.textContent = text;
+        if (status === 'syncing') {
+            dot.style.background = '#3b82f6';
+        } else if (status === 'success') {
+            dot.style.background = '#16a34a';
+        } else if (status === 'error') {
+            dot.style.background = '#ef4444';
+        }
+    }
+
+    function loadData() {
+        let saved = localStorage.getItem('packsync_data');
+        let dataToUse = null;
+
+        if (!saved) {
+            dataToUse = normalizeData(JSON.parse(JSON.stringify(defaultData)));
+        } else {
+            try {
+                dataToUse = normalizeData(JSON.parse(saved));
+            } catch(e) {
+                dataToUse = normalizeData(JSON.parse(JSON.stringify(defaultData)));
+            }
+        }
+
+        // Sincronizzazione asincrona iniziale dal cloud Supabase
+        syncValigeFromCloud();
+        return dataToUse;
+    }
+
+    async function syncValigeFromCloud() {
+        try {
+            setSyncStatus('syncing', 'Controllo Supabase...');
+            const res = await fetch(`${SB_VALIGE_URL}/rest/v1/app_states?app_name=eq.${SB_VALIGE_APP_NAME}&select=data`, {
+                headers: { 'apikey': SB_VALIGE_KEY, 'Authorization': `Bearer ${SB_VALIGE_KEY}` },
+                cache: 'no-store'
+            });
+
+            if (res.ok) {
+                const rows = await res.json();
+                if (rows && rows.length > 0 && rows[0].data && Object.keys(rows[0].data).length > 0) {
+                    appData = normalizeData(rows[0].data);
+                    localStorage.setItem('packsync_data', JSON.stringify(appData));
+                    renderSelector();
+                    renderSections();
+                    setSyncStatus('success', 'Sincronizzato con Supabase');
+                    return;
+                } else {
+                    // Non ancora nel cloud: facciamo il push iniziale
+                    await pushValigeToCloud(appData);
+                }
+            }
+            setSyncStatus('success', 'Sincronizzato con Supabase');
+        } catch(e) {
+            console.warn("Valige offline, uso salvataggio locale:", e);
+            setSyncStatus('error', 'Modalità Offline (Locale)');
+        }
+    }
+
+    async function pushValigeToCloud(dataToPush = appData) {
+        try {
+            setSyncStatus('syncing', 'Salvataggio Cloud...');
+            const res = await fetch(`${SB_VALIGE_URL}/rest/v1/app_states`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SB_VALIGE_KEY,
+                    'Authorization': `Bearer ${SB_VALIGE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates'
+                },
+                body: JSON.stringify({
+                    app_name: SB_VALIGE_APP_NAME,
+                    data: dataToPush
+                })
+            });
+            if (res.ok) {
+                setSyncStatus('success', 'Salvato su Supabase');
+            } else {
+                setSyncStatus('error', 'Errore Salvataggio Cloud');
+            }
+        } catch(e) {
+            console.error("Errore salvataggio Supabase:", e);
+            setSyncStatus('error', 'Salvato solo in locale');
+        }
+    }
+
+    function saveData(dataToSave = appData) {
+        // 1. Salvataggio immediato in locale
+        localStorage.setItem('packsync_data', JSON.stringify(dataToSave));
+        
+        // 2. Debounced push al cloud Supabase (500ms)
+        setSyncStatus('syncing', 'In salvataggio...');
+        if (valigeSaveTimer) clearTimeout(valigeSaveTimer);
+        valigeSaveTimer = setTimeout(() => {
+            pushValigeToCloud(dataToSave);
+        }, 500);
+    }
+
+    function manualValigeCloudSync() {
+        syncValigeFromCloud();
+    }
+
+    // -- Gestione Liste/Scenari --
+    function renderSelector() {
+        const selector = document.getElementById('list-selector');
+        selector.innerHTML = '';
+        for (const [key, listObj] of Object.entries(appData)) {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = listObj.name;
+            if (key === currentList) opt.selected = true;
+            selector.appendChild(opt);
+        }
+    }
+
+    function switchList(listKey) { currentList = listKey; renderApp(); }
+
+    function createNewList() {
+        let newName = prompt("Nome del nuovo scenario (es. Weekend a Roma):");
+        if (newName && newName.trim() !== "") {
+            let key = "list_" + Date.now();
+            appData[key] = { name: newName.trim(), sections: [] };
+            currentList = key;
+            renderSelector();
+            renderApp();
+            saveData();
+        }
+    }
+
+    function renameCurrentList() {
+        let newName = prompt("Rinomina questo scenario:", appData[currentList].name);
+        if (newName && newName.trim() !== "") {
+            appData[currentList].name = newName.trim();
+            renderSelector();
+            saveData();
+        }
+    }
+
+    function deleteCurrentList() {
+        let listKeys = Object.keys(appData);
+        if (listKeys.length <= 1) {
+            alert("Non puoi eliminare l'unica lista rimanente!");
+            return;
+        }
+        if(confirm(`Vuoi davvero eliminare l'intero scenario "${appData[currentList].name}"?`)) {
+            delete appData[currentList];
+            currentList = Object.keys(appData)[0];
+            renderSelector();
+            renderApp();
+            saveData();
+        }
+    }
+
+    // -- Export / Import --
+    function exportData() {
+        const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "packsync_backup.json";
+        link.click();
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                const normalizedData = normalizeData(data);
+                
+                // Aggiunge le liste importate senza sovrascrivere quelle vecchie
+                let lastImportedKey = currentList;
+                for (const key in normalizedData) {
+                    let newKey = key;
+                    if (appData[newKey]) {
+                        newKey = key + "_" + Date.now();
+                        normalizedData[key].name = normalizedData[key].name + " (Importata)";
+                    }
+                    appData[newKey] = normalizedData[key];
+                    lastImportedKey = newKey; // Salva l'ultima chiave per aprirla subito
+                }
+                
+                saveData();
+                renderSelector();
+                switchList(lastImportedKey); // Ti porta direttamente alla nuova lista
+                alert("✅ Liste aggiunte con successo al tuo database!");
+            } catch (err) {
+                alert("❌ Errore durante l'importazione del file JSON.");
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function exportMarkdown() {
+        const list = appData[currentList];
+        let md = `# ${list.name}\n\n`;
+        
+        list.sections.forEach(sec => {
+            md += `## ${sec.title}\n\n`;
+            sec.subsections.forEach(sub => {
+                md += `### ${sub.name}\n`;
+                sub.items.forEach(item => {
+                    let status = '[ ]';
+                    if (item.valigia) status = '[x]';
+                    else if (item.skip) status = '[-]';
+                    else if (item.forse) status = '[?]';
+                    
+                    let buyTag = item.toBuy ? ' **(🛒 Da Comprare)**' : '';
+                    md += `- ${status} ${item.name}${buyTag}\n`;
+                });
+                md += `\n`;
+            });
+        });
+
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = list.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() + ".md";
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // -- Core app logic --
+    function toggleField(secIndex, subIndex, itemIndex, field) {
+        let item = appData[currentList].sections[secIndex].subsections[subIndex].items[itemIndex];
+        item[field] = !item[field];
+        
+        if (item[field]) {
+            if (field === 'skip') { item.mise = false; item.valigia = false; item.forse = false; }
+            else if (field === 'mise') { item.skip = false; item.forse = false; }
+            else if (field === 'valigia') { item.skip = false; item.forse = false; }
+            else if (field === 'forse') { item.skip = false; item.mise = false; item.valigia = false; }
+        }
+        
+        renderApp(); saveData();
+    }
+
+    function addItemInline(secIndex, subIndex, inputId) {
+        let inputEl = document.getElementById(inputId);
+        if(!inputEl) return;
+        let name = inputEl.value.trim();
+        if (name !== "") {
+            appData[currentList].sections[secIndex].subsections[subIndex].items.push({ name: name, mise: false, valigia: false, skip: false, forse: false, toBuy: false });
+            focusAfterRender = inputId;
+            renderApp(); saveData();
+        }
+    }
+
+    function deleteItem(secIndex, subIndex, itemIndex) {
+        if(confirm("Vuoi davvero eliminare questo oggetto?")) {
+            appData[currentList].sections[secIndex].subsections[subIndex].items.splice(itemIndex, 1);
+            renderApp(); saveData();
+        }
+    }
+
+    function addSubsection(secIndex) {
+        let name = prompt("Nome della nuova tasca/scomparto:");
+        if (name && name.trim() !== "") {
+            appData[currentList].sections[secIndex].subsections.push({ name: name.trim(), collapsed: false, items: [] });
+            renderApp(); saveData();
+        }
+    }
+
+    function deleteSubsection(secIndex, subIndex, event) {
+        event.stopPropagation();
+        if(confirm("Sei sicuro di voler eliminare questa tasca e TUTTI gli oggetti al suo interno?")) {
+            appData[currentList].sections[secIndex].subsections.splice(subIndex, 1);
+            renderApp(); saveData();
+        }
+    }
+
+    function toggleSectionHidden(secIndex) {
+        appData[currentList].sections[secIndex].hidden = !appData[currentList].sections[secIndex].hidden;
+        renderApp(); saveData();
+    }
+    
+    function toggleSubsection(secIndex, subIndex) {
+        appData[currentList].sections[secIndex].subsections[subIndex].collapsed = !appData[currentList].sections[secIndex].subsections[subIndex].collapsed;
+        renderApp(); saveData();
+    }
+
+    function deleteSection(secIndex) {
+        if(confirm("Eliminare definitivamente questo bagaglio e tutto il contenuto?")) {
+            appData[currentList].sections.splice(secIndex, 1);
+            renderApp(); saveData();
+        }
+    }
+
+    // -- Drag & Drop --
+    function handleDragStart(e, sec, sub, item) {
+        dragSrc = {sec, sub, item};
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'drag'); 
+        setTimeout(() => e.target.classList.add('dragging'), 0);
+    }
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        document.querySelectorAll('.drag-over-item').forEach(el => el.classList.remove('drag-over-item'));
+    }
+    function handleDragOverItem(e) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over-item'); }
+    function handleDragLeaveItem(e) { e.currentTarget.classList.remove('drag-over-item'); }
+    function handleDropItem(e, targetSec, targetSub, targetItem) {
+        e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('drag-over-item');
+        if (!dragSrc || (dragSrc.sec === targetSec && dragSrc.sub === targetSub && dragSrc.item === targetItem)) return;
+
+        const itemObj = appData[currentList].sections[dragSrc.sec].subsections[dragSrc.sub].items.splice(dragSrc.item, 1)[0];
+        let insertIdx = targetItem;
+        if (dragSrc.sec === targetSec && dragSrc.sub === targetSub && dragSrc.item < targetItem) { insertIdx -= 1; }
+        
+        appData[currentList].sections[targetSec].subsections[targetSub].items.splice(insertIdx, 0, itemObj);
+        dragSrc = null; renderApp(); saveData();
+    }
+    function handleDragOverArea(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over'); }
+    function handleDragLeaveArea(e) { if(e.currentTarget && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); }
+    function handleDropArea(e, targetSec, targetSub) {
+        e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+        if (!dragSrc || (dragSrc.sec === targetSec && dragSrc.sub === targetSub)) return; 
+
+        const itemObj = appData[currentList].sections[dragSrc.sec].subsections[dragSrc.sub].items.splice(dragSrc.item, 1)[0];
+        appData[currentList].sections[targetSec].subsections[targetSub].items.push(itemObj);
+        dragSrc = null; renderApp(); saveData();
+    }
+
+    // -- Modals --
+    function openSectionModal() {
+        document.getElementById('new-sec-type').value = "🎒 Zaino";
+        document.getElementById('new-sec-custom').style.display = 'none';
+        document.getElementById('modal-section').showModal();
+    }
+    function checkCustomOption() {
+        const type = document.getElementById('new-sec-type').value;
+        document.getElementById('new-sec-custom').style.display = (type === 'altro') ? 'block' : 'none';
+    }
+    function confirmAddSection() {
+        const type = document.getElementById('new-sec-type').value;
+        let name = type === 'altro' ? document.getElementById('new-sec-custom').value.trim() : type;
+        if (name !== "") {
+            appData[currentList].sections.push({ title: name, hidden: false, subsections: [{ name: "Scomparto Principale", collapsed: false, items: [] }] });
+            closeModal('modal-section'); renderApp(); saveData();
+        }
+    }
+    function closeModal(modalId) { document.getElementById(modalId).close(); }
+    function resetCurrentList() {
+        if(confirm("Vuoi azzerare le spunte di TUTTI gli oggetti in questo scenario?")) {
+            appData[currentList].sections.forEach(sec => sec.subsections.forEach(sub => sub.items.forEach(item => { 
+                item.mise = false; item.valigia = false; item.skip = false; item.forse = false; item.toBuy = false; 
+            })));
+            renderApp(); saveData();
+        }
+    }
+
+    function renderApp() {
+        if (document.activeElement && document.activeElement.hasAttribute('contenteditable')) {
+            document.activeElement.blur(); 
+        }
+
+        const root = document.getElementById('app-root');
+        root.innerHTML = '';
+        const sectionsData = appData[currentList].sections;
+
+        if(sectionsData.length === 0) {
+            root.innerHTML = '<p style="text-align:center; color:#888;">Nessun bagaglio presente in questo scenario. Aggiungine uno!</p>';
+            return;
+        }
+
+        let toBuyItems = []; 
+        let forseItems = [];
+
+        sectionsData.forEach((section, sIndex) => {
+            const secDiv = document.createElement('div');
+            secDiv.className = `section ${section.hidden ? 'hidden-sec' : ''}`;
+            
+            const header = document.createElement('div');
+            header.className = 'section-header';
+            
+            header.innerHTML = `
+                <div class="editable-title">
+                    <span contenteditable="true" spellcheck="false"
+                          onblur="appData[currentList].sections[${sIndex}].title = this.textContent.trim() || 'Bagaglio'; saveData();"
+                          title="Clicca per rinominare">${section.title}</span>
+                </div>
+                <div class="sec-actions">
+                    <button class="icon-btn" title="Aggiungi Tasca/Scomparto" onclick="addSubsection(${sIndex})">${ICONS.plus}</button>
+                    <button class="icon-btn" title="Mostra/Nascondi Bagaglio" onclick="toggleSectionHidden(${sIndex})">${section.hidden ? ICONS.eyeOff : ICONS.eye}</button>
+                    <button class="icon-btn danger" title="Elimina Bagaglio" onclick="deleteSection(${sIndex})">${ICONS.trash}</button>
+                </div>
+            `;
+            secDiv.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'section-body';
+            let missingItems = [];
+
+            section.subsections.forEach((sub, subIndex) => {
+                const subDiv = document.createElement('div');
+                subDiv.className = `subsection ${sub.collapsed ? 'collapsed' : ''}`;
+                
+                const subHeader = document.createElement('div');
+                subHeader.className = 'subsection-header';
+                
+                const subTitleArea = document.createElement('div');
+                subTitleArea.className = 'subsection-title-area';
+                subTitleArea.onclick = (e) => {
+                    if (e.target.hasAttribute('contenteditable')) return;
+                    toggleSubsection(sIndex, subIndex);
+                };
+                
+                subTitleArea.innerHTML = `
+                    <div class="subsection-toggle">${ICONS.chevronDown}</div>
+                    <span style="font-size: 0.95em; color: var(--text-muted); margin-right: 2px;">📍</span>
+                    <div class="subsection-title" contenteditable="true" spellcheck="false"
+                         onblur="appData[currentList].sections[${sIndex}].subsections[${subIndex}].name = this.textContent.trim() || 'Scomparto'; saveData();"
+                         title="Clicca per rinominare">${sub.name}</div>
+                `;
+
+                const subActions = document.createElement('div');
+                subActions.className = 'subsection-actions';
+                subActions.innerHTML = `
+                    <button class="action-btn danger" title="Elimina Tasca" onclick="deleteSubsection(${sIndex}, ${subIndex}, event)">${ICONS.trash}</button>
+                `;
+
+                subHeader.appendChild(subTitleArea);
+                subHeader.appendChild(subActions);
+                subDiv.appendChild(subHeader);
+
+                const subBody = document.createElement('div');
+                subBody.className = 'subsection-body';
+                subBody.ondragover = handleDragOverArea;
+                subBody.ondragleave = handleDragLeaveArea;
+                subBody.ondrop = (e) => handleDropArea(e, sIndex, subIndex);
+
+                sub.items.forEach((item, iIndex) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'item';
+                    
+                    itemDiv.setAttribute('draggable', 'true');
+                    itemDiv.ondragstart = (e) => handleDragStart(e, sIndex, subIndex, iIndex);
+                    itemDiv.ondragend = handleDragEnd;
+                    itemDiv.ondragover = handleDragOverItem;
+                    itemDiv.ondragleave = handleDragLeaveItem;
+                    itemDiv.ondrop = (e) => handleDropItem(e, sIndex, subIndex, iIndex);
+
+                    if (item.skip) itemDiv.classList.add('status-skip');
+                    else if (item.valigia) itemDiv.classList.add('status-valigia');
+                    else if (item.forse) itemDiv.classList.add('status-forse');
+                    else if (item.mise) itemDiv.classList.add('status-mise');
+                    else if (item.toBuy) itemDiv.classList.add('status-buy');
+
+                    if (!item.skip && !item.valigia && !item.forse) missingItems.push(item.name);
+                    
+                    let loc = `${section.title.split(' (')[0]} - ${sub.name}`;
+                    if (item.toBuy) toBuyItems.push({ name: item.name, location: loc });
+                    if (item.forse) forseItems.push({ name: item.name, location: loc });
+
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'item-header';
+                    
+                    const dragDiv = document.createElement('div');
+                    dragDiv.className = 'drag-handle';
+                    dragDiv.innerHTML = ICONS.grip;
+                    
+                    const nameArea = document.createElement('div');
+                    nameArea.className = 'item-name-area';
+                    let nameHtml = `<div class="item-name" contenteditable="true" spellcheck="false"
+                                          onblur="appData[currentList].sections[${sIndex}].subsections[${subIndex}].items[${iIndex}].name = this.textContent.trim() || 'Oggetto'; saveData();"
+                                          title="Clicca per rinominare">${item.name}</div>`;
+                    if (item.toBuy) nameHtml += `<div class="badge-buy">🛒 Da Comprare</div>`;
+                    nameArea.innerHTML = nameHtml;
+
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'item-actions';
+                    actionsDiv.innerHTML = `
+                        <button class="action-btn ${item.toBuy ? 'active-buy' : ''}" title="Da Comprare" onclick="toggleField(${sIndex}, ${subIndex}, ${iIndex}, 'toBuy')">${ICONS.cart}</button>
+                        <button class="action-btn danger" title="Elimina Oggetto" onclick="deleteItem(${sIndex}, ${subIndex}, ${iIndex})">${ICONS.trash}</button>
+                    `;
+                    
+                    headerDiv.appendChild(dragDiv);
+                    headerDiv.appendChild(nameArea);
+                    headerDiv.appendChild(actionsDiv);
+
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'controls';
+                    controlsDiv.innerHTML = `
+                        <div class="control-label" title="Mise en place" onclick="toggleField(${sIndex}, ${subIndex}, ${iIndex}, 'mise')" style="${item.mise ? 'background: #fcd34d;' : ''}">📦</div>
+                        <div class="control-label" title="In Valigia" onclick="toggleField(${sIndex}, ${subIndex}, ${iIndex}, 'valigia')" style="${item.valigia ? 'background: #86efac;' : ''}">🧳</div>
+                        <div class="control-label" title="Forse / Da decidere" onclick="toggleField(${sIndex}, ${subIndex}, ${iIndex}, 'forse')" style="${item.forse ? 'background: var(--forse-border);' : ''}">❓</div>
+                        <div class="control-label" title="Non Serve" onclick="toggleField(${sIndex}, ${subIndex}, ${iIndex}, 'skip')" style="${item.skip ? 'background: #e2e8f0;' : ''}">❌</div>
+                    `;
+                    
+                    itemDiv.appendChild(headerDiv);
+                    itemDiv.appendChild(controlsDiv);
+                    subBody.appendChild(itemDiv);
+                });
+
+                // NUOVA GESTIONE AGGIUNTA (Con contenitore e bottone)
+                const addInputId = `add-input-${sIndex}-${subIndex}`;
+                
+                const addContainer = document.createElement('div');
+                addContainer.className = 'inline-add-container';
+
+                const addInput = document.createElement('input');
+                addInput.type = 'text';
+                addInput.id = addInputId;
+                addInput.className = 'inline-add-input';
+                addInput.placeholder = 'Scrivi nuovo oggetto...';
+                // Ho rimosso l'onkeydown di invio per disattivarlo del tutto come richiesto
+                
+                const addBtn = document.createElement('button');
+                addBtn.className = 'inline-add-btn';
+                addBtn.innerHTML = '+';
+                addBtn.title = "Aggiungi oggetto";
+                addBtn.onclick = () => {
+                    addItemInline(sIndex, subIndex, addInputId);
+                };
+
+                addContainer.appendChild(addInput);
+                addContainer.appendChild(addBtn);
+                subBody.appendChild(addContainer);
+
+                subDiv.appendChild(subBody);
+                body.appendChild(subDiv);
+            });
+
+            const summaryDiv = document.createElement('div');
+            if(missingItems.length > 0) {
+                summaryDiv.className = 'missing-summary';
+                summaryDiv.innerHTML = `<strong>Ancora fuori dalla valigia:</strong> ${missingItems.join(', ')}`;
+            } else {
+                summaryDiv.className = 'missing-summary missing-summary-ok';
+                summaryDiv.innerHTML = `<strong>✅ Tutto dentro (o segnato)!</strong> Bagaglio sotto controllo.`;
+            }
+            body.appendChild(summaryDiv);
+
+            secDiv.appendChild(body);
+            root.appendChild(secDiv);
+        });
+
+        if (forseItems.length > 0) {
+            const forseContainer = document.createElement('div');
+            forseContainer.className = 'summary-box forse-summary';
+            forseContainer.innerHTML = `
+                <div class="section-header">
+                    <span>🤔 Da valutare (Forse)</span>
+                </div>
+                <ul class="summary-list">
+                    ${forseItems.map(i => `<li><strong>${i.name}</strong> <span style="font-size: 0.85em;">(${i.location})</span></li>`).join('')}
+                </ul>
+            `;
+            root.appendChild(forseContainer);
+        }
+
+        if (toBuyItems.length > 0) {
+            const buyContainer = document.createElement('div');
+            buyContainer.className = 'summary-box to-buy-summary';
+            buyContainer.innerHTML = `
+                <div class="section-header">
+                    <span>${ICONS.cart} Lista della Spesa</span>
+                </div>
+                <ul class="summary-list">
+                    ${toBuyItems.map(i => `<li><strong>${i.name}</strong> <span style="font-size: 0.85em;">(${i.location})</span></li>`).join('')}
+                </ul>
+            `;
+            root.appendChild(buyContainer);
+        }
+
+        if (focusAfterRender) {
+            const el = document.getElementById(focusAfterRender);
+            if (el) { el.focus(); el.value = ''; }
+            focusAfterRender = null;
+        }
+    }
+
+    function init() {
+        appData = loadData();
+        renderSelector();
+        renderApp();
+        document.getElementById('footer').style.display = 'block';
+    }
+
+    init();
+</script>
+
+</body>
+</html>
