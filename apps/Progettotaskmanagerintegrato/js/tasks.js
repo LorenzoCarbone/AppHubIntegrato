@@ -396,35 +396,61 @@ function toggleTask(id) {
         const blockers = getTaskBlockingReasons(t);
         const taskEl = document.getElementById('taskRow_' + id);
         if(taskEl) {
-            // Revert immediato dello stato del checkbox nel DOM per non ingannare l'utente
             const chk = taskEl.querySelector('input[type="checkbox"]');
             if(chk) chk.checked = false;
-            
             taskEl.classList.remove('shake-anim');
             void taskEl.offsetWidth;
             taskEl.classList.add('shake-anim');
         }
+        triggerHaptic('error');
         showToast(`🔒 Task bloccata! Devi prima completare: "${blockers.join('", "')}"`, "error");
         setTimeout(() => render(), 200);
         return;
     }
 
+    const prevCompleted = t.completed;
     const taskEl = document.getElementById('taskRow_' + id);
-    if(taskEl) {
-        if(!t.completed) taskEl.classList.add('task-completing-anim');
-        setTimeout(() => {
-            t.completed = !t.completed; 
-            AppData.triggerSave(); 
-            render();
-        }, 250);
-    } else {
-        t.completed = !t.completed; 
+    if(taskEl && !t.completed) taskEl.classList.add('task-completing-anim');
+    
+    setTimeout(() => {
+        t.completed = !prevCompleted; 
+        if (t.completed) {
+            triggerHaptic('success');
+            // Gestione ricorrenza automatica
+            if (t.recurrence && t.recurrence.frequency && t.recurrence.frequency !== 'none') {
+                const nextDate = calculateNextRecurrenceDate(t.dueDate, t.recurrence);
+                const nextTask = {
+                    id: 't_' + Date.now(),
+                    title: t.title,
+                    completed: false,
+                    priority: t.priority,
+                    dueDate: nextDate,
+                    contextId: t.contextId,
+                    recurrence: { ...t.recurrence },
+                    estimatedMinutes: t.estimatedMinutes || 0,
+                    spentMinutes: 0,
+                    eisenhower: t.eisenhower || 'auto',
+                    subtasks: (t.subtasks || []).map(st => ({ id: 'st_' + Date.now() + '_' + Math.random().toString(36).substr(2, 3), title: st.title, completed: false })),
+                    dependsOn: []
+                };
+                state.data.tasks.push(nextTask);
+                showToast(`Task completata! Prossima ricorrenza creata per il ${formatDisplayDate(nextDate)}`, "success");
+            }
+        }
+        
+        if (typeof UndoManager !== 'undefined') {
+            UndoManager.push({
+                label: `${t.completed ? 'Completata' : 'Riaperta'}: ${t.title}`,
+                undo: () => {
+                    t.completed = prevCompleted;
+                }
+            });
+        }
+
         AppData.triggerSave(); 
-        render(); 
-    }
+        render();
+    }, taskEl && !prevCompleted ? 250 : 0);
 }
-
-
 
 function editTask(id) { 
     const t = (state.data.tasks || []).find(x => x.id === id);
@@ -461,6 +487,26 @@ function saveTaskEdit(id, contextElementId) {
         if(ctxEl) t.contextId = ctxEl.value; 
     }
     
+    // Ricorrenza
+    const recInput = document.getElementById('etRec_' + id);
+    if (recInput) {
+        if (recInput.value === 'none') {
+            t.recurrence = { frequency: 'none' };
+        } else {
+            t.recurrence = { frequency: recInput.value, interval: 1 };
+        }
+    }
+    
+    // Stima e Tempo Impiegato
+    const estInput = document.getElementById('etEst_' + id);
+    if (estInput) t.estimatedMinutes = Math.max(0, parseInt(estInput.value) || 0);
+    const spentInput = document.getElementById('etSpent_' + id);
+    if (spentInput) t.spentMinutes = Math.max(0, parseInt(spentInput.value) || 0);
+
+    // Eisenhower Quadrant
+    const eisenInput = document.getElementById('etEisen_' + id);
+    if (eisenInput) t.eisenhower = eisenInput.value || 'auto';
+
     // Salva eventuale vincolo ancora selezionato nel dropdown per non perderlo al salvataggio
     const depSelect = document.getElementById('selDep_' + id);
     if (depSelect && depSelect.value) {
@@ -473,6 +519,122 @@ function saveTaskEdit(id, contextElementId) {
     editingTaskId = null;
     showToast("Modifiche salvate", "success");
     AppData.triggerSave(); render();
+}
+
+// --- MATRICE DI EISENHOWER (2X2) LOGIC ---
+function getTaskEisenhowerQuadrant(t) {
+    if (t.eisenhower && t.eisenhower !== 'auto') return t.eisenhower;
+    const todayIso = getISODate(new Date());
+    const isDueSoon = t.dueDate && t.dueDate <= todayIso;
+    if (t.priority === 3) {
+        return isDueSoon ? 'q1' : 'q2';
+    } else if (t.priority === 2) {
+        return isDueSoon ? 'q1' : 'q2';
+    } else if (t.priority === 1) {
+        return isDueSoon ? 'q3' : 'q4';
+    }
+    return 'q4';
+}
+
+function setTaskEisenhowerQuadrant(taskId, quadrant) {
+    const t = state.data.tasks.find(x => x.id === taskId);
+    if (!t) return;
+    t.eisenhower = quadrant;
+    AppData.triggerSave();
+    showToast(`Task spostata nel quadrante ${quadrant.toUpperCase()}`, "success");
+    render();
+}
+
+function renderEisenhowerMatrix() {
+    const activeTasks = (state.data.tasks || []).filter(t => !t.completed);
+    const q1Tasks = activeTasks.filter(t => getTaskEisenhowerQuadrant(t) === 'q1');
+    const q2Tasks = activeTasks.filter(t => getTaskEisenhowerQuadrant(t) === 'q2');
+    const q3Tasks = activeTasks.filter(t => getTaskEisenhowerQuadrant(t) === 'q3');
+    const q4Tasks = activeTasks.filter(t => getTaskEisenhowerQuadrant(t) === 'q4');
+
+    const renderQuadrantBox = (id, title, subtitle, icon, colorTheme, tasks) => `
+        <div class="eisenhower-quadrant ${colorTheme.border} ${colorTheme.bg} rounded-2xl p-4 flex flex-col border shadow-xs min-h-[300px]">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b ${colorTheme.borderB}">
+                <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-lg ${colorTheme.badge} flex items-center justify-center text-xs font-bold shrink-0">
+                        <i class="fas ${icon}"></i>
+                    </span>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">${title}</h4>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400">${subtitle}</p>
+                    </div>
+                </div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full ${colorTheme.countBadge}">${tasks.length}</span>
+            </div>
+            <div class="flex-1 space-y-2 overflow-y-auto max-h-[380px] pr-1">
+                ${tasks.length === 0 ? `<p class="text-xs text-slate-400 italic py-8 text-center">Nessun task in questo quadrante</p>` : ''}
+                ${tasks.map(t => {
+                    const ctx = typeof getContextInfo === 'function' ? getContextInfo(t.contextId) : { name: '' };
+                    return `
+                        <div class="p-2.5 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xs hover:shadow transition group flex items-start justify-between gap-2">
+                            <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                                <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox mt-0.5 shrink-0">
+                                <div class="min-w-0 cursor-pointer" onclick="editTask('${t.id}')">
+                                    <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-snug truncate">${escapeHtml(t.title)}</p>
+                                    <div class="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                                        ${t.dueDate ? `<span class="font-mono ${t.dueDate <= getISODate(new Date()) ? 'text-red-500 font-bold' : ''}"><i class="far fa-calendar-alt mr-1"></i>${formatDisplayDate(t.dueDate)}</span>` : ''}
+                                        ${ctx.name ? `<span class="truncate max-w-[90px]"><i class="fas ${ctx.icon || 'fa-folder'} mr-1 opacity-50"></i>${ctx.name}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="relative shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                <select onchange="setTaskEisenhowerQuadrant('${t.id}', this.value)" class="text-[9px] font-bold py-1 px-1.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer">
+                                    <option value="" disabled selected>Sposta...</option>
+                                    <option value="q1">Q1: Urgente & Importante</option>
+                                    <option value="q2">Q2: Non Urg. ma Importante</option>
+                                    <option value="q3">Q3: Urg. non Importante</option>
+                                    <option value="q4">Q4: Né Urg. né Importante</option>
+                                </select>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    return `
+        <div class="p-4 md:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${renderQuadrantBox('q1', 'Q1: Fai Subito', 'Urgente & Importante (Crisi, Scadenze oggi)', 'fa-fire', {
+                    border: 'border-red-200 dark:border-red-900/50',
+                    bg: 'bg-red-50/40 dark:bg-red-950/20',
+                    borderB: 'border-red-100 dark:border-red-900/40',
+                    badge: 'bg-red-500 text-white',
+                    countBadge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                }, q1Tasks)}
+
+                ${renderQuadrantBox('q2', 'Q2: Pianifica', 'Non Urgente ma Importante (Strategia, Crescita)', 'fa-gem', {
+                    border: 'border-blue-200 dark:border-blue-900/50',
+                    bg: 'bg-blue-50/40 dark:bg-blue-950/20',
+                    borderB: 'border-blue-100 dark:border-blue-900/40',
+                    badge: 'bg-blue-500 text-white',
+                    countBadge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                }, q2Tasks)}
+
+                ${renderQuadrantBox('q3', 'Q3: Delega / Riduci', 'Urgente ma Non Importante (Interruzioni, Richieste)', 'fa-bolt', {
+                    border: 'border-amber-200 dark:border-amber-900/50',
+                    bg: 'bg-amber-50/40 dark:bg-amber-950/20',
+                    borderB: 'border-amber-100 dark:border-amber-900/40',
+                    badge: 'bg-amber-500 text-white',
+                    countBadge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                }, q3Tasks)}
+
+                ${renderQuadrantBox('q4', 'Q4: Elimina / Rivedi', 'Né Urgente né Importante (Distrazioni, Bassa priorità)', 'fa-seedling', {
+                    border: 'border-slate-200 dark:border-slate-700',
+                    bg: 'bg-slate-50 dark:bg-[#1a2333]/50',
+                    borderB: 'border-slate-200 dark:border-slate-700',
+                    badge: 'bg-slate-500 text-white',
+                    countBadge: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                }, q4Tasks)}
+            </div>
+        </div>
+    `;
 }
 
 
@@ -504,8 +666,13 @@ let lastDeletedTaskIndex = -1;
 function deleteTask(id) { 
     const idx = state.data.tasks.findIndex(x => x.id === id);
     if (idx === -1) return;
-    lastDeletedTask = JSON.parse(JSON.stringify(state.data.tasks[idx]));
+    const taskToDelete = state.data.tasks[idx];
+    lastDeletedTask = JSON.parse(JSON.stringify(taskToDelete));
     lastDeletedTaskIndex = idx;
+
+    if (typeof moveToTrash === 'function') {
+        moveToTrash('task', taskToDelete);
+    }
 
     state.data.tasks.splice(idx, 1);
     state.data.tasks.forEach(t => {
@@ -513,9 +680,9 @@ function deleteTask(id) {
             t.dependsOn = t.dependsOn.filter(d => d !== id);
         }
     });
+    triggerHaptic('medium');
     AppData.triggerSave(); 
     render(); 
-    showToast(`Task eliminata <button onclick="undoDeleteTask()" class="ml-2 font-bold underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs transition">Annulla</button>`, "info");
 }
 
 function undoDeleteTask() {
@@ -547,4 +714,35 @@ function duplicateTask(id) {
     render();
     showToast("Task duplicata con successo", "success");
     setTimeout(() => jumpToTask(clone.id), 100);
+}
+
+function renderTaskBadges(t) {
+    if (!t) return '';
+    let badges = '';
+    if (t.recurrence && t.recurrence !== 'none') {
+        const recLabels = { daily: 'Ogni giorno', weekly: 'Settimanale', monthly: 'Mensile', yearly: 'Annuale' };
+        badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Ricorrenza: ${recLabels[t.recurrence] || t.recurrence}">
+            <i class="fas fa-redo-alt text-[8px]"></i>
+            <span>${recLabels[t.recurrence] || t.recurrence}</span>
+        </span>`;
+    }
+    if ((t.estimatedMinutes && t.estimatedMinutes > 0) || (t.spentMinutes && t.spentMinutes > 0)) {
+        const isOver = t.spentMinutes > (t.estimatedMinutes || 0) && t.estimatedMinutes > 0;
+        badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${isOver ? 'bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}" title="Tempo: ${t.spentMinutes||0}m spesi / ${t.estimatedMinutes||0}m stimati">
+            <i class="far fa-clock text-[8px]"></i>
+            <span>${t.spentMinutes||0}m/${t.estimatedMinutes||0}m</span>
+        </span>`;
+    }
+    if (t.eisenhower && t.eisenhower !== 'auto') {
+        const qColors = {
+            q1: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800',
+            q2: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+            q3: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+            q4: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+        };
+        badges += `<span class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${qColors[t.eisenhower] || ''}" title="Eisenhower: ${t.eisenhower.toUpperCase()}">
+            ${t.eisenhower.toUpperCase()}
+        </span>`;
+    }
+    return badges;
 }

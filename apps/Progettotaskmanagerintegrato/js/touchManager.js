@@ -215,6 +215,127 @@
         currentDataTransfer = null;
     }
 
+    // Pull-to-refresh
+    let ptrStartY = 0;
+    let ptrPulling = false;
+
+    // Swipe Task
+    let taskSwipeStartX = 0;
+    let taskSwipeStartY = 0;
+    let activeSwipeTaskEl = null;
+
+    function handlePtrStart(e) {
+        if (window.scrollY === 0 && e.touches.length === 1) {
+            ptrStartY = e.touches[0].clientY;
+            ptrPulling = true;
+        } else {
+            ptrPulling = false;
+        }
+
+        // Check task swipe
+        const taskRow = e.target.closest('[id^="taskRow_"]');
+        if (taskRow && !e.target.closest('button, input, textarea, select')) {
+            activeSwipeTaskEl = taskRow;
+            taskSwipeStartX = e.touches[0].clientX;
+            taskSwipeStartY = e.touches[0].clientY;
+        } else {
+            activeSwipeTaskEl = null;
+        }
+    }
+
+    function handlePtrMove(e) {
+        if (ptrPulling && e.touches.length === 1) {
+            const currentY = e.touches[0].clientY;
+            const diff = currentY - ptrStartY;
+            if (diff > 20 && window.scrollY === 0) {
+                const indicator = document.getElementById('pullToRefreshIndicator');
+                const text = document.getElementById('pullToRefreshText');
+                if (indicator) {
+                    const translateY = Math.min(diff * 0.45, 60);
+                    indicator.style.transform = `translate(-50%, ${translateY}px)`;
+                    indicator.style.opacity = '1';
+                    if (diff > 85 && text) {
+                        text.textContent = 'Rilascia per sincronizzare';
+                    } else if (text) {
+                        text.textContent = 'Trascina per sincronizzare';
+                    }
+                }
+            }
+        }
+
+        // Task swipe visual feedback
+        if (activeSwipeTaskEl && e.touches.length === 1) {
+            const currentX = e.touches[0].clientX;
+            const diffX = currentX - taskSwipeStartX;
+            const diffY = Math.abs(e.touches[0].clientY - taskSwipeStartY);
+            if (Math.abs(diffX) > 20 && Math.abs(diffX) > diffY * 1.5) {
+                if (diffX > 0) {
+                    // Swipe verso destra: completa
+                    activeSwipeTaskEl.style.transform = `translateX(${Math.min(diffX * 0.5, 70)}px)`;
+                    activeSwipeTaskEl.style.backgroundColor = 'rgba(16, 185, 129, 0.12)';
+                } else {
+                    // Swipe verso sinistra: modifica/elimina
+                    activeSwipeTaskEl.style.transform = `translateX(${Math.max(diffX * 0.5, -70)}px)`;
+                    activeSwipeTaskEl.style.backgroundColor = 'rgba(59, 130, 246, 0.12)';
+                }
+            }
+        }
+    }
+
+    function handlePtrEnd(e) {
+        if (ptrPulling) {
+            const touch = e.changedTouches ? e.changedTouches[0] : null;
+            if (touch) {
+                const diff = touch.clientY - ptrStartY;
+                if (diff > 85 && window.scrollY === 0) {
+                    const text = document.getElementById('pullToRefreshText');
+                    if (text) text.textContent = 'Sincronizzazione in corso...';
+                    if (typeof triggerHaptic === 'function') triggerHaptic('medium');
+                    if (typeof AppData !== 'undefined' && AppData.initialize) {
+                        AppData.initialize().then(() => {
+                            if (typeof AppData.fetchGCalEvents === 'function' && AppData.gcalApiKey) {
+                                AppData.fetchGCalEvents().then(() => {
+                                    if (typeof render === 'function') render();
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            const indicator = document.getElementById('pullToRefreshIndicator');
+            if (indicator) {
+                indicator.style.transform = 'translate(-50%, -64px)';
+                indicator.style.opacity = '0';
+            }
+            ptrPulling = false;
+        }
+
+        // Complete task swipe
+        if (activeSwipeTaskEl && e.changedTouches && e.changedTouches.length > 0) {
+            const diffX = e.changedTouches[0].clientX - taskSwipeStartX;
+            const diffY = Math.abs(e.changedTouches[0].clientY - taskSwipeStartY);
+            const taskId = activeSwipeTaskEl.id.replace('taskRow_', '');
+            
+            if (Math.abs(diffX) > 65 && Math.abs(diffX) > diffY * 1.4) {
+                if (diffX > 0) {
+                    // Swipe destra -> toggle task
+                    if (typeof toggleTask === 'function') toggleTask(taskId);
+                } else {
+                    // Swipe sinistra -> edit task
+                    if (typeof editTask === 'function') editTask(taskId);
+                }
+            }
+
+            activeSwipeTaskEl.style.transform = '';
+            activeSwipeTaskEl.style.backgroundColor = '';
+            activeSwipeTaskEl = null;
+        }
+    }
+
+    document.addEventListener('touchstart', handlePtrStart, { passive: true });
+    document.addEventListener('touchmove', handlePtrMove, { passive: true });
+    document.addEventListener('touchend', handlePtrEnd, { passive: true });
+
     document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     document.addEventListener('touchend', onTouchEnd, { passive: true });

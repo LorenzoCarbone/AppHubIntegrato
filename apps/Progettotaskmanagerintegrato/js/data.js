@@ -18,6 +18,7 @@ class LifeHubDataManager {
             spheres: [], projects: [], subprojects: [], tasks: [], contacts: [],
             calendarBlocks: [],
             gcalCompleted: [],
+            trash: [],
             pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}]
         };
         
@@ -234,6 +235,7 @@ class LifeHubDataManager {
         };
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
         n.gcalCompleted = d.gcalCompleted || [];
+        n.trash = d.trash || [];
         
         if (d.version !== "4.5" && d.version !== "5.0" && d.version !== "5.1" && d.spheres && d.spheres.length > 0 && d.spheres[0].projects !== undefined) {
             d.spheres.forEach((s, sIdx) => {

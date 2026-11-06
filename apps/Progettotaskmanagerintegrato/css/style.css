@@ -521,3 +521,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
                 flex-shrink: 0 !important;
             }
         }
+
+        /* --- SKELETON SHIMMER ANIMATION --- */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton-shimmer {
+            background: linear-gradient(90deg, rgba(226, 232, 240, 0.4) 25%, rgba(203, 213, 225, 0.7) 50%, rgba(226, 232, 240, 0.4) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        .dark .skeleton-shimmer {
+            background: linear-gradient(90deg, rgba(30, 41, 59, 0.5) 25%, rgba(51, 65, 85, 0.8) 50%, rgba(30, 41, 59, 0.5) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* --- PULL-TO-REFRESH SPINNER --- */
+        #pullToRefreshIndicator {
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        }
+
+        /* --- EISENHOWER MATRIX STYLES --- */
+        .eisenhower-quadrant {
+            transition: all 0.2s ease;
+        }
+        .eisenhower-quadrant:hover {
+            box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.08);
+        }
+
+        /* --- CALENDAR ALL-DAY & CONFLICT STYLES --- */
+        .all-day-bar {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .calendar-conflict-glow {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3) !important;
+        }
+
+        /* --- MOBILE SWIPE ACTIONS --- */
+        .task-swipe-container {
+            position: relative;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        .task-swipe-content {
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+        }

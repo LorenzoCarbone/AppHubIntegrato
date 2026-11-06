@@ -155,6 +155,42 @@ function onCalDayDrop(e, targetDateStr) {
     draggedCalBlockDate = null;
 }
 
+function initBlockResize(e, blockId) {
+    e.stopPropagation();
+    e.preventDefault();
+    const b = state.data.calendarBlocks.find(x => x.id === blockId);
+    if (!b) return;
+
+    const startY = e.clientY;
+    const [startH, startM] = (b.endTime || b.startTime || '12:00').split(':').map(Number);
+    const startTotalMins = (startH * 60) + (startM || 0);
+    const [origStartH, origStartM] = (b.startTime || '09:00').split(':').map(Number);
+    const origStartTotalMins = (origStartH * 60) + (origStartM || 0);
+
+    const onMouseMove = (moveEv) => {
+        const deltaPx = moveEv.clientY - startY;
+        let newEndMins = startTotalMins + deltaPx;
+        newEndMins = Math.round(newEndMins / 15) * 15;
+        if (newEndMins <= origStartTotalMins + 15) newEndMins = origStartTotalMins + 15;
+        if (newEndMins > 24 * 60) newEndMins = 24 * 60;
+
+        const h = Math.floor(newEndMins / 60);
+        const m = newEndMins % 60;
+        b.endTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        render();
+    };
+
+    const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        AppData.triggerSave();
+        showToast(`Durata aggiornata: ${b.startTime} - ${b.endTime}`, "success");
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+}
+
 // Modale Note del Blocco (Spazio ampio per appunti)
 let currentBlockNotesId = null;
 
@@ -586,11 +622,12 @@ function deleteBlock() {
                 if (idx !== -1) {
                     lastDeletedBlock = JSON.parse(JSON.stringify(state.data.calendarBlocks[idx]));
                     lastDeletedBlockIndex = idx;
+                    if (typeof moveToTrash === 'function') moveToTrash('block', state.data.calendarBlocks[idx]);
                     state.data.calendarBlocks.splice(idx, 1);
                     closeBlockModal();
+                    triggerHaptic('medium');
                     AppData.triggerSave();
                     render();
-                    showToast(`Intera serie ciclica eliminata <button onclick="undoDeleteBlock()" class="ml-2 font-bold underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs transition">Annulla</button>`, "info");
                 }
             }
         });
@@ -602,11 +639,12 @@ function deleteBlock() {
     lastDeletedBlock = JSON.parse(JSON.stringify(state.data.calendarBlocks[idx]));
     lastDeletedBlockIndex = idx;
 
+    if (typeof moveToTrash === 'function') moveToTrash('block', state.data.calendarBlocks[idx]);
     state.data.calendarBlocks.splice(idx, 1);
     closeBlockModal();
+    triggerHaptic('medium');
     AppData.triggerSave();
     render();
-    showToast(`Blocco eliminato <button onclick="undoDeleteBlock()" class="ml-2 font-bold underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs transition">Annulla</button>`, "info");
 }
 
 function undoDeleteBlock() {
@@ -788,6 +826,35 @@ function duplicateBlock(id = null) {
                 
                 blocks.sort((a,b) => a.startTime.localeCompare(b.startTime));
 
+                const dueTasksToday = (state.data.tasks || []).filter(t => t.dueDate === dateStr && !t.completed);
+                const allDayBlocks = blocks.filter(b => b.isAllDay || b.startTime === "Tutto il giorno");
+
+                let allDayHtml = '';
+                if (dueTasksToday.length > 0 || allDayBlocks.length > 0) {
+                    allDayHtml = `
+                        <div class="all-day-bar mb-3 p-2 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs shadow-2xs">
+                            <div class="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 px-1">
+                                <span class="flex items-center gap-1.5"><i class="fas fa-calendar-day text-blue-500"></i> Tutto il Giorno</span>
+                                <span class="text-[9px] bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-1.5 py-0.2 rounded-full font-bold">${dueTasksToday.length + allDayBlocks.length}</span>
+                            </div>
+                            <div class="space-y-1">
+                                ${allDayBlocks.map(b => `
+                                    <div onclick="openBlockModal('${b.id}', '${dateStr}')" class="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate">
+                                        <span class="truncate flex items-center gap-1.5"><i class="fas fa-bookmark text-blue-500 text-[10px]"></i> ${escapeHtml(b.title)}</span>
+                                        <span class="text-[9px] text-slate-400 font-normal shrink-0">Evento</span>
+                                    </div>
+                                `).join('')}
+                                ${dueTasksToday.map(t => `
+                                    <div class="flex items-center gap-2 px-2 py-1 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox min-w-[12px] min-h-[12px] w-3 h-3 shrink-0">
+                                        <span class="truncate cursor-pointer hover:text-blue-500 transition flex-1" onclick="editTask('${t.id}')">${escapeHtml(t.title)}</span>
+                                        <span class="text-[9px] text-slate-400 font-normal shrink-0">Scadenza</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                }
+
                 let blocksHtml = '';
                 if(blocks.length === 0) {
                     blocksHtml = `<div class="text-center py-10 opacity-40 italic text-sm text-slate-500"><i class="fas fa-coffee text-2xl mb-2"></i><br>Niente in programma</div>`;
@@ -798,13 +865,14 @@ function duplicateBlock(id = null) {
                         const endHour = 24;
                         const hoursCount = endHour - startHour;
                         const containerHeight = hoursCount * 60;
+                        const proportionalBlocks = blocks.filter(b => !b.isAllDay && b.startTime !== "Tutto il giorno");
                         
                         blocksHtml = `<div class="relative w-full bg-white dark:bg-darkpanel rounded-xl border border-slate-200 dark:border-darkborder shadow-sm mb-4" style="height: ${containerHeight}px;" ondragover="onCalDayDragOver(event)" ondragleave="onCalDayDragLeave(event)" ondrop="onCalDayDrop(event, '${dateStr}')">`;
                         for(let h = startHour; h < endHour; h++) {
                             blocksHtml += `<div class="absolute w-full border-t border-slate-100 dark:border-slate-700/50 flex" style="top: ${(h-startHour)*60}px; height: 60px;"><span class="text-[9px] text-slate-400 font-bold ml-1 bg-white dark:bg-darkpanel px-1" style="position:relative; top:-7px; height:max-content;">${String(h).padStart(2, '0')}:00</span></div>`;
                         }
 
-                        blocks.forEach(b => {
+                        proportionalBlocks.forEach(b => {
                             let isDone = b.isGcal ? (state.data.gcalCompleted && state.data.gcalCompleted.includes(b.id + '_' + dateStr)) : (b.completedDates && b.completedDates.includes(dateStr));
                             const catClass = b.isGcal ? '' : "block-" + (b.category || 'routine');
                             const gcalStyle = b.isGcal ? `border-left: 4px solid ${b.color}; background-color: ${b.color}15; color: ${b.color};` : '';
@@ -879,6 +947,14 @@ function duplicateBlock(id = null) {
                                         </div>
                                         ${extraHtml}
                                     </div>
+                                    ${b.isGcal ? '' : `
+                                        <div class="absolute bottom-0 left-0 right-0 h-2.5 cursor-ns-resize hover:bg-black/20 dark:hover:bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-30"
+                                             onmousedown="initBlockResize(event, '${b.id}')"
+                                             onclick="event.stopPropagation()"
+                                             title="Trascina per ridimensionare durata">
+                                            <span class="w-5 h-1 bg-current rounded-full opacity-60"></span>
+                                        </div>
+                                    `}
                                 </div>`;
                         });
                         blocksHtml += `</div>`;
@@ -893,6 +969,7 @@ function duplicateBlock(id = null) {
                             
                             const overlaps = getBlockOverlaps(b, blocks);
                             const hasOverlap = overlaps.length > 0;
+                            const conflictGlow = hasOverlap ? 'calendar-conflict-glow ring-2 ring-amber-400 dark:ring-amber-500' : '';
 
                             const isBreak = !b.isGcal && b.category === 'break';
                             const isRoutine = !b.isGcal && b.category === 'routine';
@@ -934,7 +1011,7 @@ function duplicateBlock(id = null) {
                             const cursorStyle = b.isGcal ? (b.link ? 'cursor:pointer' : 'cursor:default') : 'cursor:pointer';
 
                             blocksHtml += `
-                                <div class="panel ${pClass} flex items-start transition-all relative group cursor-pointer ${catClass} ${isDone ? 'opacity-50 grayscale' : ''}" 
+                                <div class="panel ${pClass} flex items-start transition-all relative group cursor-pointer ${catClass} ${conflictGlow} ${isDone ? 'opacity-50 grayscale' : ''}" 
                                      ${b.isGcal ? '' : `draggable="true" ondragstart="onCalBlockDragStart(event, '${b.id}', '${dateStr}')" ondragend="onCalBlockDragEnd(event)"`}
                                      style="${gcalStyle}"
                                      onclick="${onClickAction}">
@@ -972,6 +1049,7 @@ function duplicateBlock(id = null) {
                              ondragover="onCalDayDragOver(event)" 
                              ondragleave="onCalDayDragLeave(event)" 
                              ondrop="onCalDayDrop(event, '${dateStr}')">
+                            ${allDayHtml}
                             ${blocksHtml}
                             ${blocks.length === 0 ? `
                                 <button onclick="openBlockModal(null, '${dateStr}')" class="w-full mt-2 py-3 px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-semibold text-xs hover:border-blue-500 hover:text-blue-500 transition flex items-center justify-center gap-1.5 active:scale-98">

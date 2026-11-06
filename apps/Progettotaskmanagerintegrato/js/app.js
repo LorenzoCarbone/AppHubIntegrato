@@ -386,6 +386,76 @@ function renderSphere() {
                 </div>`;
         }
 
+function renderEntityTimelineAndProgress(entity, type) {
+    if (!entity) return '';
+    let validCtxIds = [entity.id];
+    if (type === 'project') {
+        const subs = getChildren('project', entity.id);
+        subs.forEach(s => validCtxIds.push(s.id));
+    }
+    const tasks = (state.data.tasks || []).filter(t => validCtxIds.includes(t.contextId));
+    const totalCount = tasks.length;
+    const doneCount = tasks.filter(t => t.completed).length;
+
+    let totalWeight = 0;
+    let doneWeight = 0;
+    tasks.forEach(t => {
+        const weight = (t.estimatedMinutes && t.estimatedMinutes > 0) ? t.estimatedMinutes : (t.priority === 3 ? 4 : t.priority === 2 ? 3 : t.priority === 1 ? 2 : 1);
+        totalWeight += weight;
+        if (t.completed) doneWeight += weight;
+    });
+
+    const isPondered = state.ui.progressMode === 'pondered';
+    const percent = totalCount === 0 ? 0 : Math.round(isPondered ? (totalWeight === 0 ? 0 : (doneWeight / totalWeight) * 100) : (doneCount / totalCount) * 100);
+
+    const startDate = entity.startDate || null;
+    const endDate = entity.endDate || null;
+    const todayStr = getISODate(new Date());
+
+    let timelineDaysText = '';
+    if (endDate) {
+        const endD = new Date(endDate);
+        const nowD = new Date(todayStr);
+        const diffDays = Math.ceil((endD - nowD) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+            timelineDaysText = `<span class="text-rose-600 dark:text-rose-400 font-bold"><i class="fas fa-exclamation-circle mr-1"></i>Scaduto da ${Math.abs(diffDays)} giorni</span>`;
+        } else if (diffDays === 0) {
+            timelineDaysText = `<span class="text-amber-600 dark:text-amber-400 font-bold"><i class="fas fa-clock mr-1"></i>Scade Oggi</span>`;
+        } else {
+            timelineDaysText = `<span class="text-emerald-600 dark:text-emerald-400 font-medium"><i class="far fa-calendar-check mr-1"></i>${diffDays} giorni rimanenti</span>`;
+        }
+    }
+
+    return `
+        <div class="mt-4 pt-4 border-t border-slate-200/80 dark:border-slate-700/80">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Avanzamento:</span>
+                    <span class="text-xs font-black text-blue-600 dark:text-blue-400">${percent}%</span>
+                    <span class="text-[11px] text-slate-400 font-medium">(${doneCount}/${totalCount} task)</span>
+                </div>
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
+                    <button type="button" onclick="state.ui.progressMode='simple'; render();" class="px-2 py-0.5 rounded transition ${!isPondered ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}">Conteggio</button>
+                    <button type="button" onclick="state.ui.progressMode='pondered'; render();" class="px-2 py-0.5 rounded transition ${isPondered ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}" title="Ponderato per priorità e tempo stimato">Ponderato</button>
+                </div>
+            </div>
+            
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-200/60 dark:border-slate-700/60 mb-3">
+                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+            </div>
+
+            ${(startDate || endDate) ? `
+            <div class="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-2.5 border border-slate-200/70 dark:border-slate-700/70 text-xs">
+                <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    <span class="flex items-center gap-1"><i class="fas fa-play text-blue-500 text-[9px]"></i> Inizio: <b class="text-slate-700 dark:text-slate-200">${startDate ? formatDisplayDate(startDate) : 'Non impostato'}</b></span>
+                    <span>${timelineDaysText}</span>
+                    <span class="flex items-center gap-1"><i class="fas fa-flag-checkered text-rose-500 text-[10px]"></i> Scadenza: <b class="text-slate-700 dark:text-slate-200">${endDate ? formatDisplayDate(endDate) : 'Nessuna'}</b></span>
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+}
+
 function renderProject() {
             const p = getEntity('project', state.path.projId);
             if(!p) return `<div class="text-center p-10"><p>Progetto non trovato.</p></div>`;
@@ -431,6 +501,7 @@ function renderProject() {
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${p.status}</span>
                                     ${p.archived ? `<span class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-3 py-1.5 rounded-md"><i class="fas fa-archive mr-1.5"></i>Archiviato</span>` : ''}
                                 </div>
+                                ${renderEntityTimelineAndProgress(p, 'project')}
                             </div>
                             
                             ${renderProjectNotebook('project', p.id, p)}
@@ -496,6 +567,7 @@ function renderSubproject() {
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.type || 'A termine'}</span>
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.status || 'Attivo'}</span>
                                 </div>
+                                ${renderEntityTimelineAndProgress(sp, 'subproject')}
                             </div>
                             
                             ${renderProjectNotebook('subproject', sp.id, sp)}
@@ -612,6 +684,36 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                                 <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-1.5">
                                 <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-1.5">${generateCtxOpts(t.contextId)}</select>
                             </div>
+                            <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Ricorrenza:</span>
+                                    <select id="etRec_${t.id}" class="input-base py-1.5 text-xs font-bold">
+                                        <option value="none" ${(!t.recurrence||t.recurrence==='none')?'selected':''}>Nessuna</option>
+                                        <option value="daily" ${t.recurrence==='daily'?'selected':''}>Ogni giorno</option>
+                                        <option value="weekly" ${t.recurrence==='weekly'?'selected':''}>Settimanale</option>
+                                        <option value="monthly" ${t.recurrence==='monthly'?'selected':''}>Mensile</option>
+                                        <option value="yearly" ${t.recurrence==='yearly'?'selected':''}>Annuale</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase" title="Minuti stimati">Stima (m):</span>
+                                    <input type="number" id="etEst_${t.id}" value="${t.estimatedMinutes||0}" min="0" step="5" class="input-base w-16 py-1.5 font-bold">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase" title="Minuti spesi">Spesi (m):</span>
+                                    <input type="number" id="etSpent_${t.id}" value="${t.spentMinutes||0}" min="0" step="5" class="input-base w-16 py-1.5 font-bold">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Eisenhower:</span>
+                                    <select id="etEisen_${t.id}" class="input-base py-1.5 text-xs font-bold">
+                                        <option value="auto" ${(!t.eisenhower||t.eisenhower==='auto')?'selected':''}>Auto</option>
+                                        <option value="q1" ${t.eisenhower==='q1'?'selected':''}>Q1: Fai Subito 🔥</option>
+                                        <option value="q2" ${t.eisenhower==='q2'?'selected':''}>Q2: Pianifica 💎</option>
+                                        <option value="q3" ${t.eisenhower==='q3'?'selected':''}>Q3: Delega ⚡</option>
+                                        <option value="q4" ${t.eisenhower==='q4'?'selected':''}>Q4: Elimina 🌱</option>
+                                    </select>
+                                </div>
+                            </div>
                             ${subHtml}
                             ${renderTaskDependencySection(t)}
                             <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -634,11 +736,12 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                                 <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')" title="${isBlocked ? 'Task bloccata: devi prima completare ' + blockers.join(', ') : ''}">
                                 <div class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none" onclick="editTask('${t.id}')">
                                     <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium leading-snug break-words">${t.title}</p>
-                                    ${(t.dueDate || (t.contextId && showGlobal) || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge) ? `
+                                    ${(t.dueDate || (t.contextId && showGlobal) || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge || t.recurrence || t.estimatedMinutes || t.spentMinutes || t.eisenhower) ? `
                                     <div class="flex flex-wrap items-center gap-2 mt-1.5">
                                         ${lockBadge}
                                         ${unlocksBadge}
                                         ${duePill}
+                                        ${typeof renderTaskBadges === 'function' ? renderTaskBadges(t) : ''}
                                         ${hasSub ? `
                                         <button onclick="event.stopPropagation(); toggleSubtasksVisibility('${t.id}')" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700/80 hover:bg-blue-100 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 border border-slate-300/60 dark:border-slate-600 transition active:scale-95" title="Mostra/Nascondi sottotask">
                                             <i class="fas ${isExpanded ? 'fa-chevron-down text-blue-500' : 'fa-chevron-right text-slate-400'} text-[8px]"></i>
@@ -892,6 +995,33 @@ function generateAdvancedTasksHtml() {
                                 <select id="etPri_${t.id}" class="input-base w-28 text-xs font-bold py-2"><option value="0" ${t.priority===0?'selected':''}>No Prio</option><option value="1" ${t.priority===1?'selected':''}>Bassa</option><option value="2" ${t.priority===2?'selected':''}>Media</option><option value="3" ${t.priority===3?'selected':''}>Alta</option></select>
                                 <input type="date" id="etDate_${t.id}" value="${t.dueDate||''}" class="input-base w-32 text-xs font-bold py-2">
                                 <select id="etCtx_${t.id}" class="input-base flex-1 min-w-[140px] text-xs font-bold py-2">${generateCtxOpts(t.contextId)}</select>
+                                <select id="etRec_${t.id}" class="input-base w-36 text-xs font-bold py-2">
+                                    <option value="none" ${(!t.recurrence||t.recurrence.frequency==='none')?'selected':''}>No Ricorrenza</option>
+                                    <option value="daily" ${t.recurrence?.frequency==='daily'?'selected':''}>🔁 Giornaliera</option>
+                                    <option value="weekdays" ${t.recurrence?.frequency==='weekdays'?'selected':''}>🔁 Lun-Ven</option>
+                                    <option value="weekly" ${t.recurrence?.frequency==='weekly'?'selected':''}>🔁 Settimanale</option>
+                                    <option value="monthly" ${t.recurrence?.frequency==='monthly'?'selected':''}>🔁 Mensile</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Stima (min):</span>
+                                    <input type="number" id="etEst_${t.id}" value="${t.estimatedMinutes||0}" min="0" step="5" class="input-base w-20 py-1.5 font-bold">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Speso (min):</span>
+                                    <input type="number" id="etSpent_${t.id}" value="${t.spentMinutes||0}" min="0" step="5" class="input-base w-20 py-1.5 font-bold">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Eisenhower:</span>
+                                    <select id="etEisen_${t.id}" class="input-base py-1.5 text-xs font-bold">
+                                        <option value="auto" ${(!t.eisenhower||t.eisenhower==='auto')?'selected':''}>Auto</option>
+                                        <option value="q1" ${t.eisenhower==='q1'?'selected':''}>Q1: Fai Subito 🔥</option>
+                                        <option value="q2" ${t.eisenhower==='q2'?'selected':''}>Q2: Pianifica 💎</option>
+                                        <option value="q3" ${t.eisenhower==='q3'?'selected':''}>Q3: Delega ⚡</option>
+                                        <option value="q4" ${t.eisenhower==='q4'?'selected':''}>Q4: Elimina 🌱</option>
+                                    </select>
+                                </div>
                             </div>
                             ${subHtml}
                             ${renderTaskDependencySection(t)}
@@ -922,11 +1052,12 @@ function generateAdvancedTasksHtml() {
                                 <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')" title="${isBlocked ? 'Task bloccata: devi prima completare ' + blockers.join(', ') : ''}">
                                 <div class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none" onclick="editTask('${t.id}')">
                                     <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium leading-snug break-words">${t.title}</p>
-                                    ${(t.dueDate || t.contextId || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge) ? `
+                                    ${(t.dueDate || t.contextId || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge || t.recurrence || t.estimatedMinutes || t.spentMinutes || t.eisenhower) ? `
                                     <div class="flex flex-wrap items-center gap-2 mt-1.5">
                                         ${lockBadge}
                                         ${unlocksBadge}
                                         ${duePill}
+                                        ${typeof renderTaskBadges === 'function' ? renderTaskBadges(t) : ''}
                                         ${hasSub ? `
                                         <button onclick="event.stopPropagation(); toggleSubtasksVisibility('${t.id}')" class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition active:scale-95" title="Mostra/Nascondi sottotask">
                                             <i class="fas ${isExpanded ? 'fa-chevron-down text-blue-500' : 'fa-chevron-right text-slate-400'} text-[8px]"></i>
@@ -937,7 +1068,7 @@ function generateAdvancedTasksHtml() {
                                         ${t.contextId ? `<span class="text-[9px] text-slate-400 font-bold truncate bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700"><i class="fas ${ctx.icon} mr-1 opacity-50"></i>${ctx.name}</span>` : ''}
                                     </div>` : ''}
                                 </div>
-                                <div class="flex items-center opacity-0 group-hover:opacity-100 transition ml-2 pt-0.5">
+                                <div class="flex items-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition ml-2 pt-0.5">
                                     <button onclick="event.stopPropagation(); duplicateTask('${t.id}')" class="text-slate-400 hover:text-amber-500 p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Duplica"><i class="fas fa-clone text-[12px]"></i></button>
                                     <button onclick="event.stopPropagation(); editTask('${t.id}')" class="text-slate-400 hover:text-blue-500 p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition ml-1" title="Modifica"><i class="fas fa-edit text-[12px]"></i></button>
                                     <button onclick="event.stopPropagation(); deleteTask('${t.id}')" class="text-slate-400 hover:text-red-500 p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition ml-1" title="Elimina"><i class="fas fa-trash-alt text-[12px]"></i></button>
@@ -1115,10 +1246,20 @@ function renderAdvancedTaskManager() {
                             </div>
                             
                             <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-                                <div class="relative w-44 sm:w-64">
+                                <!-- Switcher Modalità: Lista vs Matrice Eisenhower -->
+                                <div class="flex items-center bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-300/60 dark:border-slate-700 text-xs font-bold shrink-0">
+                                    <button type="button" onclick="state.ui.tmViewMode='list'; render();" class="px-2.5 py-1 rounded transition flex items-center gap-1.5 ${state.ui.tmViewMode !== 'eisenhower' ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}">
+                                        <i class="fas fa-list-ul"></i> <span class="hidden sm:inline">Lista</span>
+                                    </button>
+                                    <button type="button" onclick="state.ui.tmViewMode='eisenhower'; render();" class="px-2.5 py-1 rounded transition flex items-center gap-1.5 ${state.ui.tmViewMode === 'eisenhower' ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}" title="Matrice di Eisenhower (4 Quadranti)">
+                                        <i class="fas fa-th-large"></i> <span class="hidden sm:inline">Eisenhower</span>
+                                    </button>
+                                </div>
+
+                                <div class="relative w-36 sm:w-64">
                                     <i class="fas fa-search absolute left-3 top-2.5 text-xs text-slate-400"></i>
                                     <input type="text" id="tmSearchInput" value="${state.ui.taskSearchQuery || ''}" 
-                                           placeholder="Cerca task, tag..." 
+                                           placeholder="Cerca..." 
                                            oninput="handleTaskSearch(this.value)" 
                                            class="input-base pl-8 pr-7 py-1.5 text-xs font-semibold w-full bg-slate-100 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-darkpanel border-transparent focus:border-blue-500 transition-all rounded-lg">
                                     <button id="tmSearchClearBtn" onclick="clearTaskSearch()" class="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ${state.ui.taskSearchQuery ? '' : 'hidden'}" title="Azzera ricerca"><i class="fas fa-times"></i></button>
@@ -1144,7 +1285,7 @@ function renderAdvancedTaskManager() {
                         </div>
                         
                         <!-- BARRA INSERIMENTO TASK (Desktop) -->
-                        <div class="hidden md:flex mx-8 mb-6 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row gap-3 shadow-sm relative z-40">
+                        <div class="${state.ui.tmViewMode==='eisenhower'?'hidden':'hidden md:flex'} mx-8 mb-6 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row gap-3 shadow-sm relative z-40">
                             <div class="flex-1 relative">
                                 <input type="text" id="gtIn" class="input-base w-full font-semibold text-sm py-2 px-3 border-transparent bg-transparent focus:bg-slate-50 dark:focus:bg-slate-900 transition-colors" placeholder="Scrivi una nuova task... (es. Studiare p3 @domani #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobal()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
                             </div>
@@ -1154,9 +1295,9 @@ function renderAdvancedTaskManager() {
                             <button onclick="addTaskFromGlobal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-bold shadow transition active:scale-95"><i class="fas fa-plus"></i></button>
                         </div>
 
-                        <!-- LISTA TASKS SCROLLABILE -->
+                        <!-- LISTA TASKS SCROLLABILE / MATRICE EISENHOWER -->
                         <div id="tmTasksListContainer" class="flex-1 overflow-y-auto px-4 md:px-8 pb-28 pt-4 md:pt-0">
-                            ${tasksHtml}
+                            ${state.ui.tmViewMode === 'eisenhower' ? (typeof renderEisenhowerMatrix === 'function' ? renderEisenhowerMatrix() : '<p>Caricamento matrice...</p>') : tasksHtml}
                         </div>
                     </div>
                 </div>`;

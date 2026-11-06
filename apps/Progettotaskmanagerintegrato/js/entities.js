@@ -102,23 +102,29 @@ function openEntityModal(mode, type, sId=null, pId=null, spId=null) {
         }
 
         function deleteCurrentEntity() {
-            if(!confirm("Eliminare definitivamente? Verranno eliminati anche tutti i contenuti all'interno.")) return;
+            if(!confirm("Spostare nel cestino? Potrai ripristinarlo in qualsiasi momento.")) return;
             const id = editState.id;
             if(editState.type === 'sphere') {
+                const s = state.data.spheres.find(x => x.id === id);
+                if (s && typeof moveToTrash === 'function') moveToTrash('sphere', s);
                 state.data.spheres = state.data.spheres.filter(x => x.id !== id);
                 const projs = state.data.projects.filter(x => x.sphereId === id).map(x=>x.id);
                 state.data.projects = state.data.projects.filter(x => x.sphereId !== id);
                 state.data.subprojects = state.data.subprojects.filter(x => !projs.includes(x.projectId));
                 navigate('home');
             } else if(editState.type === 'project') {
+                const p = state.data.projects.find(x => x.id === id);
+                if (p && typeof moveToTrash === 'function') moveToTrash('project', p);
                 state.data.projects = state.data.projects.filter(x => x.id !== id);
                 state.data.subprojects = state.data.subprojects.filter(x => x.projectId !== id);
                 navigate('sphere', editState.sId || state.path.sphereId);
             } else {
+                const sp = state.data.subprojects.find(x => x.id === id);
+                if (sp && typeof moveToTrash === 'function') moveToTrash('subproject', sp);
                 state.data.subprojects = state.data.subprojects.filter(x => x.id !== id);
                 navigate('project', editState.sId || state.path.sphereId, editState.pId || state.path.projId);
             }
-            showToast("Eliminato", "success");
+            triggerHaptic('medium');
             closeEntityModal(); AppData.triggerSave(); render();
         }
 
