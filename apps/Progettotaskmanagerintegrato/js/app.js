@@ -433,34 +433,7 @@ function renderProject() {
                                 </div>
                             </div>
                             
-                            <div class="p-6 md:p-8">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest"><i class="fas fa-book-open text-blue-500 mr-2 text-sm"></i> Quaderno Appunti</h3>
-                                    <button onclick="handleNotesClick('project', '${p.id}')" id="toggle-notes-btn" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 transition"><i class="fas fa-chevron-down mr-1.5 hidden md:inline"></i> Mostra Appunti</button>
-                                </div>
-                                
-                                <div id="notes-container" class="hidden flex-col gap-8 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50">
-                                    <div>
-                                        <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-3"><i class="fas fa-thumbtack mr-2 text-sm"></i> Appunti Permanenti</h3>
-                                        <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
-                                            <div id="quill-perm-editor-project" class="min-h-[100px]"></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div class="flex justify-between items-center mb-3">
-                                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center"><i class="fas fa-pen-nib mr-2 text-sm"></i> Foglio Appunti Libero</h3>
-                                            <div class="flex gap-2">
-                                                <button onclick="toggleFocusMode('quill-editor-project')" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-expand"></i> Zen Mode</button>
-                                                <button onclick="archiveNotes('project', '${p.id}')" class="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg transition shadow-sm active:scale-95"><i class="fas fa-file-archive mr-1.5"></i> Archivia</button>
-                                            </div>
-                                        </div>
-                                        <div class="bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
-                                            <div id="quill-editor-project" class="min-h-[200px]"></div>
-                                        </div>
-                                    </div>
-                                    ${renderArchivedNotes(p.updates, 'project', p.id)}
-                                </div>
-                            </div>
+                            ${renderProjectNotebook('project', p.id, p)}
                         </div>
 
                         <div class="panel p-6 md:p-8 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
@@ -525,34 +498,7 @@ function renderSubproject() {
                                 </div>
                             </div>
                             
-                            <div class="p-6 md:p-8">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest"><i class="fas fa-book-open text-blue-500 mr-2 text-sm"></i> Quaderno Appunti</h3>
-                                    <button onclick="handleNotesClick('subproject', '${sp.id}')" id="toggle-notes-btn" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 transition"><i class="fas fa-chevron-down mr-1.5 hidden md:inline"></i> Mostra Appunti</button>
-                                </div>
-                                
-                                <div id="notes-container" class="hidden flex-col gap-8 mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/50">
-                                    <div>
-                                        <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-3"><i class="fas fa-thumbtack mr-2 text-sm"></i> Appunti Permanenti</h3>
-                                        <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
-                                            <div id="quill-perm-editor-subproject" class="min-h-[100px]"></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div class="flex justify-between items-center mb-3">
-                                            <h3 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center"><i class="fas fa-pen-nib mr-2 text-sm"></i> Foglio Appunti Libero</h3>
-                                            <div class="flex gap-2">
-                                                <button onclick="toggleFocusMode('quill-editor-subproject')" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-expand"></i> Zen Mode</button>
-                                                <button onclick="archiveNotes('subproject', '${sp.id}')" class="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg transition shadow-sm active:scale-95"><i class="fas fa-file-archive mr-1.5"></i> Archivia</button>
-                                            </div>
-                                        </div>
-                                        <div class="bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
-                                            <div id="quill-editor-subproject" class="min-h-[200px]"></div>
-                                        </div>
-                                    </div>
-                                    ${renderArchivedNotes(sp.updates, 'subproject', sp.id)}
-                                </div>
-                            </div>
+                            ${renderProjectNotebook('subproject', sp.id, sp)}
                         </div>
                     </div>
                     <div class="space-y-6">

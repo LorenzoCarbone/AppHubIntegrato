@@ -426,7 +426,26 @@ function toggleTask(id) {
 
 
 
-function editTask(id) { editingTaskId = id; render(); }
+function editTask(id) { 
+    const t = (state.data.tasks || []).find(x => x.id === id);
+    if (t && t.contextId) {
+        const sp = (state.data.subprojects || []).find(s => s.id === t.contextId);
+        if (sp) {
+            state.path.subprojId = sp.id;
+            state.path.projId = sp.projectId;
+            state.view = 'workspace';
+        } else {
+            const p = (state.data.projects || []).find(proj => proj.id === t.contextId);
+            if (p) {
+                state.path.projId = p.id;
+                state.path.subprojId = null;
+                state.view = 'workspace';
+            }
+        }
+    }
+    editingTaskId = id; 
+    render(); 
+}
 
 function saveTaskEdit(id, contextElementId) {
     const t = state.data.tasks.find(x => x.id === id);

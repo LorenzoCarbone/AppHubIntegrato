@@ -700,30 +700,7 @@ function duplicateBlock(id = null) {
             }
 
             let mobileTabsHtml = `
-                <!-- Barra Navigazione Mobile per Calendario -->
-                <div class="flex items-center justify-between p-3.5 mb-2 md:hidden bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder shadow-xs">
-                    <div class="flex items-center gap-2.5">
-                        <button onclick="navigate('home')" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition hover:text-blue-500 shadow-2xs active:scale-95" title="Torna alla Home">
-                            <i class="fas fa-home"></i>
-                        </button>
-                        <div>
-                            <h2 class="text-sm font-bold text-slate-800 dark:text-white leading-tight flex items-center gap-1.5">
-                                <i class="fas fa-calendar-alt text-emerald-500 text-xs"></i> Calendario
-                            </h2>
-                            <span class="text-[10px] text-slate-400 font-medium">Time Management</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="navigate('global_tasks')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition active:scale-95 flex items-center gap-1">
-                            <i class="fas fa-check-double text-blue-500 text-[11px]"></i> Tasks
-                        </button>
-                        <button onclick="toggleSettings(true)" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-300 flex items-center justify-center text-sm transition active:scale-95" title="Impostazioni">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between px-3 py-2 md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-darkborder rounded-t-xl">
+                <div class="flex items-center justify-between px-3 py-2.5 md:hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-darkborder rounded-t-xl mb-0 shadow-2xs">
                     <div class="flex items-center gap-0.5">
                         <button onclick="changeCalWeek(-7)" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Settimana precedente"><i class="fas fa-angles-left text-xs"></i></button>
                         <button onclick="stepCalDay(-1)" class="p-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition active:scale-95" title="Giorno precedente"><i class="fas fa-chevron-left text-xs"></i></button>
@@ -988,7 +965,7 @@ function duplicateBlock(id = null) {
                          ondrop="onCalDayDrop(event, '${dateStr}')">
                         <div class="flex justify-between items-center p-3 mb-4 rounded-xl border shadow-sm ${colHeaderBg}">
                             <h3 class="font-bold text-sm ${colHeaderColor}">${displayTitle}</h3>
-                            <button onclick="openBlockModal(null, '${dateStr}')" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1 active:scale-95" title="Aggiungi Blocco a ${displayTitle}"><i class="fas fa-plus"></i> <span class="hidden sm:inline">Blocco</span></button>
+                            <button onclick="openBlockModal(null, '${dateStr}')" class="text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs transition flex items-center gap-1 active:scale-95" title="Aggiungi Blocco a ${displayTitle}"><i class="fas fa-plus"></i> <span class="text-[11px] font-semibold">Blocco</span></button>
                         </div>
                         <div class="${innerContainerClass}"
                              data-date="${dateStr}"
@@ -996,9 +973,15 @@ function duplicateBlock(id = null) {
                              ondragleave="onCalDayDragLeave(event)" 
                              ondrop="onCalDayDrop(event, '${dateStr}')">
                             ${blocksHtml}
-                            <button onclick="openBlockModal(null, '${dateStr}')" class="w-full mt-3 py-3 px-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 transition flex items-center justify-center gap-2 active:scale-98">
-                                <i class="fas fa-plus-circle text-blue-500"></i> Aggiungi blocco a questa data
-                            </button>
+                            ${blocks.length === 0 ? `
+                                <button onclick="openBlockModal(null, '${dateStr}')" class="w-full mt-2 py-3 px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-semibold text-xs hover:border-blue-500 hover:text-blue-500 transition flex items-center justify-center gap-1.5 active:scale-98">
+                                    <i class="fas fa-plus text-[10px]"></i> Aggiungi primo blocco
+                                </button>
+                            ` : `
+                                <button onclick="openBlockModal(null, '${dateStr}')" class="w-full mt-3 py-2.5 px-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 transition flex md:hidden items-center justify-center gap-2 active:scale-98">
+                                    <i class="fas fa-plus-circle text-blue-500"></i> Aggiungi blocco
+                                </button>
+                            `}
                         </div>
                     </div>`;
             };

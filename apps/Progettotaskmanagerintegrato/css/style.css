@@ -269,6 +269,157 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
             }
         }
 
+        /* --- PROJECT NOTEBOOK, CALLOUTS & SMART PILLS --- */
+        .notebook-tab-btn {
+            padding: 0.55rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: 0.65rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .notebook-tab-btn.active {
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.28) !important;
+        }
+        .notebook-tab-btn:not(.active) {
+            color: #64748b;
+            background: transparent;
+        }
+        .dark .notebook-tab-btn:not(.active) {
+            color: #94a3b8;
+            background: transparent;
+        }
+        .notebook-tab-btn:not(.active):hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #0f172a;
+        }
+        .dark .notebook-tab-btn:not(.active):hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+        }
+
+        /* Callouts dentro l'editor Quill e nella visualizzazione */
+        .ql-editor .note-callout,
+        .note-callout {
+            padding: 0.85rem 1rem !important;
+            margin: 0.75rem 0 !important;
+            border-radius: 0.75rem !important;
+            border-left: 4px solid !important;
+            font-size: 0.9rem !important;
+            line-height: 1.6 !important;
+        }
+        .note-callout-idea {
+            border-left-color: #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.08) !important;
+            color: #92400e !important;
+        }
+        .dark .note-callout-idea {
+            color: #fde68a !important;
+            background-color: rgba(245, 158, 11, 0.16) !important;
+        }
+
+        .note-callout-info {
+            border-left-color: #3b82f6 !important;
+            background-color: rgba(59, 130, 246, 0.08) !important;
+            color: #1e40af !important;
+        }
+        .dark .note-callout-info {
+            color: #bfdbfe !important;
+            background-color: rgba(59, 130, 246, 0.16) !important;
+        }
+
+        .note-callout-warning {
+            border-left-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.08) !important;
+            color: #991b1b !important;
+        }
+        .dark .note-callout-warning {
+            color: #fecaca !important;
+            background-color: rgba(239, 68, 68, 0.16) !important;
+        }
+
+        .note-callout-success {
+            border-left-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.08) !important;
+            color: #065f46 !important;
+        }
+        .dark .note-callout-success {
+            color: #a7f3d0 !important;
+            background-color: rgba(16, 185, 129, 0.16) !important;
+        }
+
+        /* Citazioni tipografiche eleganti */
+        .ql-editor blockquote,
+        blockquote.note-quote {
+            border-left: 4px solid #6366f1 !important;
+            padding: 0.6rem 1rem !important;
+            margin: 0.75rem 0 !important;
+            font-style: italic !important;
+            color: #475569 !important;
+            background: rgba(99, 102, 241, 0.05) !important;
+            border-radius: 0 0.5rem 0.5rem 0 !important;
+        }
+        .dark .ql-editor blockquote,
+        .dark blockquote.note-quote {
+            color: #cbd5e1 !important;
+            background: rgba(99, 102, 241, 0.12) !important;
+        }
+
+        /* Pillole Task e Contatti dentro le note */
+        .note-pill {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.35rem !important;
+            padding: 0.15rem 0.65rem !important;
+            border-radius: 9999px !important;
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            line-height: 1.4 !important;
+            margin: 0 0.2rem !important;
+            vertical-align: middle !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            border: 1px solid !important;
+            text-decoration: none !important;
+        }
+        .note-task-pill {
+            background: rgba(59, 130, 246, 0.1) !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+            color: #2563eb !important;
+        }
+        .dark .note-task-pill {
+            background: rgba(59, 130, 246, 0.2) !important;
+            color: #93c5fd !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+        }
+        .note-contact-pill {
+            background: rgba(168, 85, 247, 0.1) !important;
+            border-color: rgba(168, 85, 247, 0.3) !important;
+            color: #9333ea !important;
+        }
+        .dark .note-contact-pill {
+            background: rgba(168, 85, 247, 0.2) !important;
+            color: #d8b4fe !important;
+            border-color: rgba(168, 85, 247, 0.4) !important;
+        }
+
+        /* Quill container confortevole e spazioso */
+        .project-notebook-editor .ql-container {
+            min-height: 360px !important;
+            font-size: 0.95rem !important;
+            line-height: 1.7 !important;
+        }
+        .project-notebook-editor .ql-editor {
+            min-height: 360px !important;
+            max-height: none !important;
+            padding: 1.25rem !important;
+        }
+
         /* --- MOBILE OVERHAUL: BOTTOM SHEETS, TOUCH TARGETS & ERGONOMICS --- */
         body {
             padding-bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
