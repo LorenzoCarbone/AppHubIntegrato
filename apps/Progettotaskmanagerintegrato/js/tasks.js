@@ -457,48 +457,73 @@ function editTask(id) {
 }
 
 function openTaskModal(id) {
-    const t = (state.data.tasks || []).find(x => x.id === id);
-    if (!t) return;
-    const modal = document.getElementById('taskEditModal');
-    if (!modal) return;
+    try {
+        const t = (state.data.tasks || []).find(x => String(x.id) === String(id));
+        if (!t) return;
+        const modal = document.getElementById('taskEditModal');
+        if (!modal) return;
 
-    document.getElementById('temId').value = t.id;
-    document.getElementById('temTitleInput').value = t.title || t.text || '';
-    document.getElementById('temPriority').value = t.priority !== undefined ? t.priority : 0;
-    document.getElementById('temDueDate').value = t.dueDate || '';
-    document.getElementById('temStartDate').value = t.startDate || '';
-    
-    // Contesto
-    const ctxSelect = document.getElementById('temContext');
-    if (ctxSelect && typeof generateCtxOpts === 'function') {
-        ctxSelect.innerHTML = generateCtxOpts(t.contextId);
+        const idEl = document.getElementById('temId');
+        if (idEl) idEl.value = t.id;
+        const titleEl = document.getElementById('temTitleInput');
+        if (titleEl) titleEl.value = t.title || t.text || '';
+        const priEl = document.getElementById('temPriority');
+        if (priEl) priEl.value = t.priority !== undefined ? t.priority : 0;
+        const dueEl = document.getElementById('temDueDate');
+        if (dueEl) dueEl.value = t.dueDate || '';
+        const startEl = document.getElementById('temStartDate');
+        if (startEl) startEl.value = t.startDate || '';
+        
+        // Contesto
+        const ctxSelect = document.getElementById('temContext');
+        if (ctxSelect && typeof generateCtxOpts === 'function') {
+            ctxSelect.innerHTML = generateCtxOpts(t.contextId);
+        }
+        
+        // Ricorrenza
+        const recEl = document.getElementById('temRecurrence');
+        if (recEl) {
+            let recVal = 'none';
+            if (typeof t.recurrence === 'string') recVal = t.recurrence;
+            else if (t.recurrence && t.recurrence.frequency) recVal = t.recurrence.frequency;
+            recEl.value = recVal;
+        }
+        
+        // Eisenhower
+        const eisEl = document.getElementById('temEisenhower');
+        if (eisEl) eisEl.value = t.eisenhower || 'auto';
+        
+        const notesEl = document.getElementById('temNotes');
+        if (notesEl) notesEl.value = t.notes || '';
+        
+        // Subtasks
+        if (typeof renderModalSubtasks === 'function') {
+            renderModalSubtasks(t);
+        }
+
+        // Vincoli & Dipendenze
+        if (typeof renderModalDependencies === 'function') {
+            renderModalDependencies(t);
+        }
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    } catch(err) {
+        console.error("Error in openTaskModal:", err);
     }
-    
-    // Ricorrenza
-    document.getElementById('temRecurrence').value = t.recurrence?.frequency || 'none';
-    
-    // Eisenhower
-    document.getElementById('temEisenhower').value = t.eisenhower || 'auto';
-    
-    document.getElementById('temNotes').value = t.notes || '';
-    
-    // Subtasks
-    renderModalSubtasks(t);
-
-    // Vincoli & Dipendenze
-    renderModalDependencies(t);
-
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
 }
 
 function closeTaskModal() {
     const modal = document.getElementById('taskEditModal');
     if (modal) {
         modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        modal.style.display = 'none';
     }
 }
+
+window.editTask = editTask;
+window.openTaskModal = openTaskModal;
+window.closeTaskModal = closeTaskModal;
 
 function renderModalSubtasks(task) {
     const list = document.getElementById('temSubtaskList');
@@ -615,67 +640,78 @@ function saveTaskModal() {
 
 // --- GESTIONE VINCOLI E DIPENDENZE NEL MODAL TASK ---
 function renderModalDependencies(task) {
-    const blockersList = document.getElementById('temBlockersList');
-    const blockersCount = document.getElementById('temBlockersCount');
-    const blockerSelect = document.getElementById('temAddBlockerSelect');
-    
-    const dependentsList = document.getElementById('temDependentsList');
-    const dependentsCount = document.getElementById('temDependentsCount');
-    const dependentSelect = document.getElementById('temAddDependentSelect');
+    try {
+        if (!task) return;
+        const blockersList = document.getElementById('temBlockersList');
+        const blockersCount = document.getElementById('temBlockersCount');
+        const blockerSelect = document.getElementById('temAddBlockerSelect');
+        
+        const dependentsList = document.getElementById('temDependentsList');
+        const dependentsCount = document.getElementById('temDependentsCount');
+        const dependentSelect = document.getElementById('temAddDependentSelect');
 
-    const blockers = getTaskDependencies(task);
-    const dependents = getTasksDependentOn(task.id);
+        const blockers = (typeof getTaskDependencies === 'function') ? getTaskDependencies(task) : [];
+        const dependents = (typeof getTasksDependentOn === 'function') ? getTasksDependentOn(task.id) : [];
 
-    if (blockersCount) blockersCount.textContent = blockers.length;
-    if (dependentsCount) dependentsCount.textContent = dependents.length;
+        if (blockersCount) blockersCount.textContent = blockers.length;
+        if (dependentsCount) dependentsCount.textContent = dependents.length;
 
-    // 1. Blockers (prerequisiti)
-    if (blockersList) {
-        if (blockers.length === 0) {
-            blockersList.innerHTML = `<p class="text-[11px] text-slate-400 italic py-1">Nessun prerequisito (questa task è pronta per essere svolta).</p>`;
-        } else {
-            blockersList.innerHTML = blockers.map(b => `
-                <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg ${b.completed ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300' : 'bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300'} text-xs font-semibold">
-                    <div class="flex items-center gap-1.5 truncate">
-                        <i class="fas ${b.completed ? 'fa-check-circle text-emerald-500' : 'fa-lock text-amber-500'} text-xs shrink-0"></i>
-                        <span class="truncate ${b.completed ? 'line-through opacity-70' : ''}">${escapeHtml(b.title)}</span>
-                    </div>
-                    <button type="button" onclick="removeModalBlocker('${b.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi vincolo"><i class="fas fa-times text-xs"></i></button>
-                </div>
-            `).join('');
+        // 1. Blockers (prerequisiti)
+        if (blockersList) {
+            if (blockers.length === 0) {
+                blockersList.innerHTML = '<p class="text-[11px] text-slate-400 italic py-1">Nessun prerequisito (questa task è pronta per essere svolta).</p>';
+            } else {
+                blockersList.innerHTML = blockers.map(b => {
+                    const name = b.title || b.text || 'Attività';
+                    return `
+                        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg ${b.completed ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300' : 'bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300'} text-xs font-semibold">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <i class="fas ${b.completed ? 'fa-check-circle text-emerald-500' : 'fa-lock text-amber-500'} text-xs shrink-0"></i>
+                                <span class="truncate ${b.completed ? 'line-through opacity-70' : ''}">${escapeHtml(name)}</span>
+                            </div>
+                            <button type="button" onclick="removeModalBlocker('${b.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi vincolo"><i class="fas fa-times text-xs"></i></button>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
-    }
 
-    // 2. Dependents (sbloccate da questa task)
-    if (dependentsList) {
-        if (dependents.length === 0) {
-            dependentsList.innerHTML = `<p class="text-[11px] text-slate-400 italic py-1">Nessuna task dipende da questa (non vincola altre attività).</p>`;
-        } else {
-            dependentsList.innerHTML = dependents.map(d => `
-                <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                    <div class="flex items-center gap-1.5 truncate">
-                        <i class="fas fa-key text-emerald-500 text-xs shrink-0"></i>
-                        <span class="truncate">${escapeHtml(d.title)}</span>
-                    </div>
-                    <button type="button" onclick="removeModalDependent('${d.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi dipendenza"><i class="fas fa-times text-xs"></i></button>
-                </div>
-            `).join('');
+        // 2. Dependents (sbloccate da questa task)
+        if (dependentsList) {
+            if (dependents.length === 0) {
+                dependentsList.innerHTML = '<p class="text-[11px] text-slate-400 italic py-1">Nessuna task dipende da questa (non vincola altre attività).</p>';
+            } else {
+                dependentsList.innerHTML = dependents.map(d => {
+                    const name = d.title || d.text || 'Attività';
+                    return `
+                        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <i class="fas fa-key text-emerald-500 text-xs shrink-0"></i>
+                                <span class="truncate">${escapeHtml(name)}</span>
+                            </div>
+                            <button type="button" onclick="removeModalDependent('${d.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi dipendenza"><i class="fas fa-times text-xs"></i></button>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
-    }
 
-    // 3. Dropdowns per aggiungere nuovi vincoli
-    const otherTasks = (state.data.tasks || []).filter(x => x.id !== task.id && !x.completed);
+        // 3. Dropdowns per aggiungere nuovi vincoli
+        const otherTasks = (state.data.tasks || []).filter(x => String(x.id) !== String(task.id) && !x.completed);
 
-    if (blockerSelect) {
-        const availableBlockers = otherTasks.filter(x => !(task.dependsOn || []).includes(x.id) && !wouldCreateCycle(task.id, x.id));
-        blockerSelect.innerHTML = `<option value="">-- Seleziona una task prerequisito --</option>` + 
-            availableBlockers.map(x => `<option value="${x.id}">${escapeHtml(x.title)}</option>`).join('');
-    }
+        if (blockerSelect) {
+            const availableBlockers = otherTasks.filter(x => !(task.dependsOn || []).includes(x.id) && (typeof wouldCreateCycle === 'function' ? !wouldCreateCycle(task.id, x.id) : true));
+            blockerSelect.innerHTML = '<option value="">-- Seleziona una task prerequisito --</option>' + 
+                availableBlockers.map(x => `<option value="${x.id}">${escapeHtml(x.title || x.text || 'Attività')}</option>`).join('');
+        }
 
-    if (dependentSelect) {
-        const availableDependents = otherTasks.filter(x => !(x.dependsOn || []).includes(task.id) && !wouldCreateCycle(x.id, task.id));
-        dependentSelect.innerHTML = `<option value="">-- Seleziona una task da sbloccare --</option>` + 
-            availableDependents.map(x => `<option value="${x.id}">${escapeHtml(x.title)}</option>`).join('');
+        if (dependentSelect) {
+            const availableDependents = otherTasks.filter(x => !(x.dependsOn || []).includes(task.id) && (typeof wouldCreateCycle === 'function' ? !wouldCreateCycle(x.id, task.id) : true));
+            dependentSelect.innerHTML = '<option value="">-- Seleziona una task da sbloccare --</option>' + 
+                availableDependents.map(x => `<option value="${x.id}">${escapeHtml(x.title || x.text || 'Attività')}</option>`).join('');
+        }
+    } catch(err) {
+        console.error("renderModalDependencies error:", err);
     }
 }
 
@@ -1010,11 +1046,18 @@ function duplicateTask(id) {
 function renderTaskBadges(t) {
     if (!t) return '';
     let badges = '';
-    if (t.recurrence && t.recurrence !== 'none') {
-        const recLabels = { daily: 'Ogni giorno', weekly: 'Settimanale', monthly: 'Mensile', yearly: 'Annuale' };
-        badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Ricorrenza: ${recLabels[t.recurrence] || t.recurrence}">
+    let recFreq = null;
+    if (typeof t.recurrence === 'string' && t.recurrence !== 'none') {
+        recFreq = t.recurrence;
+    } else if (t.recurrence && typeof t.recurrence === 'object' && t.recurrence.frequency && t.recurrence.frequency !== 'none') {
+        recFreq = t.recurrence.frequency;
+    }
+    if (recFreq) {
+        const recLabels = { daily: 'Giornaliera', weekdays: 'Lun-Ven', weekly: 'Settimanale', monthly: 'Mensile', yearly: 'Annuale' };
+        const recLabel = recLabels[recFreq] || recFreq;
+        badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Ricorrenza: ${recLabel}">
             <i class="fas fa-redo-alt text-[8px]"></i>
-            <span>${recLabels[t.recurrence] || t.recurrence}</span>
+            <span>${recLabel}</span>
         </span>`;
     }
     if ((t.estimatedMinutes && t.estimatedMinutes > 0) || (t.spentMinutes && t.spentMinutes > 0)) {

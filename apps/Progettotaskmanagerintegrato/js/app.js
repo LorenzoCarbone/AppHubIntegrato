@@ -19,6 +19,7 @@ function render() {
             
             initQuillEditors(); 
             if(typeof updateMobileBottomNav === 'function') updateMobileBottomNav();
+            if(typeof applyFeatureVisibility === 'function') applyFeatureVisibility();
         }
 
 // --- WIDGET AGENDA & GOOGLE CALENDAR IN DASHBOARD ---
@@ -1422,26 +1423,12 @@ function formatPageDateDisplay(dateStr) {
 
 function renderTipologiaBadge(tipologia) {
     const tipo = tipologia || 'Riunione';
-    let badgeClass = 'bg-slate-700/60 text-slate-200 border-slate-600/50';
-    let dotClass = 'bg-slate-400';
-    if (tipo === 'Colloquio') {
-        badgeClass = 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50';
-        dotClass = 'bg-emerald-400';
-    } else if (tipo === 'Call') {
-        badgeClass = 'bg-sky-950/70 text-sky-300 border-sky-800/50';
-        dotClass = 'bg-sky-400';
-    } else if (tipo === 'Appunti') {
-        badgeClass = 'bg-amber-950/70 text-amber-300 border-amber-800/50';
-        dotClass = 'bg-amber-400';
-    } else if (tipo === 'Brief') {
-        badgeClass = 'bg-purple-950/70 text-purple-300 border-purple-800/50';
-        dotClass = 'bg-purple-400';
-    } else if (tipo === 'Verbale') {
-        badgeClass = 'bg-teal-950/70 text-teal-300 border-teal-800/50';
-        dotClass = 'bg-teal-400';
-    }
-    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${badgeClass}">
-        <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>
+    const types = (typeof getDocumentTypes === 'function') ? getDocumentTypes() : [];
+    const found = types.find(t => t.name.toLowerCase() === tipo.toLowerCase());
+    const color = found ? (found.color || '#64748b') : '#64748b';
+
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border transition shadow-xs" style="background-color: ${color}20; color: ${color}; border-color: ${color}40;">
+        <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${color};"></span>
         ${escapeNoteHtml(tipo)}
     </span>`;
 }
@@ -1832,22 +1819,9 @@ function renderGlobalPages() {
                         <button onclick="openGlobalPageEditor('${p.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Apri ed elabora pagina">
                             <i class="fas fa-edit text-xs"></i>
                         </button>
-                        <div class="relative group/exp inline-block">
-                            <button type="button" class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Esporta questa pagina">
-                                <i class="fas fa-download text-xs"></i>
-                            </button>
-                            <div class="absolute right-0 mt-1 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover/exp:opacity-100 group-hover/exp:visible transition-all z-50 p-1 text-left">
-                                <button onclick="exportSinglePage('${p.id}', 'markdown')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                    <i class="fab fa-markdown text-blue-500"></i> Markdown
-                                </button>
-                                <button onclick="exportSinglePage('${p.id}', 'text')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                    <i class="fas fa-file-alt text-slate-400"></i> Testo (.txt)
-                                </button>
-                                <button onclick="exportSinglePage('${p.id}', 'print')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                    <i class="fas fa-print text-purple-500"></i> Stampa / PDF
-                                </button>
-                            </div>
-                        </div>
+                        <button type="button" onclick="event.stopPropagation(); openPageExportModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Esporta documento">
+                            <i class="fas fa-download text-xs"></i>
+                        </button>
                         <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30" title="Elimina pagina">
                             <i class="fas fa-trash text-xs"></i>
                         </button>
@@ -2198,7 +2172,10 @@ function renderGlobalPages() {
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
                         <i class="far fa-dot-circle text-emerald-500"></i> Tipologia:
                     </span>
-                    ${['all', 'Riunione', 'Colloquio', 'Call', 'Appunti', 'Brief', 'Verbale'].map(tipo => {
+                    <button type="button" onclick="openDocumentTypesModal()" class="px-2 py-1 rounded-lg text-xs font-bold transition shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 mr-1 flex items-center gap-1">
+                        <i class="fas fa-cog text-[10px]"></i> Modifica
+                    </button>
+                    ${['all', ...((typeof getDocumentTypes === 'function' ? getDocumentTypes() : []).map(t => t.name))].map(tipo => {
                         const isSel = currentTipoFilter === tipo;
                         const label = tipo === 'all' ? 'Tutte' : tipo;
                         return `

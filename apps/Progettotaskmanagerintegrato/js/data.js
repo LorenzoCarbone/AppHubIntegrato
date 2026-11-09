@@ -20,6 +20,15 @@ class LifeHubDataManager {
             gcalCompleted: [],
             trash: [],
             pages: [],
+            documentTypes: [
+                { id: 'riunione', name: 'Riunione', color: '#64748b' },
+                { id: 'colloquio', name: 'Colloquio', color: '#10b981' },
+                { id: 'call', name: 'Call', color: '#0ea5e9' },
+                { id: 'appunti', name: 'Appunti', color: '#f59e0b' },
+                { id: 'brief', name: 'Brief', color: '#8b5cf6' },
+                { id: 'verbale', name: 'Verbale', color: '#14b8a6' },
+                { id: 'altro', name: 'Altro', color: '#94a3b8' }
+            ],
             pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}],
             features: {
                 dashboardAgenda: true,
@@ -275,6 +284,17 @@ class LifeHubDataManager {
             const raw = localStorage.getItem('hub_features');
             if (raw) savedFeatures = JSON.parse(raw);
         } catch(e) {}
+        let savedDocTypes = null;
+        try { const rawT = localStorage.getItem('hub_document_types'); if(rawT) savedDocTypes = JSON.parse(rawT); } catch(e){}
+        n.documentTypes = (Array.isArray(d.documentTypes) && d.documentTypes.length > 0) ? d.documentTypes : ((Array.isArray(savedDocTypes) && savedDocTypes.length > 0) ? savedDocTypes : [
+                { id: 'riunione', name: 'Riunione', color: '#64748b' },
+                { id: 'colloquio', name: 'Colloquio', color: '#10b981' },
+                { id: 'call', name: 'Call', color: '#0ea5e9' },
+                { id: 'appunti', name: 'Appunti', color: '#f59e0b' },
+                { id: 'brief', name: 'Brief', color: '#8b5cf6' },
+                { id: 'verbale', name: 'Verbale', color: '#14b8a6' },
+                { id: 'altro', name: 'Altro', color: '#94a3b8' }
+            ]);
         n.features = Object.assign({
             dashboardAgenda: true,
             eisenhowerMatrix: true,

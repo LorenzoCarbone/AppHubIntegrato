@@ -318,6 +318,25 @@ function filterCommandPalette(query = '') {
         }
     });
 
+    // 5. Pagine & Note
+    (state.data.pages || []).forEach(p => {
+        const title = p.title || 'Senza titolo';
+        const cleanContent = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
+        if (!q || title.toLowerCase().includes(q) || cleanContent.includes(q) || (p.tags || []).some(t => t.toLowerCase().includes(q))) {
+            commandPaletteItems.push({
+                type: 'page',
+                title: title,
+                subtitle: `Pagina • ${p.tipologia || 'Riunione'} • ${p.date || 'Senza data'}`,
+                icon: 'fa-file-lines text-indigo-500',
+                action: () => {
+                    closeCommandPalette();
+                    if (typeof navigate === 'function') navigate('global_pages');
+                    if (typeof openGlobalPageEditor === 'function') openGlobalPageEditor(p.id);
+                }
+            });
+        }
+    });
+
     if (commandPaletteItems.length === 0) {
         container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">Nessun risultato per "${escapeHtml(q)}"</div>`;
         return;
@@ -334,8 +353,7 @@ function renderCommandPaletteItems() {
         const isSelected = idx === commandPaletteSelectedIndex;
         return `
             <div onclick="executeCommandPaletteItem(${idx})" 
-                 onmouseenter="commandPaletteSelectedIndex = ${idx}; renderCommandPaletteItems();"
-                 class="p-2.5 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition ${isSelected ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'}">
+                 class="p-2.5 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition ${isSelected ? 'bg-blue-600 text-white shadow-xs' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'}">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <i class="fas ${item.icon} text-xs w-4 text-center shrink-0 ${isSelected ? '!text-white' : ''}"></i>
                     <div class="min-w-0">
@@ -350,10 +368,18 @@ function renderCommandPaletteItems() {
 }
 
 function executeCommandPaletteItem(idx) {
-    if (commandPaletteItems[idx] && typeof commandPaletteItems[idx].action === 'function') {
-        commandPaletteItems[idx].action();
+    const item = commandPaletteItems[idx];
+    if (item && typeof item.action === 'function') {
+        closeCommandPalette();
+        try {
+            item.action();
+        } catch(err) {
+            console.error("Command palette error:", err);
+        }
     }
 }
+
+window.executeCommandPaletteItem = executeCommandPaletteItem;
 
 function handleCommandPaletteKeyDown(e) {
     if (e.key === 'ArrowDown') {

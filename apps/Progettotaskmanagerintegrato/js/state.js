@@ -58,6 +58,19 @@ function toggleNavFolder(e, id) {
 
 function toggleArchivedView() { state.ui.showArchived = !state.ui.showArchived; render(); }
 
+function applyFeatureVisibility() {
+    const feats = (state.data && state.data.features) ? state.data.features : {};
+    document.querySelectorAll('[data-feature]').forEach(el => {
+        const featKey = el.getAttribute('data-feature');
+        if (featKey && feats[featKey] === false) {
+            el.classList.add('hidden');
+        } else {
+            el.classList.remove('hidden');
+        }
+    });
+}
+window.applyFeatureVisibility = applyFeatureVisibility;
+
 function switchSettingsTab(tabName) {
     const tabs = ['features', 'cloud', 'data'];
     tabs.forEach(t => {
@@ -93,14 +106,15 @@ function toggleSettings(forceOpen) {
 
         // Popola i toggle delle funzionalità
         const feats = (state.data && state.data.features) ? state.data.features : {
+            calendar: true,
+            global_pages: true,
+            contacts: true,
             dashboardAgenda: true,
             eisenhowerMatrix: true,
-            habitsTracker: true,
-            contacts: true,
-            timeBlocks: true,
-            projectTimeline: true
+            projectTimeline: true,
+            timeBlocks: true
         };
-        ['dashboardAgenda', 'eisenhowerMatrix', 'habitsTracker', 'contacts', 'timeBlocks', 'projectTimeline'].forEach(k => {
+        ['calendar', 'global_pages', 'dashboardAgenda', 'eisenhowerMatrix', 'contacts', 'projectTimeline', 'timeBlocks'].forEach(k => {
             const chk = document.getElementById('feat_' + k);
             if (chk) chk.checked = feats[k] !== false;
         });
@@ -120,20 +134,12 @@ function toggleSettings(forceOpen) {
 }
 
 function toggleFeatureSetting(key, enabled) {
-    if (!state.data.features) {
-        state.data.features = {
-            dashboardAgenda: true,
-            eisenhowerMatrix: true,
-            habitsTracker: true,
-            contacts: true,
-            timeBlocks: true,
-            projectTimeline: true
-        };
-    }
+    if (!state.data.features) state.data.features = {};
     state.data.features[key] = !!enabled;
     localStorage.setItem('hub_features', JSON.stringify(state.data.features));
     AppData.saveLocal();
     AppData.pushToCloud();
+    applyFeatureVisibility();
     if (typeof render === 'function') render();
     showToast(`Modulo ${enabled ? 'attivato' : 'disattivato'}`, "default");
 }
