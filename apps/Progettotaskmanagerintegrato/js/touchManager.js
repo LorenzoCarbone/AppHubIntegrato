@@ -41,6 +41,11 @@
     let calSwipeStartX = 0;
     let calSwipeStartY = 0;
 
+    // Swipe Task Manager da spazio vuoto per aprire sidebar
+    let tmSwipeStartX = 0;
+    let tmSwipeStartY = 0;
+    let tmSwipeStartOnEmpty = false;
+
     function getClosestDraggable(el) {
         if (!el || !(el instanceof Element)) return null;
         return el.closest('[draggable="true"], .draggable, [data-drag-card]');
@@ -68,6 +73,17 @@
         if (calContainer) {
             calSwipeStartX = touch.clientX;
             calSwipeStartY = touch.clientY;
+        }
+
+        // Swipe Task Manager da spazio vuoto per aprire filtri/liste
+        const tmContainer = e.target.closest('#tmTasksListContainer');
+        if (tmContainer && window.innerWidth < 768 && typeof state !== 'undefined' && state && state.view === 'global_tasks') {
+            const isInteractive = e.target.closest('[id^="taskRow_"], [id^="taskCard_"], button, input, textarea, select, a, .task-checkbox, .draggable');
+            if (!isInteractive) {
+                tmSwipeStartX = touch.clientX;
+                tmSwipeStartY = touch.clientY;
+                tmSwipeStartOnEmpty = true;
+            }
         }
 
         const draggableEl = getClosestDraggable(e.target);
@@ -170,7 +186,26 @@
             currentDropTarget = null;
             activeDraggable = null;
             currentDataTransfer = null;
+            tmSwipeStartOnEmpty = false;
             return;
+        }
+
+        // Gestione Swipe Task Manager verso destra per aprire il drawer liste/filtri
+        if (tmSwipeStartOnEmpty && e.changedTouches && e.changedTouches.length > 0) {
+            const touch = e.changedTouches[0];
+            const diffX = touch.clientX - tmSwipeStartX;
+            const diffY = touch.clientY - tmSwipeStartY;
+            if (diffX > 60 && diffX > Math.abs(diffY) * 1.3) {
+                const sidebar = document.getElementById('tmSidebar');
+                if (sidebar && !sidebar.classList.contains('open')) {
+                    if (typeof toggleTmSidebar === 'function') {
+                        toggleTmSidebar();
+                    }
+                }
+            }
+            tmSwipeStartOnEmpty = false;
+            tmSwipeStartX = 0;
+            tmSwipeStartY = 0;
         }
 
         // Gestione Swipe Calendario
@@ -195,6 +230,9 @@
     }
 
     function onTouchCancel(e) {
+        tmSwipeStartOnEmpty = false;
+        tmSwipeStartX = 0;
+        tmSwipeStartY = 0;
         if (holdTimer) {
             clearTimeout(holdTimer);
             holdTimer = null;

@@ -342,10 +342,14 @@ window.openImportModal = openImportModal;
 window.closeImportModal = closeImportModal;
 window.executeImport = executeImport;
 
-async function navigate(view, sId=null, pId=null, spId=null) { 
+async function navigate(view, sId=null, pId=null, spId=null, fromPopState=false) { 
     state.view = view; 
     state.path = { sphereId: sId, projId: pId, subprojId: spId }; 
     editingTaskId = null; 
+    
+    if (!fromPopState && typeof history !== 'undefined' && history.pushState) {
+        history.pushState({ view, path: { sphereId: sId, projId: pId, subprojId: spId } }, '', window.location.href);
+    }
     
     const headers = document.querySelectorAll('.hidden-in-tm');
     headers.forEach(h => {
@@ -361,6 +365,56 @@ async function navigate(view, sId=null, pId=null, spId=null) {
         render();
         updateMobileBottomNav();
     }
+}
+
+// Inizializzazione History State per prevenire uscite accidentali all'AppHub da Mobile
+if (typeof history !== 'undefined' && history.replaceState && !history.state) {
+    history.replaceState({ view: state.view || 'home', path: state.path || {} }, '', window.location.href);
+}
+
+if (typeof window !== 'undefined' && !window.__appHistoryPopstateAttached) {
+    window.__appHistoryPopstateAttached = true;
+    window.addEventListener('popstate', (e) => {
+        // 1. Chiudi eventuali modali aperti senza uscire dalla schermata
+        const openModal = document.querySelector('.modal-overlay:not(.hidden)');
+        if (openModal) {
+            if (typeof closeTaskModal === 'function') closeTaskModal();
+            if (typeof closeEntityModal === 'function') closeEntityModal();
+            if (typeof closeBlockModal === 'function') closeBlockModal();
+            if (typeof closeSettings === 'function') closeSettings();
+            if (typeof closePageExportModal === 'function') closePageExportModal();
+            if (typeof closeDocumentTypesModal === 'function') closeDocumentTypesModal();
+            if (typeof closeImportModal === 'function') closeImportModal();
+            history.pushState({ view: state.view, path: state.path }, '', window.location.href);
+            return;
+        }
+
+        // 2. Chiudi il drawer/sidebar del Task Manager da mobile se aperto
+        const tmSidebar = document.getElementById('tmSidebar');
+        if (tmSidebar && tmSidebar.classList.contains('open')) {
+            if (typeof toggleTmSidebar === 'function') toggleTmSidebar();
+            history.pushState({ view: state.view, path: state.path }, '', window.location.href);
+            return;
+        }
+
+        // 3. Se si sta modificando una sottopagina nei quaderni, torna all'elenco pagine
+        if (typeof activeSubpageId !== 'undefined' && activeSubpageId) {
+            activeSubpageId = null;
+            render();
+            history.pushState({ view: state.view, path: state.path }, '', window.location.href);
+            return;
+        }
+
+        // 4. Naviga nello storico interno dell'app
+        if (e.state && e.state.view) {
+            navigate(e.state.view, e.state.path?.sphereId, e.state.path?.projId, e.state.path?.subprojId, true);
+        } else if (state.view !== 'home') {
+            navigate('home', null, null, null, true);
+        } else {
+            // Già in home: non uscire per sbaglio
+            history.pushState({ view: 'home', path: {} }, '', window.location.href);
+        }
+    });
 }
 
 function getEntity(type, id) { 

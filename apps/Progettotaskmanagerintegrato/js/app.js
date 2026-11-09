@@ -224,239 +224,232 @@ function renderDashboardAgendaWidget() {
 }
 
 function renderDashboard() {
-            let pinnedSectionsHtml = '', spheresHtml = '';
-            
-            state.data.spheres.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s => {
-                spheresHtml += `<div onclick="navigate('sphere', '${s.id}')" class="panel panel-hover p-4 flex flex-col items-center justify-center text-center h-28 border-t-[5px] bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm" style="border-top-color: ${s.color}">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110" style="background-color: ${s.color}20"><i class="fas ${s.icon} text-xl" style="color: ${s.color}"></i></div>
-                    <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">${s.name}</h3>
-                </div>`;
-            });
-            
-            state.data.pinnedLevels.forEach(level => {
-                let itemsInLevel = [...state.data.projects.filter(p=>p.pinned && !p.archived && (p.pinnedLevelId === level.id || (!p.pinnedLevelId && level.id === 'pl_default'))),
-                                    ...state.data.subprojects.filter(sp=>sp.pinned && !sp.archived && (sp.pinnedLevelId === level.id || (!sp.pinnedLevelId && level.id === 'pl_default')))]
-                                    .sort((a,b)=>(a.pinnedOrder||0)-(b.pinnedOrder||0));
-                
-                let cardsHtml = '';
-                itemsInLevel.forEach(item => {
-                    if(item.projectId) { 
-                        const p = getEntity('project', item.projectId); 
-                        const s = p ? getEntity('sphere', p.sphereId) : null;
-                        const color = item.color || (p?p.color:null) || (s?s.color:null) || '#94a3b8';
-                        const pName = p ? p.name : 'Sconosciuto';
-                        cardsHtml += createDraggableCardHtml(item.name, `${pName} (Sub)`, 'subproject', s?s.id:null, p?p.id:null, item.id, color, `dashboard_pinned_${level.id}`, item);
-                    } else { 
-                        const s = getEntity('sphere', item.sphereId);
-                        const color = item.color || (s?s.color:null) || '#94a3b8';
-                        const sName = s ? s.name : 'Sconosciuto';
-                        cardsHtml += createDraggableCardHtml(item.name, sName, 'project', s?s.id:null, item.id, null, color, `dashboard_pinned_${level.id}`, item);
-                    }
-                });
+    let pinnedSectionsHtml = '', spheresHtml = '';
+    
+    // Sfere di Vita
+    state.data.spheres.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s => {
+        const projs = (state.data.projects || []).filter(p => p.sphereId === s.id && !p.archived);
+        spheresHtml += `
+            <div onclick="navigate('sphere', '${s.id}')" 
+                 class="panel panel-hover p-5 flex flex-col items-center justify-center text-center rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition group cursor-pointer relative overflow-hidden" 
+                 style="border-top: 4px solid ${s.color}">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-xs" style="background-color: ${s.color}18">
+                    <i class="fas ${s.icon} text-2xl" style="color: ${s.color}"></i>
+                </div>
+                <h3 class="font-extrabold text-sm text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">${s.name}</h3>
+                <span class="text-[11px] font-bold text-slate-400 mt-1">${projs.length} ${projs.length === 1 ? 'progetto' : 'progetti'}</span>
+            </div>`;
+    });
+    
+    // Livelli di elementi fissati (Pinned Levels)
+    state.data.pinnedLevels.forEach(level => {
+        let itemsInLevel = [...state.data.projects.filter(p=>p.pinned && !p.archived && (p.pinnedLevelId === level.id || (!p.pinnedLevelId && level.id === 'pl_default'))),
+                            ...state.data.subprojects.filter(sp=>sp.pinned && !sp.archived && (sp.pinnedLevelId === level.id || (!sp.pinnedLevelId && level.id === 'pl_default')))]
+                            .sort((a,b)=>(a.pinnedOrder||0)-(b.pinnedOrder||0));
+        
+        let cardsHtml = '';
+        itemsInLevel.forEach(item => {
+            if(item.projectId) { 
+                const p = getEntity('project', item.projectId); 
+                const s = p ? getEntity('sphere', p.sphereId) : null;
+                const color = item.color || (p?p.color:null) || (s?s.color:null) || '#94a3b8';
+                const pName = p ? p.name : 'Sconosciuto';
+                cardsHtml += createDraggableCardHtml(item.name, `${pName} (Sub)`, 'subproject', s?s.id:null, p?p.id:null, item.id, color, `dashboard_pinned_${level.id}`, item);
+            } else { 
+                const s = getEntity('sphere', item.sphereId);
+                const color = item.color || (s?s.color:null) || '#94a3b8';
+                const sName = s ? s.name : 'Sconosciuto';
+                cardsHtml += createDraggableCardHtml(item.name, sName, 'project', s?s.id:null, item.id, null, color, `dashboard_pinned_${level.id}`, item);
+            }
+        });
 
-                pinnedSectionsHtml += `
-                    <div class="mb-8">
-                        <div class="flex justify-between items-center mb-4 group">
-                            <h2 class="text-[11px] font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest"><i class="fas fa-layer-group text-amber-500 mr-2 text-xs"></i> ${level.name}</h2>
-                            <div class="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                                <button onclick="renamePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-blue-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-edit"></i></button>
-                                ${level.id !== 'pl_default' ? `<button onclick="deletePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><i class="fas fa-trash"></i></button>` : ''}
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 min-h-[60px] p-2 -m-2 rounded-xl drop-zone" 
-                             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, null, null, 'dashboard_pinned_${level.id}')">
-                            ${cardsHtml || `<p class="text-xs text-slate-400 italic col-span-2 pt-2">Trascina qui i progetti in evidenza.</p>`}
-                        </div>
-                    </div>`;
-            });
-
-            pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-3 border border-dashed border-slate-300 dark:border-slate-600 hover:border-slate-400 rounded-xl mb-4"><i class="fas fa-plus mr-1"></i> Aggiungi Livello</button>`;
-
-            let ctxFilterOpts = `<option value="all">Tutti i Contesti</option>`;
-            state.data.spheres.forEach(s => {
-                ctxFilterOpts += `<option value="${s.id}" ${state.ui.homeContextFilter===s.id?'selected':''}>● ${s.name}</option>`;
-                state.data.projects.filter(p=>p.sphereId===s.id).forEach(p => {
-                    ctxFilterOpts += `<option value="${p.id}" ${state.ui.homeContextFilter===p.id?'selected':''}>  📁 ${p.name}</option>`;
-                });
-            });
-
-            return `
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="xl:col-span-2 space-y-10">
-                        <section>
-                            ${pinnedSectionsHtml}
-                        </section>
-                        <section>
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-[11px] font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest"><i class="fas fa-globe text-blue-500 mr-2 text-xs"></i> Le tue Sfere</h2>
-                                <button onclick="openEntityModal('create', 'sphere')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition flex items-center bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuova Sfera</button>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">${spheresHtml}</div>
-                        </section>
+        pinnedSectionsHtml += `
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4 group">
+                    <h2 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        <i class="fas fa-layer-group text-amber-500 mr-2 text-xs"></i> ${level.name}
+                    </h2>
+                    <div class="opacity-0 group-hover:opacity-100 transition flex gap-1">
+                        <button onclick="renamePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-blue-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Rinomina livello"><i class="fas fa-edit"></i></button>
+                        ${level.id !== 'pl_default' ? `<button onclick="deletePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Elimina livello"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
-                    <div class="space-y-6">
-                        ${(state.data.features?.dashboardAgenda !== false) ? renderDashboardAgendaWidget() : ''}
-                        <div class="panel p-6 flex flex-col bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm rounded-2xl">
-                            <div class="flex flex-col border-b border-slate-200 dark:border-darkborder pb-4 mb-5 gap-3">
-                                <div class="flex justify-between items-center">
-                                    <h2 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Task Attivi</h2>
-                                    <button onclick="navigate('global_tasks')" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline transition">Vedi Tutti</button>
-                                </div>
-                                <div class="flex gap-2">
-                                    <select class="input-base text-[10px] font-bold py-1 px-2 flex-1" onchange="state.ui.homeTaskFilter = this.value; render();">
-                                        <option value="all" ${state.ui.homeTaskFilter==='all'?'selected':''}>Tutte le date</option>
-                                        <option value="today" ${state.ui.homeTaskFilter==='today'?'selected':''}>Oggi</option>
-                                        <option value="next7" ${state.ui.homeTaskFilter==='next7'?'selected':''}>7 Giorni</option>
-                                        <option value="inbox" ${state.ui.homeTaskFilter==='inbox'?'selected':''}>Inbox</option>
-                                    </select>
-                                    <select class="input-base text-[10px] font-bold py-1 px-2 flex-1" onchange="state.ui.homeContextFilter = this.value; render();">
-                                        ${ctxFilterOpts}
-                                    </select>
-                                </div>
-                            </div>
-                            ${renderInlineTasks(null, true, false)} 
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-h-[60px] p-2 -m-2 rounded-2xl drop-zone" 
+                     ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, null, null, 'dashboard_pinned_${level.id}')">
+                    ${cardsHtml || `<p class="text-xs text-slate-400 italic col-span-full pt-3 pb-2 text-center">Trascina qui i progetti in evidenza per averli sempre a portata di mano.</p>`}
+                </div>
+            </div>`;
+    });
+
+    pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-3.5 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 rounded-2xl mb-8"><i class="fas fa-plus mr-1.5"></i> Aggiungi Nuovo Livello</button>`;
+
+    // Metriche rapide
+    const activeTasksCount = (state.data.tasks || []).filter(t => !t.completed).length;
+    const pagesCount = (state.data.pages || []).length;
+    const contactsCount = (state.data.contacts || []).length;
+
+    // Formattazione data odierna estesa
+    const now = new Date();
+    const daysItalian = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const monthsItalian = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const dateFormatted = `${daysItalian[now.getDay()]}, ${now.getDate()} ${monthsItalian[now.getMonth()]} ${now.getFullYear()}`;
+
+    return `
+        <div class="max-w-6xl mx-auto space-y-8 pb-10">
+            <!-- BANNER BENVENUTO / HERO -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-darkpanel p-6 rounded-3xl border border-slate-200 dark:border-darkborder shadow-sm">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mb-1">
+                        <i class="far fa-calendar-alt"></i> ${dateFormatted}
+                    </span>
+                    <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Panoramica Life Hub</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">La tua centrale operativa personale: sfere, progetti e documentazione</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="navigate('global_tasks')" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-check-double text-xs"></i> Vai alle Task
+                    </button>
+                    <button onclick="navigate('global_pages')" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-book-open text-xs text-indigo-500"></i> Pagine & Note
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4 SCHEDE DI ACCESSO RAPIDO -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div onclick="navigate('global_tasks')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
+                            <i class="fas fa-check-double"></i>
                         </div>
+                        <span class="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">${activeTasksCount}</span>
                     </div>
-                </div>`;
-        }
+                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 transition">Attività in Corso</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Task aperte e scadenze</p>
+                </div>
+
+                <div onclick="navigate('global_calendar')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <i class="fas fa-arrow-right text-xs text-slate-300 group-hover:text-emerald-500 transition-colors"></i>
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 transition">Calendario</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Time blocking e impegni</p>
+                </div>
+
+                <div onclick="navigate('global_pages')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <span class="text-xl font-black text-purple-600 dark:text-purple-400 font-mono">${pagesCount}</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-purple-600 transition">Pagine & Note</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Verbali, appunti e schede</p>
+                </div>
+
+                <div onclick="navigate('global_contacts')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
+                            <i class="fas fa-address-book"></i>
+                        </div>
+                        <span class="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">${contactsCount}</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 transition">Rubrica Contatti</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Persone e collaboratori</p>
+                </div>
+            </div>
+
+            <!-- SEZIONE SFERE DI VITA -->
+            <section class="space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
+                    <h2 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        <i class="fas fa-globe text-blue-500 mr-2 text-xs"></i> Le tue Sfere di Vita
+                    </h2>
+                    <button onclick="openEntityModal('create', 'sphere')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition flex items-center bg-blue-50 dark:bg-blue-900/20 px-3.5 py-1.5 rounded-xl active:scale-95 shadow-xs">
+                        <i class="fas fa-plus mr-1.5"></i> Nuova Sfera
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">${spheresHtml}</div>
+            </section>
+
+            <!-- SEZIONE PROGETTI IN EVIDENZA -->
+            <section class="space-y-4 pt-2">
+                ${pinnedSectionsHtml}
+            </section>
+        </div>`;
+}
 
         // --- ENTITY VIEWS & NOTES ---
 
 function renderSphere() {
-            const s = getEntity('sphere', state.path.sphereId);
-            if(!s) return `<div class="text-center p-10"><p>Sfera non trovata.</p></div>`;
-            const projs = getChildren('sphere', s.id);
-            const pinned = projs.filter(p => p.pinned && p.archived === state.ui.showArchived);
-            const unpinned = projs.filter(p => !p.pinned && p.archived === state.ui.showArchived);
-            
-            const renderProjList = (list, listType) => list.map(p => {
-                const color = p.color || s.color;
-                return `
-                <div draggable="true" ondragstart="onDragStart(event, '${p.id}', 'project', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${p.id}', 'project', '${listType}')"
-                     class="panel panel-hover p-4 flex justify-between items-start mb-4 border-l-[5px] group draggable bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm" style="border-left-color: ${color}">
-                    <div class="word-wrap flex-1" onclick="navigate('project', '${s.id}', '${p.id}')">
-                        <h3 class="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100 mb-2">${p.pinned ? `<i class="fas fa-star text-amber-500 text-[10px]"></i>` : ''} <i class="fas ${p.icon||'fa-folder'} text-slate-400 dark:text-slate-500 mr-1 text-[13px]"></i> ${p.name}</h3>
-                        <div class="flex gap-2 text-[10px] font-bold mt-1">
-                            <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.type}</span> 
-                            <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.status}</span>
-                        </div>
-                    </div>
-                    <div class="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition">
-                        <button onclick="togglePin('project', '${p.id}')" class="text-slate-400 hover:text-amber-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Fissa"><i class="fas fa-star text-xs"></i></button>
-                        <button onclick="toggleArchiveEntity('project', '${p.id}')" class="text-slate-400 hover:text-blue-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Archivia"><i class="fas fa-archive text-xs"></i></button>
-                        <button onclick="openEntityModal('edit', 'project', '${s.id}', '${p.id}')" class="text-slate-400 hover:text-slate-800 dark:hover:text-white p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i class="fas fa-edit text-xs"></i></button>
-                        <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-2 cursor-grab p-1"></i>
-                    </div>
-                </div>`}).join('');
-
-            return `
-                <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-5 border-b border-slate-200 dark:border-darkborder gap-4">
-                    <h2 class="text-3xl font-bold flex items-center tracking-tight" style="color: ${s.color}"><i class="fas ${s.icon} mr-3 opacity-80"></i> ${s.name}</h2>
-                    <div class="flex flex-wrap gap-2.5 text-sm relative z-20">
-                        <button onclick="toggleArchivedView()" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-archive mr-1.5"></i> ${state.ui.showArchived ? 'Mostra Attivi' : 'Mostra Archivio'}</button>
-                        <button onclick="openEntityModal('edit', 'sphere', '${s.id}')" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-edit mr-1.5"></i> Impostazioni</button>
-                        <button onclick="openEntityModal('create', 'project', '${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-xs rounded-lg font-bold shadow transition active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuovo Progetto</button>
-                    </div>
+    const s = getEntity('sphere', state.path.sphereId);
+    if(!s) return `<div class="text-center p-10"><p>Sfera non trovata.</p></div>`;
+    const projs = getChildren('sphere', s.id);
+    const pinned = projs.filter(p => p.pinned && p.archived === state.ui.showArchived);
+    const unpinned = projs.filter(p => !p.pinned && p.archived === state.ui.showArchived);
+    
+    const renderProjList = (list, listType) => list.map(p => {
+        const color = p.color || s.color;
+        return `
+        <div draggable="true" ondragstart="onDragStart(event, '${p.id}', 'project', '${listType}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${p.id}', 'project', '${listType}')"
+             class="panel panel-hover p-4 flex justify-between items-start mb-4 border-l-[5px] group draggable bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm" style="border-left-color: ${color}">
+            <div class="word-wrap flex-1" onclick="navigate('project', '${s.id}', '${p.id}')">
+                <h3 class="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100 mb-2">${p.pinned ? `<i class="fas fa-star text-amber-500 text-[10px]"></i>` : ''} <i class="fas ${p.icon||'fa-folder'} text-slate-400 dark:text-slate-500 mr-1 text-[13px]"></i> ${p.name}</h3>
+                <div class="flex gap-2 text-[10px] font-bold mt-1">
+                    <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.type}</span> 
+                    <span class="text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${p.status}</span>
                 </div>
-                
-                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                    <div class="xl:col-span-3 space-y-6">
-                        <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder border-t-[5px]" style="border-top-color: ${s.color}">
-                            <h3 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-4"><i class="fas fa-info-circle mr-1.5"></i> Informazioni Generali</h3>
-                            <div class="bg-slate-50 dark:bg-[#202938] rounded-xl border border-slate-200 dark:border-darkborder p-3 shadow-inner">
-                                <div id="quill-perm-editor-sphere" class="min-h-[60px]"></div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
-                                <h3 class="text-[11px] font-bold text-amber-500 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-star mr-1.5"></i> Progetti In Evidenza</h3>
-                                <div class="space-y-4">${renderProjList(pinned, 'sphere_pinned') || `<p class="text-xs text-slate-400 italic">Niente in evidenza.</p>`}</div>
-                            </div>
-                            <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
-                                <h3 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-folder mr-1.5"></i> ${state.ui.showArchived ? 'Archivio Progetti' : 'Tutti i Progetti'}</h3>
-                                <div class="space-y-4">${renderProjList(unpinned, 'sphere_unpinned') || `<p class="text-xs text-slate-400 italic">Nessun progetto in questa sezione.</p>`}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="space-y-6">
-                        <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
-                            <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-3 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Sfera</h3>
-                            ${renderInlineTasks(s.id)}
-                        </div>
-                    </div>
-                </div>`;
-        }
-
-function renderEntityTimelineAndProgress(entity, type) {
-    if (!entity) return '';
-    if (state.data.features && state.data.features.projectTimeline === false) return '';
-    let validCtxIds = [entity.id];
-    if (type === 'project') {
-        const subs = getChildren('project', entity.id);
-        subs.forEach(s => validCtxIds.push(s.id));
-    }
-    const tasks = (state.data.tasks || []).filter(t => validCtxIds.includes(t.contextId));
-    const totalCount = tasks.length;
-    const doneCount = tasks.filter(t => t.completed).length;
-
-    let totalWeight = 0;
-    let doneWeight = 0;
-    tasks.forEach(t => {
-        const weight = (t.estimatedMinutes && t.estimatedMinutes > 0) ? t.estimatedMinutes : (t.priority === 3 ? 4 : t.priority === 2 ? 3 : t.priority === 1 ? 2 : 1);
-        totalWeight += weight;
-        if (t.completed) doneWeight += weight;
-    });
-
-    const isPondered = state.ui.progressMode === 'pondered';
-    const percent = totalCount === 0 ? 0 : Math.round(isPondered ? (totalWeight === 0 ? 0 : (doneWeight / totalWeight) * 100) : (doneCount / totalCount) * 100);
-
-    const startDate = entity.startDate || null;
-    const endDate = entity.endDate || null;
-    const todayStr = getISODate(new Date());
-
-    let timelineDaysText = '';
-    if (endDate) {
-        const endD = new Date(endDate);
-        const nowD = new Date(todayStr);
-        const diffDays = Math.ceil((endD - nowD) / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) {
-            timelineDaysText = `<span class="text-rose-600 dark:text-rose-400 font-bold"><i class="fas fa-exclamation-circle mr-1"></i>Scaduto da ${Math.abs(diffDays)} giorni</span>`;
-        } else if (diffDays === 0) {
-            timelineDaysText = `<span class="text-amber-600 dark:text-amber-400 font-bold"><i class="fas fa-clock mr-1"></i>Scade Oggi</span>`;
-        } else {
-            timelineDaysText = `<span class="text-emerald-600 dark:text-emerald-400 font-medium"><i class="far fa-calendar-check mr-1"></i>${diffDays} giorni rimanenti</span>`;
-        }
-    }
+            </div>
+            <div class="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition">
+                <button onclick="togglePin('project', '${p.id}')" class="text-slate-400 hover:text-amber-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Fissa"><i class="fas fa-star text-xs"></i></button>
+                <button onclick="toggleArchiveEntity('project', '${p.id}')" class="text-slate-400 hover:text-blue-500 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Archivia"><i class="fas fa-archive text-xs"></i></button>
+                <button onclick="openEntityModal('edit', 'project', '${s.id}', '${p.id}')" class="text-slate-400 hover:text-slate-800 dark:hover:text-white p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i class="fas fa-edit text-xs"></i></button>
+                <i class="fas fa-grip-lines text-slate-300 dark:text-slate-600 text-sm ml-2 cursor-grab p-1"></i>
+            </div>
+        </div>`}).join('');
 
     return `
-        <div class="mt-4 pt-4 border-t border-slate-200/80 dark:border-slate-700/80">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Avanzamento:</span>
-                    <span class="text-xs font-black text-blue-600 dark:text-blue-400">${percent}%</span>
-                    <span class="text-[11px] text-slate-400 font-medium">(${doneCount}/${totalCount} task)</span>
-                </div>
-                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
-                    <button type="button" onclick="state.ui.progressMode='simple'; render();" class="px-2 py-0.5 rounded transition ${!isPondered ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}">Conteggio</button>
-                    <button type="button" onclick="state.ui.progressMode='pondered'; render();" class="px-2 py-0.5 rounded transition ${isPondered ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}" title="Ponderato per priorità e tempo stimato">Ponderato</button>
-                </div>
+        <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-5 border-b border-slate-200 dark:border-darkborder gap-4">
+            <h2 class="text-3xl font-bold flex items-center tracking-tight" style="color: ${s.color}"><i class="fas ${s.icon} mr-3 opacity-80"></i> ${s.name}</h2>
+            <div class="flex flex-wrap gap-2.5 text-sm relative z-20">
+                <button onclick="toggleArchivedView()" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-archive mr-1.5"></i> ${state.ui.showArchived ? 'Mostra Attivi' : 'Mostra Archivio'}</button>
+                <button onclick="openEntityModal('edit', 'sphere', '${s.id}')" class="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition px-4 py-2 bg-white dark:bg-darkpanel rounded-lg shadow-sm border border-slate-200 dark:border-darkborder active:scale-95"><i class="fas fa-edit mr-1.5"></i> Impostazioni</button>
+                <button onclick="openEntityModal('create', 'project', '${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-xs rounded-lg font-bold shadow transition active:scale-95"><i class="fas fa-plus mr-1.5"></i> Nuovo Progetto</button>
             </div>
-            
-            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-200/60 dark:border-slate-700/60 mb-3">
-                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-            </div>
-
-            ${(startDate || endDate) ? `
-            <div class="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-2.5 border border-slate-200/70 dark:border-slate-700/70 text-xs">
-                <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    <span class="flex items-center gap-1"><i class="fas fa-play text-blue-500 text-[9px]"></i> Inizio: <b class="text-slate-700 dark:text-slate-200">${startDate ? formatDisplayDate(startDate) : 'Non impostato'}</b></span>
-                    <span>${timelineDaysText}</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-flag-checkered text-rose-500 text-[10px]"></i> Scadenza: <b class="text-slate-700 dark:text-slate-200">${endDate ? formatDisplayDate(endDate) : 'Nessuna'}</b></span>
-                </div>
-            </div>` : ''}
         </div>
-    `;
+        
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div class="xl:col-span-3 space-y-6">
+                <!-- QUADERNONE SFERA (Note Fisse + Pagine & Verbali) -->
+                <div class="panel flex flex-col bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder border-t-[5px]" style="border-top-color: ${s.color}">
+                    ${renderProjectNotebook('sphere', s.id, s)}
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
+                        <h3 class="text-[11px] font-bold text-amber-500 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-star mr-1.5"></i> Progetti In Evidenza</h3>
+                        <div class="space-y-4">${renderProjList(pinned, 'sphere_pinned') || `<p class="text-xs text-slate-400 italic">Niente in evidenza.</p>`}</div>
+                    </div>
+                    <div class="panel p-6 bg-white dark:bg-darkpanel shadow-sm border border-slate-200 dark:border-darkborder">
+                        <h3 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-5 pb-3 border-b border-slate-100 dark:border-slate-700"><i class="fas fa-folder mr-1.5"></i> ${state.ui.showArchived ? 'Archivio Progetti' : 'Tutti i Progetti'}</h3>
+                        <div class="space-y-4">${renderProjList(unpinned, 'sphere_unpinned') || `<p class="text-xs text-slate-400 italic">Nessun progetto in questa sezione.</p>`}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
+                    <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-3 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Sfera</h3>
+                    ${renderInlineTasks(s.id)}
+                </div>
+            </div>
+        </div>`;
+}
+
+function renderEntityTimelineAndProgress(entity, type) {
+    return '';
 }
 
 function renderProject() {
@@ -504,7 +497,6 @@ function renderProject() {
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${p.status}</span>
                                     ${p.archived ? `<span class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-3 py-1.5 rounded-md"><i class="fas fa-archive mr-1.5"></i>Archiviato</span>` : ''}
                                 </div>
-                                ${renderEntityTimelineAndProgress(p, 'project')}
                             </div>
                             
                             ${renderProjectNotebook('project', p.id, p)}
@@ -572,7 +564,6 @@ function renderSubproject() {
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.type || 'A termine'}</span>
                                     <span class="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">${sp.status || 'Attivo'}</span>
                                 </div>
-                                ${renderEntityTimelineAndProgress(sp, 'subproject')}
                             </div>
                             
                             ${renderProjectNotebook('subproject', sp.id, sp)}
@@ -715,19 +706,8 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                                     <span class="text-[10px] text-slate-400 font-bold uppercase" title="Minuti spesi">Spesi (m):</span>
                                     <input type="number" id="etSpent_${t.id}" value="${t.spentMinutes||0}" min="0" step="5" class="input-base w-16 py-1.5 font-bold">
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Eisenhower:</span>
-                                    <select id="etEisen_${t.id}" class="input-base py-1.5 text-xs font-bold">
-                                        <option value="auto" ${(!t.eisenhower||t.eisenhower==='auto')?'selected':''}>Auto</option>
-                                        <option value="q1" ${t.eisenhower==='q1'?'selected':''}>Q1: Fai Subito 🔥</option>
-                                        <option value="q2" ${t.eisenhower==='q2'?'selected':''}>Q2: Pianifica 💎</option>
-                                        <option value="q3" ${t.eisenhower==='q3'?'selected':''}>Q3: Delega ⚡</option>
-                                        <option value="q4" ${t.eisenhower==='q4'?'selected':''}>Q4: Elimina 🌱</option>
-                                    </select>
-                                </div>
                             </div>
                             ${subHtml}
-                            ${renderTaskDependencySection(t)}
                             <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                                 <button onclick="editingTaskId=null; render()" class="text-xs font-bold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-200 dark:bg-slate-700 transition">Chiudi</button>
                                 <button onclick="duplicateTask('${t.id}')" class="text-xs font-bold px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition active:scale-95"><i class="fas fa-clone mr-1"></i> Duplica</button>
@@ -748,10 +728,8 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                                 <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')" title="${isBlocked ? 'Task bloccata: devi prima completare ' + blockers.join(', ') : ''}">
                                 <div class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none" onclick="editTask('${t.id}')">
                                     <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium leading-snug break-words">${t.title}</p>
-                                    ${(t.dueDate || (t.contextId && showGlobal) || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge || t.recurrence || t.estimatedMinutes || t.spentMinutes || t.eisenhower) ? `
+                                    ${(t.dueDate || (t.contextId && showGlobal) || hasSub || t.startDate || t.recurrence || t.estimatedMinutes || t.spentMinutes) ? `
                                     <div class="flex flex-wrap items-center gap-2 mt-1.5">
-                                        ${lockBadge}
-                                        ${unlocksBadge}
                                         ${duePill}
                                         ${typeof renderTaskBadges === 'function' ? renderTaskBadges(t) : ''}
                                         ${hasSub ? `
@@ -814,16 +792,6 @@ function getFilteredAdvancedTasksData() {
         listTitle = "Task Scadute (In Ritardo)";
     }
     else if(state.ui.tmView === 'inbox') { tasks = tasks.filter(t => !t.contextId); listTitle = "Posta in arrivo"; }
-    else if(state.ui.tmView === 'locked') { tasks = tasks.filter(t => isTaskBlocked(t)); listTitle = "Task Vincolate (In attesa)"; }
-    else if(state.ui.tmView === 'ready_to_start') {
-        tasks = tasks.filter(t => t.dependsOn && t.dependsOn.length > 0 && !isTaskBlocked(t) && !t.completed);
-        listTitle = "Pronte da Avviare (Vincoli Superati)";
-    }
-    else if(state.ui.tmView === 'pipeline') {
-        tasks = tasks.filter(t => (t.dependsOn && t.dependsOn.length > 0) || getTasksDependentOn(t.id).length > 0);
-        listTitle = "Catena dei Vincoli (Workflow Pipeline)";
-    }
-    else if(state.ui.tmView === 'prereq') { tasks = tasks.filter(t => getTasksDependentOn(t.id).length > 0); listTitle = "Prerequisiti (Sbloccano altre task)"; }
     else if(state.ui.tmView === 'future') {
         tasks = tasks.filter(t => t.startDate && t.startDate > todayStr && !t.completed);
         listTitle = "In Attesa di Attivazione (Future)";
@@ -886,78 +854,8 @@ function getFilteredAdvancedTasksData() {
 }
 
 
-function renderPipelineHtml(tasks) {
-    if (!tasks || tasks.length === 0) {
-        return `<div class="text-center py-20 text-slate-400"><i class="fas fa-project-diagram text-6xl mb-5 opacity-20"></i><p class="font-bold text-sm">Nessuna catena di vincoli attiva.</p><p class="text-xs text-slate-400 mt-1">Collega delle task tra loro come prerequisiti per visualizzare qui l'avanzamento.</p></div>`;
-    }
-
-    // Identifica le task radice (quelle che sbloccano altre task ma non hanno prerequisiti non completati)
-    const allTaskMap = new Map((state.data.tasks || []).map(t => [t.id, t]));
-    
-    // Raggruppa in catene
-    let html = `<div class="space-y-4 pt-2">`;
-    
-    tasks.forEach(t => {
-        const isBlocked = isTaskBlocked(t);
-        const blockers = (t.dependsOn || []).map(id => allTaskMap.get(id)).filter(Boolean);
-        const dependents = getTasksDependentOn(t.id);
-        const ctx = getContextInfo(t.contextId);
-
-        let statusBadge = '';
-        if (t.completed) {
-            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"><i class="fas fa-check-circle text-[9px]"></i> Completata</span>`;
-        } else if (isBlocked) {
-            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200"><i class="fas fa-lock text-[9px]"></i> Bloccata</span>`;
-        } else if (t.dependsOn && t.dependsOn.length > 0) {
-            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-200"><i class="fas fa-play text-[8px]"></i> Pronta da Svolgere</span>`;
-        } else {
-            statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-200"><i class="fas fa-key text-[9px]"></i> Prerequisito Iniziale</span>`;
-        }
-
-        html += `
-            <div id="taskRow_${t.id}" class="bg-white dark:bg-darkpanel rounded-2xl p-4 border border-slate-200/90 dark:border-darkborder shadow-sm flex flex-col gap-2.5 transition group hover:shadow-md">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-start gap-3 flex-1 min-w-0">
-                        <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-0.5" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex flex-wrap items-center gap-2 mb-1">
-                                ${statusBadge}
-                                ${t.contextId ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded border truncate" style="color:${ctx.color}; border-color:${ctx.color}40; background:${ctx.color}15"><i class="fas ${ctx.icon} mr-1 opacity-60"></i>${ctx.name}</span>` : ''}
-                                ${t.dueDate ? `<span class="text-[9px] font-medium text-slate-400"><i class="far fa-calendar-alt mr-1"></i>${formatDisplayDate(t.dueDate)}</span>` : ''}
-                            </div>
-                            <h4 class="text-sm font-bold ${t.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'} break-words">${t.title}</h4>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
-                        <button onclick="event.stopPropagation(); duplicateTask('${t.id}')" class="text-slate-400 hover:text-amber-500 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" title="Duplica"><i class="fas fa-clone text-xs"></i></button>
-                        <button onclick="event.stopPropagation(); editTask('${t.id}')" class="text-slate-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" title="Modifica"><i class="fas fa-edit text-xs"></i></button>
-                    </div>
-                </div>
-
-                ${(blockers.length > 0 || dependents.length > 0) ? `
-                <div class="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    ${blockers.length > 0 ? `
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1"><i class="fas fa-arrow-left text-[9px]"></i> Attende:</span>
-                        ${blockers.map(b => `<button onclick="event.stopPropagation(); jumpToTask('${b.id}')" class="px-2 py-0.5 rounded-md text-[11px] font-semibold transition ${b.completed ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 line-through' : 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 hover:bg-amber-100'}"><i class="fas ${b.completed ? 'fa-check' : 'fa-lock'} text-[8px] mr-1"></i>${b.title}</button>`).join('')}
-                    </div>` : '<div></div>'}
-                    
-                    ${dependents.length > 0 ? `
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider flex items-center gap-1"><i class="fas fa-arrow-right text-[9px]"></i> Sblocca:</span>
-                        ${dependents.map(d => `<button onclick="event.stopPropagation(); jumpToTask('${d.id}')" class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 hover:bg-blue-100 transition"><i class="fas fa-key text-[8px] mr-1 text-blue-500"></i>${(d.completed ? '✔ ' : '') + d.title}</button>`).join('')}
-                    </div>` : ''}
-                </div>` : ''}
-            </div>`;
-    });
-
-    html += `</div>`;
-    return html;
-}
-
 function generateAdvancedTasksHtml() {
     const { tasks, listConf, hasCompleted, todayStr } = getFilteredAdvancedTasksData();
-    if (state.ui.tmView === 'pipeline') { return renderPipelineHtml(tasks); }
     let groups = {};
     if(listConf.groupBy === 'priority') {
         groups = { "Alta": [], "Media": [], "Bassa": [], "Nessuna": [] };
@@ -1037,19 +935,8 @@ function generateAdvancedTasksHtml() {
                                     <span class="text-[10px] text-slate-400 font-bold uppercase">Speso (min):</span>
                                     <input type="number" id="etSpent_${t.id}" value="${t.spentMinutes||0}" min="0" step="5" class="input-base w-20 py-1.5 font-bold">
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-[10px] text-slate-400 font-bold uppercase">Eisenhower:</span>
-                                    <select id="etEisen_${t.id}" class="input-base py-1.5 text-xs font-bold">
-                                        <option value="auto" ${(!t.eisenhower||t.eisenhower==='auto')?'selected':''}>Auto</option>
-                                        <option value="q1" ${t.eisenhower==='q1'?'selected':''}>Q1: Fai Subito 🔥</option>
-                                        <option value="q2" ${t.eisenhower==='q2'?'selected':''}>Q2: Pianifica 💎</option>
-                                        <option value="q3" ${t.eisenhower==='q3'?'selected':''}>Q3: Delega ⚡</option>
-                                        <option value="q4" ${t.eisenhower==='q4'?'selected':''}>Q4: Elimina 🌱</option>
-                                    </select>
-                                </div>
                             </div>
                             ${subHtml}
-                            ${renderTaskDependencySection(t)}
                             <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                                 <button onclick="editingTaskId=null; render()" class="text-[11px] font-bold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800 bg-slate-200 dark:bg-slate-700 transition">Chiudi</button>
                                 <button onclick="duplicateTask('${t.id}')" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow transition active:scale-95"><i class="fas fa-clone mr-1"></i> Duplica</button>
@@ -1068,19 +955,17 @@ function generateAdvancedTasksHtml() {
                     const doneSubCount = hasSub ? t.subtasks.filter(st => st.completed).length : 0;
                     const totalSubCount = hasSub ? t.subtasks.length : 0;
                     const isExpanded = !!(state.ui.expandedTasks && state.ui.expandedTasks[t.id]);
-                    const { isBlocked, blockers, lockBadge, unlocksBadge, duePill } = getTaskLockAndDueHtml(t);
-                    const effectiveCbClass = isBlocked ? 'task-checkbox-locked' : cbClass;
+                    const { isBlocked, blockers, duePill } = getTaskLockAndDueHtml(t);
+                    const effectiveCbClass = cbClass;
 
                     tasksHtml += `
                         <div id="taskRow_${t.id}" class="p-2.5 md:p-3 flex flex-col ${borderBottom} group hover:bg-slate-50 dark:hover:bg-[#202938] transition-colors border-l-[3px] ${t.completed ? 'opacity-50 grayscale' : ''}" style="${ctxBorder}">
                             <div class="flex items-start gap-3 w-full">
-                                <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')" title="${isBlocked ? 'Task bloccata: devi prima completare ' + blockers.join(', ') : ''}">
+                                <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')">
                                 <div class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none" onclick="editTask('${t.id}')">
                                     <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium leading-snug break-words">${t.title}</p>
-                                    ${(t.dueDate || t.contextId || hasSub || (t.dependsOn && t.dependsOn.length > 0) || unlocksBadge || t.recurrence || t.estimatedMinutes || t.spentMinutes || t.eisenhower) ? `
+                                    ${(t.dueDate || t.contextId || hasSub || t.startDate || t.recurrence || t.estimatedMinutes || t.spentMinutes) ? `
                                     <div class="flex flex-wrap items-center gap-2 mt-1.5">
-                                        ${lockBadge}
-                                        ${unlocksBadge}
                                         ${duePill}
                                         ${typeof renderTaskBadges === 'function' ? renderTaskBadges(t) : ''}
                                         ${hasSub ? `
@@ -1173,10 +1058,9 @@ function renderAdvancedTaskManager() {
                     ${(() => {
                         const todayIso = getISODate(new Date());
                         const overdueCount = (state.data.tasks || []).filter(t => t.dueDate && t.dueDate < todayIso && !t.completed).length;
-                        const readyCount = (state.data.tasks || []).filter(t => t.dependsOn && t.dependsOn.length > 0 && !isTaskBlocked(t) && !t.completed).length;
                         const futureCount = (state.data.tasks || []).filter(t => t.startDate && t.startDate > todayIso && !t.completed).length;
                         
-                        const advancedViews = ['overdue', 'ready_to_start', 'future', 'locked', 'pipeline', 'prereq'];
+                        const advancedViews = ['overdue', 'future'];
                         const isAdvancedActive = advancedViews.includes(state.ui.tmView);
                         const isExpanded = state.ui.tmAdvancedViewsExpanded !== undefined ? state.ui.tmAdvancedViewsExpanded : isAdvancedActive;
 
@@ -1190,7 +1074,7 @@ function renderAdvancedTaskManager() {
                                 <button type="button" onclick="state.ui.tmAdvancedViewsExpanded = ${!isExpanded}; render();" class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg transition font-semibold group">
                                     <span class="flex items-center gap-1.5 truncate">
                                         <i class="fas fa-filter text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"></i>
-                                        <span>Filtri & Viste Avanzate</span>
+                                        <span>Filtri & Viste</span>
                                     </span>
                                     <span class="flex items-center gap-1.5 shrink-0">
                                         ${overdueCount > 0 && !isExpanded ? `<span class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.2 rounded-full shrink-0" title="${overdueCount} scadute">${overdueCount}</span>` : ''}
@@ -1204,19 +1088,11 @@ function renderAdvancedTaskManager() {
                                         <span class="flex-1">Scadute</span>
                                         ${overdueCount > 0 ? `<span class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full shrink-0">${overdueCount}</span>` : ''}
                                     </div>
-                                    <div class="tm-nav-item ${state.ui.tmView==='ready_to_start'?'active':''}" onclick="state.ui.tmView='ready_to_start'; toggleTmSidebar(); render();">
-                                        <i class="fas fa-play-circle w-5 text-emerald-500 text-center"></i>
-                                        <span class="flex-1">Pronte da Avviare</span>
-                                        ${readyCount > 0 ? `<span class="text-[9px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full shrink-0">${readyCount}</span>` : ''}
-                                    </div>
                                     <div class="tm-nav-item ${state.ui.tmView==='future'?'active':''}" onclick="state.ui.tmView='future'; toggleTmSidebar(); render();">
                                         <i class="fas fa-hourglass-start w-5 text-indigo-500 text-center"></i>
                                         <span class="flex-1">In Attesa di Attivazione</span>
                                         ${futureCount > 0 ? `<span class="text-[9px] font-bold bg-indigo-500 text-white px-1.5 py-0.5 rounded-full shrink-0">${futureCount}</span>` : ''}
                                     </div>
-                                    <div class="tm-nav-item ${state.ui.tmView==='locked'?'active':''}" onclick="state.ui.tmView='locked'; toggleTmSidebar(); render();"><i class="fas fa-lock w-5 text-amber-500 text-center"></i> Task Vincolate</div>
-                                    <div class="tm-nav-item ${state.ui.tmView==='pipeline'?'active':''}" onclick="state.ui.tmView='pipeline'; toggleTmSidebar(); render();"><i class="fas fa-project-diagram w-5 text-indigo-500 text-center"></i> Catena Vincoli</div>
-                                    <div class="tm-nav-item ${state.ui.tmView==='prereq'?'active':''}" onclick="state.ui.tmView='prereq'; toggleTmSidebar(); render();"><i class="fas fa-key w-5 text-emerald-500 text-center"></i> Prerequisiti</div>
                                 </div>
                             </div>
                         `;
@@ -1274,24 +1150,11 @@ function renderAdvancedTaskManager() {
                         <!-- HEADER MOBILE & DESKTOP -->
                         <div class="flex flex-wrap items-center justify-between gap-3 p-4 md:px-8 md:pt-8 bg-white dark:bg-slate-800 md:bg-transparent z-10 shrink-0 border-b border-slate-200 dark:border-slate-700 md:border-none shadow-sm md:shadow-none">
                             <div class="flex items-center gap-2 sm:gap-3">
-                                <button onclick="navigate('home')" class="md:hidden text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 text-xl p-2 sm:p-1 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"><i class="fas fa-arrow-left"></i></button>
                                 <button onclick="toggleTmSidebar()" class="md:hidden text-slate-600 dark:text-slate-300 text-xl p-2 sm:p-1 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"><i class="fas fa-bars"></i></button>
                                 <h2 id="tmListTitle" class="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center"><i class="far fa-clipboard text-slate-400 mr-2 hidden md:inline-block"></i> ${listTitle}</h2>
                             </div>
                             
                             <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-                                ${(state.data.features?.eisenhowerMatrix !== false) ? `
-                                <!-- Switcher Modalità: Lista vs Matrice Eisenhower -->
-                                <div class="flex items-center bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-300/60 dark:border-slate-700 text-xs font-bold shrink-0">
-                                    <button type="button" onclick="state.ui.tmViewMode='list'; render();" class="px-2.5 py-1 rounded transition flex items-center gap-1.5 ${state.ui.tmViewMode !== 'eisenhower' ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}">
-                                        <i class="fas fa-list-ul"></i> <span class="hidden sm:inline">Lista</span>
-                                    </button>
-                                    <button type="button" onclick="state.ui.tmViewMode='eisenhower'; render();" class="px-2.5 py-1 rounded transition flex items-center gap-1.5 ${state.ui.tmViewMode === 'eisenhower' ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}" title="Matrice di Eisenhower (4 Quadranti)">
-                                        <i class="fas fa-th-large"></i> <span class="hidden sm:inline">Eisenhower</span>
-                                    </button>
-                                </div>
-                                ` : ''}
-
                                 <div class="relative w-36 sm:w-64">
                                     <i class="fas fa-search absolute left-3 top-2.5 text-xs text-slate-400"></i>
                                     <input type="text" id="tmSearchInput" value="${state.ui.taskSearchQuery || ''}" 
@@ -1321,7 +1184,7 @@ function renderAdvancedTaskManager() {
                         </div>
                         
                         <!-- BARRA INSERIMENTO TASK (Desktop) -->
-                        <div class="${state.ui.tmViewMode==='eisenhower'?'hidden':'hidden md:flex'} mx-8 mb-6 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row gap-3 shadow-sm relative z-40">
+                        <div class="hidden md:flex mx-8 mb-6 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row gap-3 shadow-sm relative z-40">
                             <div class="flex-1 relative">
                                 <input type="text" id="gtIn" class="input-base w-full font-semibold text-sm py-2 px-3 border-transparent bg-transparent focus:bg-slate-50 dark:focus:bg-slate-900 transition-colors" placeholder="Scrivi una nuova task... (es. Studiare p3 @domani #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobal()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
                             </div>
@@ -1331,9 +1194,9 @@ function renderAdvancedTaskManager() {
                             <button onclick="addTaskFromGlobal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-bold shadow transition active:scale-95"><i class="fas fa-plus"></i></button>
                         </div>
 
-                        <!-- LISTA TASKS SCROLLABILE / MATRICE EISENHOWER -->
+                        <!-- LISTA TASKS SCROLLABILE -->
                         <div id="tmTasksListContainer" class="flex-1 overflow-y-auto px-4 md:px-8 pb-28 pt-4 md:pt-0">
-                            ${state.ui.tmViewMode === 'eisenhower' ? (typeof renderEisenhowerMatrix === 'function' ? renderEisenhowerMatrix() : '<p>Caricamento matrice...</p>') : tasksHtml}
+                            ${tasksHtml}
                         </div>
                     </div>
                 </div>`;
@@ -1528,8 +1391,28 @@ function deleteBulkSelectedPages() {
     showToast(`${ids.length} pagine eliminate con successo`, "success");
 }
 
-// Esportazione multipla pagine (Markdown, CSV, JSON, TXT)
-function exportBulkPages(format = 'markdown', specificIds = null) {
+function openBulkExportModal(specificIds = null) {
+    const modal = document.getElementById('pageExportModal');
+    if (!modal) return;
+    const isBulkEl = document.getElementById('exportIsBulk');
+    if (isBulkEl) isBulkEl.value = 'true';
+    const targetIdEl = document.getElementById('exportTargetPageId');
+    const ids = specificIds || state.ui.selectedPageIds || [];
+    if (targetIdEl) targetIdEl.value = ids.join(',');
+    const pkgSel = document.getElementById('exportPackageTypeSelector');
+    if (pkgSel) pkgSel.classList.remove('hidden');
+    const printBtn = document.getElementById('exportPrintBtn');
+    if (printBtn) printBtn.classList.add('hidden');
+    const titleEl = document.getElementById('exportModalPageTitle');
+    const count = ids.length || (state.data.pages || []).length;
+    if (titleEl) titleEl.textContent = `Esporta ${count} Pagine`;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+window.openBulkExportModal = openBulkExportModal;
+
+// Esportazione multipla pagine pulita (Senza metadati interni) con ZIP o File Unico
+function exportBulkPages(format = 'markdown', specificIds = null, packageType = null) {
     const pages = state.data.pages || [];
     let targetPages = [];
 
@@ -1569,30 +1452,11 @@ function exportBulkPages(format = 'markdown', specificIds = null) {
         return;
     }
 
+    const pkgType = packageType || document.querySelector('input[name="exportPackageType"]:checked')?.value || 'zip';
     const todayStr = getISODate(new Date());
-    let fileContent = '';
-    let mimeType = 'text/plain';
-    let ext = 'txt';
 
-    if (format === 'markdown') {
-        ext = 'md';
-        mimeType = 'text/markdown';
-        fileContent = `# Archivio Pagine & Riunioni - AppHub\n\n` +
-                      `*Esportazione generata il:* ${todayStr}  \n` +
-                      `*Totale pagine esportate:* ${targetPages.length}  \n\n` +
-                      `## Indice dei Contenuti\n\n`;
-
-        targetPages.forEach((p, idx) => {
-            const pInfo = resolvePageProject(p);
-            const sInfo = resolvePageSphere(p, pInfo);
-            fileContent += `${idx + 1}. [${p.title || 'Senza Titolo'}](#pagina-${idx + 1}) — 📅 ${p.date || 'Senza data'} | 📁 ${pInfo ? pInfo.name : 'Generale'} | ☉ ${p.tipologia || 'Riunione'} | Q ${sInfo ? sInfo.name : 'Ambito'}\n`;
-        });
-
-        fileContent += `\n\n---\n\n`;
-
-        targetPages.forEach((p, idx) => {
-            const pInfo = resolvePageProject(p);
-            const sInfo = resolvePageSphere(p, pInfo);
+    function getCleanPageContent(p, fmt) {
+        if (fmt === 'markdown') {
             let md = p.content || '';
             md = md.replace(/<h1>(.*?)<\/h1>/gi, '# $1\n\n')
                    .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n\n')
@@ -1606,71 +1470,61 @@ function exportBulkPages(format = 'markdown', specificIds = null) {
                    .replace(/<blockquote>(.*?)<\/blockquote>/gi, '> $1\n\n')
                    .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
                    .replace(/<[^>]+>/g, '');
-
-            fileContent += `## Pagina ${idx + 1}: ${p.title || 'Senza Titolo'}\n\n` +
-                           `**Data:** ${p.date || 'N/D'}  \n` +
-                           `**Progetto:** ${pInfo ? pInfo.name : 'Generale'}  \n` +
-                           `**Tipologia:** ${p.tipologia || 'Riunione'}  \n` +
-                           `**Ambito (Sfera):** ${sInfo ? sInfo.name : 'Nessun Ambito'}  \n` +
-                           `**Tag:** ${(p.tags && p.tags.length > 0) ? p.tags.map(t => '#' + t).join(' ') : 'nessuno'}  \n\n` +
-                           `${md.trim()}\n\n---\n\n`;
-        });
-    } else if (format === 'csv') {
-        ext = 'csv';
-        mimeType = 'text/csv;charset=utf-8';
-        const headers = ['ID', 'Titolo', 'Data', 'Progetto', 'Tipologia', 'Ambito', 'Tag', 'Contenuto'];
-        const csvRows = [headers.join(',')];
-
-        targetPages.forEach(p => {
-            const pInfo = resolvePageProject(p);
-            const sInfo = resolvePageSphere(p, pInfo);
-            const plain = (p.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-            const tagsStr = (p.tags || []).join('; ');
-
-            const row = [
-                `"${p.id}"`,
-                `"${(p.title || '').replace(/"/g, '""')}"`,
-                `"${p.date || ''}"`,
-                `"${(pInfo ? pInfo.name : '').replace(/"/g, '""')}"`,
-                `"${(p.tipologia || 'Riunione').replace(/"/g, '""')}"`,
-                `"${(sInfo ? sInfo.name : '').replace(/"/g, '""')}"`,
-                `"${tagsStr.replace(/"/g, '""')}"`,
-                `"${plain.replace(/"/g, '""')}"`
-            ];
-            csvRows.push(row.join(','));
-        });
-        fileContent = csvRows.join('\r\n');
-    } else if (format === 'json') {
-        ext = 'json';
-        mimeType = 'application/json';
-        fileContent = JSON.stringify(targetPages, null, 2);
-    } else {
-        // Testo semplice (.txt)
-        ext = 'txt';
-        mimeType = 'text/plain';
-        fileContent = `ARCHIVIO PAGINE & NOTE - APPHUB\nData export: ${todayStr}\nTotale: ${targetPages.length} pagine\n\n` +
-                      `====================================================\n\n`;
-        targetPages.forEach((p, idx) => {
-            const pInfo = resolvePageProject(p);
-            const sInfo = resolvePageSphere(p, pInfo);
-            const plain = (p.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-            fileContent += `[${idx + 1}] ${p.title || 'Senza Titolo'}\n` +
-                           `Data: ${p.date || 'N/D'} | Progetto: ${pInfo ? pInfo.name : 'Generale'} | Tipologia: ${p.tipologia || 'Riunione'} | Ambito: ${sInfo ? sInfo.name : 'Nessuno'}\n` +
-                           `Tag: ${(p.tags || []).join(', ')}\n\n` +
-                           `${plain}\n\n----------------------------------------------------\n\n`;
-        });
+            return md.trim() + '\n';
+        } else if (fmt === 'html') {
+            return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeNoteHtml(p.title || '')}</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;line-height:1.6;color:#1e293b;}</style></head><body>${p.content || ''}</body></html>`;
+        } else {
+            return (p.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
     }
 
-    const blob = new Blob([fileContent], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pagine_export_${todayStr}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Esportate ${targetPages.length} pagine in formato .${ext}`, "success");
+    const ext = format === 'markdown' ? 'md' : (format === 'html' ? 'html' : 'txt');
+    const mimeType = format === 'markdown' ? 'text/markdown' : (format === 'html' ? 'text/html' : 'text/plain');
+
+    if (pkgType === 'zip' && typeof JSZip !== 'undefined') {
+        const zip = new JSZip();
+        targetPages.forEach((p, idx) => {
+            const rawTitle = (p.title || `pagina_${idx + 1}`).trim();
+            const cleanTitle = rawTitle.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim() || `pagina_${idx + 1}`;
+            const fileName = `${cleanTitle}_${p.date || 'doc'}.${ext}`;
+            const bodyOnly = getCleanPageContent(p, format);
+            zip.file(fileName, bodyOnly);
+        });
+
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `archivio_pagine_${todayStr}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Esportate ${targetPages.length} pagine in archivio ZIP (.zip)`, "success");
+        }).catch(err => {
+            console.error("Errore esportazione ZIP:", err);
+            showToast("Errore durante la creazione dello ZIP", "error");
+        });
+    } else {
+        // File unico combinato - Solo contenuto
+        let combined = '';
+        targetPages.forEach((p, idx) => {
+            const bodyOnly = getCleanPageContent(p, format);
+            if (idx > 0) combined += '\n\n---\n\n';
+            combined += bodyOnly;
+        });
+
+        const blob = new Blob([combined], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pagine_unite_${todayStr}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`Esportate ${targetPages.length} pagine in file unico (.${ext})`, "success");
+    }
 }
 
 // Funzione principale di rendering della vista centralizzata Pagine
@@ -2081,22 +1935,23 @@ function renderGlobalPages() {
                         </button>
                     </div>
 
-                    <!-- Esporta Globale Dropdown -->
+                    <!-- Esporta Globale Dropdown & Modal Trigger -->
                     <div class="relative group/bulk">
-                        <button type="button" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-darkborder transition flex items-center gap-2 shadow-xs">
-                            <i class="fas fa-download text-indigo-500"></i> Esporta <i class="fas fa-chevron-down text-[9px] opacity-60"></i>
+                        <button type="button" onclick="openBulkExportModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-darkborder transition flex items-center gap-2 shadow-xs">
+                            <i class="fas fa-file-export text-indigo-500"></i> Esporta <i class="fas fa-chevron-down text-[9px] opacity-60"></i>
                         </button>
-                        <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover/bulk:opacity-100 group-hover/bulk:visible transition-all z-50 p-1.5 space-y-1">
-                            <button onclick="exportBulkPages('markdown')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                <i class="fab fa-markdown text-blue-500"></i> Markdown (.md)
+                        <div class="absolute right-0 mt-1 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover/bulk:opacity-100 group-hover/bulk:visible transition-all z-50 p-1.5 space-y-1">
+                            <button onclick="openBulkExportModal()" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
+                                <i class="fas fa-sliders text-indigo-500"></i> Opzioni Esportazione...
                             </button>
-                            <button onclick="exportBulkPages('csv')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                <i class="fas fa-file-csv text-emerald-500"></i> Foglio CSV (.csv)
+                            <div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                            <button onclick="exportBulkPages('markdown', null, 'zip')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-file-zipper text-amber-500"></i> Archivio ZIP (.zip)
                             </button>
-                            <button onclick="exportBulkPages('json')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                <i class="fas fa-file-code text-amber-500"></i> JSON Completo (.json)
+                            <button onclick="exportBulkPages('markdown', null, 'single')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fab fa-markdown text-blue-500"></i> Markdown unico (.md)
                             </button>
-                            <button onclick="exportBulkPages('text')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                            <button onclick="exportBulkPages('text', null, 'single')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
                                 <i class="fas fa-file-alt text-slate-400"></i> Testo semplice (.txt)
                             </button>
                         </div>
@@ -2117,8 +1972,8 @@ function renderGlobalPages() {
                         <span>${selectedIds.length} ${selectedIds.length === 1 ? 'pagina selezionata' : 'pagine selezionate'}</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="exportBulkPages('markdown')" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs">
-                            <i class="fab fa-markdown"></i> Esporta MD
+                        <button onclick="openBulkExportModal([${selectedIds.map(id => `'${id}'`).join(',')}])" class="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition flex items-center gap-1.5 text-xs shadow-sm">
+                            <i class="fas fa-file-export"></i> Esporta (${selectedIds.length})
                         </button>
                         <button onclick="exportBulkPages('csv')" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs">
                             <i class="fas fa-file-csv"></i> Esporta CSV

@@ -26,6 +26,8 @@
     <!-- Quill Editor (Rich Text) -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <!-- JSZip per Esportazione ZIP File Multipli -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Stili Custom Life Hub OS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -53,8 +55,8 @@
             <div class="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1 hidden md:block"></div>
             <button onclick="openTrashModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 relative" title="Cestino di Recupero"><i class="fas fa-trash-alt text-base text-rose-500/80"></i></button>
             <button onclick="toggleTheme()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Cambia Tema"><i class="fas fa-moon text-base dark:hidden"></i><i class="fas fa-sun text-base hidden dark:block text-amber-400"></i></button>
-            <button onclick="AppData.exportJSON()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Esporta Backup JSON"><i class="fas fa-file-export text-base"></i></button>
-            <button onclick="openImportModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Importazione Massiva"><i class="fas fa-file-import text-base"></i></button>
+            <button onclick="AppData.exportJSON()" class="text-slate-500 hover:text-amber-500 dark:text-slate-300 dark:hover:text-amber-400 transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Esporta Backup Dati JSON"><i class="fas fa-file-export text-base text-amber-500"></i></button>
+            <button onclick="openImportModal()" class="text-slate-500 hover:text-indigo-500 dark:text-slate-300 dark:hover:text-indigo-400 transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Importa Codice / Backup"><i class="fas fa-file-code text-base text-indigo-500"></i></button>
             <button onclick="forceSync()" id="syncBtn" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Sincronizza Cloud"><i class="fas fa-cloud-sync text-base"></i></button>
             <button onclick="toggleShortcutsModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Scorciatoie da tastiera (?)"><i class="fas fa-keyboard text-base"></i></button>
             <button onclick="toggleSettings()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" title="Impostazioni"><i class="fas fa-cog text-base"></i></button>
@@ -168,11 +170,11 @@
             <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder shrink-0">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                        <i class="fas fa-sliders-h text-base"></i>
+                        <i class="fas fa-cog text-base"></i>
                     </div>
                     <div>
                         <h2 class="text-base font-bold text-slate-800 dark:text-white">Impostazioni Life Hub</h2>
-                        <p class="text-[10px] text-slate-400">Moduli plancia, sincronizzazione cloud e backup</p>
+                        <p class="text-[10px] text-slate-400">Sincronizzazione cloud, Google Calendar e backup dati</p>
                     </div>
                 </div>
                 <button type="button" onclick="toggleSettings(false)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
@@ -182,11 +184,8 @@
 
             <!-- Tab Buttons -->
             <div class="flex border-b border-slate-200 dark:border-darkborder pt-3 px-1 gap-2 shrink-0">
-                <button type="button" id="setTabBtn_features" onclick="switchSettingsTab('features')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 transition">
-                    <i class="fas fa-sliders-h text-xs"></i> Moduli & Interfaccia
-                </button>
-                <button type="button" id="setTabBtn_cloud" onclick="switchSettingsTab('cloud')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition">
-                    <i class="fab fa-google text-xs"></i> Cloud & GCal
+                <button type="button" id="setTabBtn_cloud" onclick="switchSettingsTab('cloud')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 transition">
+                    <i class="fab fa-google text-xs"></i> Cloud & Google Calendar
                 </button>
                 <button type="button" id="setTabBtn_data" onclick="switchSettingsTab('data')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition">
                     <i class="fas fa-database text-xs"></i> Backup & Dati
@@ -195,59 +194,8 @@
 
             <!-- Tab Contents (Scrollable body) -->
             <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-4">
-                <!-- TAB 1: MODULI & INTERFACCIA -->
-                <div id="setTab_features" class="space-y-3">
-                    <div class="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 text-[11px] text-slate-600 dark:text-slate-300">
-                        <i class="fas fa-info-circle text-blue-500 mr-1.5"></i> Attiva o disattiva i componenti per alleggerire e personalizzare la tua plancia di lavoro.
-                    </div>
-                    <div class="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-calendar-alt text-emerald-500 w-4"></i> Modulo Calendario & Time Blocking
-                            </span>
-                            <input type="checkbox" id="feat_calendar" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('calendar', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-book-open text-indigo-500 w-4"></i> Modulo Pagine, Note & Verbali
-                            </span>
-                            <input type="checkbox" id="feat_global_pages" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('global_pages', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-calendar-day text-blue-500 w-4"></i> Widget Agenda & Google Calendar (Home)
-                            </span>
-                            <input type="checkbox" id="feat_dashboardAgenda" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('dashboardAgenda', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-th-large text-indigo-500 w-4"></i> Matrice di Eisenhower (4 Quadranti Task)
-                            </span>
-                            <input type="checkbox" id="feat_eisenhowerMatrix" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('eisenhowerMatrix', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-chart-line text-emerald-500 w-4"></i> Timeline & Avanzamento Progetti
-                            </span>
-                            <input type="checkbox" id="feat_projectTimeline" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('projectTimeline', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-users text-purple-500 w-4"></i> Modulo Contatti & Rubrica
-                            </span>
-                            <input type="checkbox" id="feat_contacts" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('contacts', this.checked)">
-                        </label>
-                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                <i class="fas fa-clock text-amber-500 w-4"></i> Blocchi Orari Calendario (Time Blocking)
-                            </span>
-                            <input type="checkbox" id="feat_timeBlocks" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('timeBlocks', this.checked)">
-                        </label>
-                    </div>
-                </div>
-
-                <!-- TAB 2: CLOUD & GCAL -->
-                <div id="setTab_cloud" class="space-y-4 hidden">
+                <!-- TAB 1: CLOUD & GCAL -->
+                <div id="setTab_cloud" class="space-y-4">
                     <div class="space-y-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
                         <h3 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                             <i class="fas fa-database text-blue-500"></i> Database Cloud (Supabase)
@@ -397,59 +345,6 @@
                             <option value="weekly">🔁 Settimanale</option>
                             <option value="monthly">🔁 Mensile</option>
                         </select>
-                    </div>
-                </div>
-
-                <!-- Quadrante Eisenhower -->
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Matrice di Eisenhower</label>
-                    <select id="temEisenhower" class="input-base text-xs font-bold py-2 w-full">
-                        <option value="auto">Auto (calcolata per priorità e scadenza)</option>
-                        <option value="q1">Q1: Urgente & Importante (Fai Subito 🔥)</option>
-                        <option value="q2">Q2: Non Urgente ma Importante (Pianifica 💎)</option>
-                        <option value="q3">Q3: Urgente ma non Importante (Delega ⚡)</option>
-                        <option value="q4">Q4: Né Urgente né Importante (Elimina 🌱)</option>
-                    </select>
-                </div>
-
-                <!-- Sezione Vincoli & Dipendenze -->
-                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                        <span class="flex items-center gap-1.5"><i class="fas fa-link text-indigo-500"></i> Vincoli & Dipendenze</span>
-                    </label>
-
-                    <!-- 1. Vincolata da (Prerequisiti) -->
-                    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                <i class="fas fa-lock text-amber-500 text-[11px]"></i> Vincolata da (Prerequisiti - Devono finire prima):
-                            </span>
-                            <span id="temBlockersCount" class="text-[9px] font-mono font-bold text-slate-400">0</span>
-                        </div>
-                        <div id="temBlockersList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
-                        <div class="flex items-center gap-2 pt-1">
-                            <select id="temAddBlockerSelect" class="input-base text-xs py-1.5 flex-1"></select>
-                            <button type="button" onclick="addModalBlocker()" class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs hover:bg-amber-100 transition active:scale-95 border border-amber-200 dark:border-amber-800 shrink-0">
-                                <i class="fas fa-plus mr-1"></i> Aggiungi Vincolo
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 2. Vincolante per (Sblocca) -->
-                    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                                <i class="fas fa-key text-emerald-500 text-[11px]"></i> Vincolante per (Sblocca - In attesa di questa task):
-                            </span>
-                            <span id="temDependentsCount" class="text-[9px] font-mono font-bold text-slate-400">0</span>
-                        </div>
-                        <div id="temDependentsList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
-                        <div class="flex items-center gap-2 pt-1">
-                            <select id="temAddDependentSelect" class="input-base text-xs py-1.5 flex-1"></select>
-                            <button type="button" onclick="addModalDependent()" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition active:scale-95 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                                <i class="fas fa-plus mr-1"></i> Imposta come Vincolante
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -1098,7 +993,7 @@
 
     <!-- MODAL ESPORTAZIONE PULITA SINGOLA PAGINA -->
     <div id="pageExportModal" class="modal-overlay hidden" onclick="if(event.target === this) closePageExportModal()">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-md modal-animate">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-lg modal-animate">
             <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3 md:hidden"></div>
             <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder mb-4">
                 <div class="flex items-center gap-2.5">
@@ -1107,7 +1002,7 @@
                     </div>
                     <div>
                         <h2 class="text-base font-bold text-slate-800 dark:text-white" id="exportModalPageTitle">Esporta Documento</h2>
-                        <p class="text-[10px] text-slate-400">Formato pulito pronto per la condivisione esterna</p>
+                        <p class="text-[10px] text-slate-400" id="exportModalSubtitle">Contenuto puro pronto per la condivisione esterna (senza metadati interni)</p>
                     </div>
                 </div>
                 <button type="button" onclick="closePageExportModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition">
@@ -1116,6 +1011,22 @@
             </div>
 
             <input type="hidden" id="exportTargetPageId">
+            <input type="hidden" id="exportIsBulk" value="false">
+
+            <!-- Scelta Pacchetto per export multiplo -->
+            <div id="exportPackageTypeSelector" class="hidden mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Modalità di Salvataggio</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-darkpanel cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-blue-500">
+                        <input type="radio" name="exportPackageType" value="zip" checked class="text-blue-600 focus:ring-blue-500">
+                        <span class="flex items-center gap-1.5"><i class="fas fa-file-zipper text-amber-500"></i> Archivio ZIP (File separati)</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-darkpanel cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-blue-500">
+                        <input type="radio" name="exportPackageType" value="single" class="text-blue-600 focus:ring-blue-500">
+                        <span class="flex items-center gap-1.5"><i class="fas fa-file-lines text-indigo-500"></i> File Unico (Combinato)</span>
+                    </label>
+                </div>
+            </div>
 
             <div class="space-y-2.5 mb-5">
                 <button type="button" onclick="executeCleanExport('markdown')" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder hover:border-blue-500 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 text-left flex items-center justify-between transition group">
@@ -1125,20 +1036,20 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">File Markdown (.md)</p>
-                            <p class="text-[10px] text-slate-400">Ideale per Obsidian, Notion, GitHub o invio via email</p>
+                            <p class="text-[10px] text-slate-400">Solo contenuto pulito, ideale per Obsidian, Notion o email</p>
                         </div>
                     </div>
                     <i class="fas fa-download text-xs text-slate-400 group-hover:text-blue-500"></i>
                 </button>
 
-                <button type="button" onclick="executeCleanExport('print')" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder hover:border-purple-500 bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 text-left flex items-center justify-between transition group">
+                <button type="button" id="exportPrintBtn" onclick="executeCleanExport('print')" class="w-full p-3.5 rounded-xl border border-slate-200 dark:border-darkborder hover:border-purple-500 bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 text-left flex items-center justify-between transition group">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300 flex items-center justify-center font-bold text-sm">
                             <i class="fas fa-print"></i>
                         </div>
                         <div>
                             <p class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400">Stampa / Salva in PDF</p>
-                            <p class="text-[10px] text-slate-400">Layout impaginato elegante pronto da inviare o stampare</p>
+                            <p class="text-[10px] text-slate-400">Layout impaginato pulito pronto per stampa o invio PDF</p>
                         </div>
                     </div>
                     <i class="fas fa-arrow-up-right-from-square text-xs text-slate-400 group-hover:text-purple-500"></i>
@@ -1151,7 +1062,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">Testo Semplice (.txt)</p>
-                            <p class="text-[10px] text-slate-400">Testo puro senza tag né markup</p>
+                            <p class="text-[10px] text-slate-400">Testo puro senza markup né metadati</p>
                         </div>
                     </div>
                     <i class="fas fa-download text-xs text-slate-400 group-hover:text-emerald-500"></i>
@@ -1164,7 +1075,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400">Documento Web (.html)</p>
-                            <p class="text-[10px] text-slate-400">Pagina HTML formattata visualizzabile nel browser</p>
+                            <p class="text-[10px] text-slate-400">Pagina HTML formattata visualizzabile direttamente</p>
                         </div>
                     </div>
                     <i class="fas fa-download text-xs text-slate-400 group-hover:text-amber-500"></i>
@@ -1173,6 +1084,9 @@
 
             <div class="flex justify-end">
                 <button type="button" onclick="closePageExportModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition">Chiudi</button>
+            </div>
+        </div>
+    </div>
             </div>
         </div>
     </div>

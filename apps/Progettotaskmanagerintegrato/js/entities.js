@@ -1706,10 +1706,20 @@ function closePageExportModal() {
 }
 
 function executeCleanExport(format) {
-    const targetIdEl = document.getElementById('exportTargetPageId');
-    const pageId = targetIdEl ? targetIdEl.value : null;
-    if (!pageId) return;
-    exportSinglePage(pageId, format);
+    const isBulk = document.getElementById('exportIsBulk')?.value === 'true';
+    if (isBulk) {
+        const targetIdsStr = document.getElementById('exportTargetPageId')?.value || '';
+        const specificIds = targetIdsStr ? targetIdsStr.split(',').filter(Boolean) : null;
+        const pkgType = document.querySelector('input[name="exportPackageType"]:checked')?.value || 'zip';
+        if (typeof exportBulkPages === 'function') {
+            exportBulkPages(format, specificIds, pkgType);
+        }
+    } else {
+        const targetIdEl = document.getElementById('exportTargetPageId');
+        const pageId = targetIdEl ? targetIdEl.value : null;
+        if (!pageId) return;
+        exportSinglePage(pageId, format);
+    }
     closePageExportModal();
 }
 
@@ -1729,6 +1739,7 @@ window.executeCleanExport = executeCleanExport;
 
 function renderProjectNotebook(type, entityId, entity) {
     const allPages = (state.data.pages || []).filter(p => p.contextId === entityId);
+    const activeTab = state.ui.notebookActiveTab || 'notes';
     
     // Se c'è una pagina attiva aperta, mostra l'editor integrato
     if (activeSubpageId) {
@@ -1739,36 +1750,51 @@ function renderProjectNotebook(type, entityId, entity) {
         `;
     }
 
-    // Altrimenti mostra l'elenco pulito delle Pagine del Progetto
     return `
     <div class="project-notebook-card border-t border-slate-200 dark:border-darkborder overflow-hidden transition-all bg-white dark:bg-darkpanel">
-        <div class="p-5 md:p-6 space-y-4">
-            <!-- HEADER QUADERNO PROGETTO -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-darkborder">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 font-bold">
-                        <i class="fas fa-layer-group text-base"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-                                Pagine, Verbali & Schede del Progetto
-                            </h3>
-                            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">${allPages.length}</span>
-                        </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Note, verbali di riunione e schede tecniche associate a questo progetto</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="createNotebookSubpage('${type}', '${entityId}')" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
-                        <i class="fas fa-plus text-xs"></i> Nuova Pagina
+        <div class="p-4 md:p-6 space-y-4">
+            <!-- HEADER CON TABS: NOTE FISSE VS PAGINE & VERBALI -->
+            <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-darkborder flex-wrap">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="state.ui.notebookActiveTab = 'notes'; render();" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'notes' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
+                        <i class="fas fa-thumbtack text-[11px]"></i> Note Fisse
+                    </button>
+                    <button type="button" onclick="state.ui.notebookActiveTab = 'pages'; render();" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'pages' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
+                        <i class="far fa-file-alt text-[11px]"></i> Pagine & Verbali
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] ${activeTab === 'pages' ? 'bg-white/20 text-white' : 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'} font-mono font-bold">${allPages.length}</span>
                     </button>
                 </div>
+
+                ${activeTab === 'pages' ? `
+                    <button onclick="createNotebookSubpage('${type}', '${entityId}')" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5">
+                        <i class="fas fa-plus text-xs"></i> Nuova Pagina
+                    </button>
+                ` : `
+                    <div class="flex items-center gap-2">
+                        <span id="notebookWordCount_${type}" class="text-[10px] font-mono text-slate-400">0 parole</span>
+                        <button type="button" onclick="toggleZenMode('quill-editor-${type}')" class="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Ingrandisci a schermo intero"><i class="fas fa-expand text-xs"></i></button>
+                    </div>
+                `}
             </div>
 
-            <!-- CONTENUTO PAGINE DEL PROGETTO -->
-            ${renderProjectSubpagesList(type, entityId, allPages)}
+            <!-- CONTENUTO DEL TAB ATTIVO -->
+            ${activeTab === 'notes' ? `
+                <div class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-darkborder text-xs">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button type="button" onclick="openNoteContactPicker('${type}')" class="px-2.5 py-1 rounded-lg bg-white dark:bg-darkpanel text-slate-700 dark:text-slate-200 hover:text-purple-600 border border-slate-200 dark:border-slate-700 font-bold transition flex items-center gap-1 shadow-2xs active:scale-95"><i class="fas fa-user-tag text-purple-500"></i> Contatto</button>
+                            <button type="button" onclick="openNotePagePicker('${type}')" class="px-2.5 py-1 rounded-lg bg-white dark:bg-darkpanel text-purple-700 dark:text-purple-300 hover:bg-purple-50 border border-purple-200 dark:border-purple-800 font-bold transition flex items-center gap-1 shadow-2xs active:scale-95"><i class="fas fa-file-alt text-purple-600"></i> Pagina ([[)</button>
+                            <button type="button" onclick="openNoteTaskPicker('${type}')" class="px-2.5 py-1 rounded-lg bg-white dark:bg-darkpanel text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 border border-emerald-200 dark:border-emerald-800 font-bold transition flex items-center gap-1 shadow-2xs active:scale-95"><i class="fas fa-check-square text-emerald-600"></i> Task</button>
+                            <span class="text-[10px] text-slate-400 font-medium ml-1 hidden sm:inline"><kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[9px]">/</kbd> comandi</span>
+                        </div>
+                    </div>
+                    <div class="project-notebook-editor bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder shadow-inner focus-within:ring-2 focus-within:ring-purple-500/30 transition">
+                        <div id="quill-editor-${type}" class="min-h-[200px]"></div>
+                    </div>
+                </div>
+            ` : `
+                ${renderProjectSubpagesList(type, entityId, allPages)}
+            `}
         </div>
     </div>
     `;
@@ -2088,17 +2114,15 @@ function exportSinglePage(pageId, format) {
                .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
                .replace(/<[^>]+>/g, '');
 
-        fileContent = `# ${title}\n\n` +
-                      (formattedDate ? `*Data:* ${formattedDate}  \n` : '') +
-                      (projName ? `*Progetto:* ${projName}  \n` : '') +
-                      `\n---\n\n${md.trim()}\n`;
+        // Esportazione pura del contenuto del corpo senza intestazioni interne
+        fileContent = md.trim() + '\n';
     } else if (format === 'html') {
         ext = 'html';
         mimeType = 'text/html';
-        fileContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeNoteHtml(title)}</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;line-height:1.6;color:#1e293b;}hr{margin:20px 0;border:0;border-top:1px solid #e2e8f0;}</style></head><body><h1>${escapeNoteHtml(title)}</h1><p><b>Data:</b> ${formattedDate || 'N/D'}${projName ? ` | <b>Progetto:</b> ${escapeNoteHtml(projName)}` : ''}</p><hr>${page.content || ''}</body></html>`;
+        fileContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeNoteHtml(title)}</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;line-height:1.6;color:#1e293b;}</style></head><body>${page.content || ''}</body></html>`;
     } else {
         const plain = (page.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        fileContent = `${title}\n` + (formattedDate ? `Data: ${formattedDate}\n` : '') + (projName ? `Progetto: ${projName}\n` : '') + `\n----------------------------------------\n\n${plain}`;
+        fileContent = plain;
     }
 
     const blob = new Blob([fileContent], { type: mimeType });
@@ -2154,30 +2178,28 @@ function initQuillEditors() {
         const entity = getEntity(type, id);
         if(!entity) return;
 
-        if (type !== 'sphere') {
-            const el = document.getElementById(`quill-editor-${type}`);
-            if (el) {
-                // Rimuovi eventuale toolbar orfana duplicata
-                const prev = el.previousElementSibling;
-                if (prev && prev.classList.contains('ql-toolbar')) {
-                    prev.remove();
-                }
-                el.__quill = new Quill(el, {
-                    theme: 'snow',
-                    modules: { toolbar: tOpts },
-                    placeholder: 'Inizia a scrivere nel documento principale... (digita / per i comandi o [[ per collegare)'
-                });
-                el.__quill.root.innerHTML = entity.notes || '';
-                attachQuillAutocomplete(el.__quill);
-                updateNotebookStats(el.__quill, type);
-                el.__quill.on('text-change', function(delta, oldDelta, source) { 
-                    if (source === 'user') {
-                        entity.notes = el.__quill.root.innerHTML; 
-                        AppData.triggerSave(); 
-                        updateNotebookStats(el.__quill, type);
-                    }
-                });
+        const el = document.getElementById(`quill-editor-${type}`);
+        if (el) {
+            // Rimuovi eventuale toolbar orfana duplicata
+            const prev = el.previousElementSibling;
+            if (prev && prev.classList.contains('ql-toolbar')) {
+                prev.remove();
             }
+            el.__quill = new Quill(el, {
+                theme: 'snow',
+                modules: { toolbar: tOpts },
+                placeholder: 'Inizia a scrivere nelle note fisse... (digita / per i comandi o [[ per collegare)'
+            });
+            el.__quill.root.innerHTML = entity.notes || '';
+            attachQuillAutocomplete(el.__quill);
+            updateNotebookStats(el.__quill, type);
+            el.__quill.on('text-change', function(delta, oldDelta, source) { 
+                if (source === 'user') {
+                    entity.notes = el.__quill.root.innerHTML; 
+                    AppData.triggerSave(); 
+                    updateNotebookStats(el.__quill, type);
+                }
+            });
         }
     });
 }

@@ -25,93 +25,171 @@ const ITALIAN_MONTHS = {
     'dicembre': 11, 'dic': 11
 };
 
-// Parser In-Text Tagging (Priorità p1-3, Date naturali @giorno/@mese/@anno, Contesto #nome)
+// Parser In-Text Tagging (Priorità p1-3, Date naturali @giorno/@mese/@anno, Programmazione ^/dal:, Contesto #nome)
+function parseNaturalDateString(rawStr) {
+    if (!rawStr) return '';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dClean = String(rawStr).toLowerCase().replace(/[.,;:!?\)\(\]]+$/, '').trim();
+
+    if (dClean === 'oggi' || dClean === 'stasera') {
+        return getISODate(now);
+    }
+    if (dClean === 'domani') {
+        const d = new Date(now);
+        d.setDate(now.getDate() + 1);
+        return getISODate(d);
+    }
+    if (dClean === 'dopodomani') {
+        const d = new Date(now);
+        d.setDate(now.getDate() + 2);
+        return getISODate(d);
+    }
+    if (dClean === 'prossimasettimana' || dClean === 'settimanaprossima') {
+        const curDay = now.getDay();
+        let addDays = (1 - curDay + 7) % 7;
+        if (addDays === 0) addDays = 7;
+        const d = new Date(now);
+        d.setDate(now.getDate() + addDays);
+        return getISODate(d);
+    }
+    if (dClean === 'finemese') {
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return getISODate(lastDay);
+    }
+    if (dClean === 'prossimomese' || dClean === 'meseprossimo') {
+        const nextM = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return getISODate(nextM);
+    }
+    if (dClean === 'prossimoanno' || dClean === 'annoprossimo') {
+        return `${now.getFullYear() + 1}-01-01`;
+    }
+
+    // Giorni della settimana in italiano
+    if (ITALIAN_WEEKDAYS[dClean] !== undefined) {
+        const targetDay = ITALIAN_WEEKDAYS[dClean];
+        const currentDay = now.getDay();
+        let daysToAdd = (targetDay - currentDay + 7) % 7;
+        if (daysToAdd === 0) daysToAdd = 7;
+        const d = new Date(now);
+        d.setDate(now.getDate() + daysToAdd);
+        return getISODate(d);
+    }
+
+    // Mesi in italiano
+    if (ITALIAN_MONTHS[dClean] !== undefined) {
+        const targetMonth = ITALIAN_MONTHS[dClean];
+        let targetYear = now.getFullYear();
+        if (targetMonth < now.getMonth()) targetYear += 1;
+        return `${targetYear}-${pad(targetMonth + 1)}-01`;
+    }
+
+    // Formato ISO: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dClean)) {
+        return dClean;
+    }
+
+    // Anno singolo (es. 2026, 2027)
+    if (/^20\d{2}$/.test(dClean)) {
+        return `${dClean}-01-01`;
+    }
+
+    // Formato completo: DD/MM/YYYY o DD-MM-YYYY
+    const dmyFull = dClean.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if (dmyFull) {
+        return `${dmyFull[3]}-${pad(dmyFull[2])}-${pad(dmyFull[1])}`;
+    }
+
+    // Formato giorno/mese: DD/MM o DD-MM (es. 15/05, 2/3)
+    const dmShort = dClean.match(/^(\d{1,2})[\/\-\.](\d{1,2})$/);
+    if (dmShort) {
+        const day = parseInt(dmShort[1], 10);
+        const month = parseInt(dmShort[2], 10);
+        let year = now.getFullYear();
+        const candidate = new Date(year, month - 1, day);
+        if (candidate.getTime() < now.getTime() - (60 * 86400000)) {
+            year += 1;
+        }
+        return `${year}-${pad(month)}-${pad(day)}`;
+    }
+
+    // Formato giorno + mese testuale (es. 25apr, 25aprile, 15mag, 15maggio)
+    const dayMonthMatch = dClean.match(/^(\d{1,2})([a-zA-Zàèéìòù]+)$/);
+    if (dayMonthMatch) {
+        const day = parseInt(dayMonthMatch[1], 10);
+        const monthName = dayMonthMatch[2].toLowerCase();
+        if (ITALIAN_MONTHS[monthName] !== undefined) {
+            const mIdx = ITALIAN_MONTHS[monthName];
+            let year = now.getFullYear();
+            const candidate = new Date(year, mIdx, day);
+            if (candidate.getTime() < now.getTime() - (30 * 86400000)) {
+                year += 1;
+            }
+            return `${year}-${pad(mIdx + 1)}-${pad(day)}`;
+        }
+    }
+
+    // Numero di giorno singolo (es. @15 o dal:28)
+    if (/^\d{1,2}$/.test(dClean)) {
+        const day = parseInt(dClean, 10);
+        if (day >= 1 && day <= 31) {
+            let year = now.getFullYear();
+            let month = now.getMonth();
+            if (day < now.getDate()) {
+                month += 1;
+                if (month > 11) {
+                    month = 0;
+                    year += 1;
+                }
+            }
+            return `${year}-${pad(month + 1)}-${pad(day)}`;
+        }
+    }
+
+    return '';
+}
+
 function parseSmartInput(inputStr, defaultCtx) {
     let title = inputStr; 
     let priority = 0; 
     let date = ''; 
+    let startDate = '';
     let contextId = defaultCtx || '';
     
     // 1. Priorità: scorciatoia diretta p1, p2, p3 (o [[p1-3)
     const pMatches = [...title.matchAll(/(?:^|\s)(?:\[\[)?p([0-3])\]?(?=\s|$)/gi)];
     if (pMatches.length > 0) { 
-        // Prende l'ultima specificata
         priority = parseInt(pMatches[pMatches.length - 1][1]);
         title = title.replace(/(?:^|\s)(?:\[\[)?p[0-3]\]?(?=\s|$)/gi, ' '); 
     }
+
+    // 2. Data di Programmazione / Inizio (dal:..., da:..., ^...)
+    const sMatches = [...title.matchAll(/(?:^|\s)(?:dal:|da:|\^)([^\s]+)/gi)];
+    if (sMatches.length > 0) {
+        for (let i = sMatches.length - 1; i >= 0; i--) {
+            const parsed = parseNaturalDateString(sMatches[i][1]);
+            if (parsed) {
+                startDate = parsed;
+                break;
+            }
+        }
+        title = title.replace(/(?:^|\s)(?:dal:|da:|\^)[^\s]+/gi, ' ');
+    }
     
-    // 2. Data Naturale: @giorno, @mese, @anno, @oggi, @domani, etc.
+    // 3. Data Scadenza (@giorno, @15/05, @domani, @sabato, etc.)
     const dMatches = [...title.matchAll(/@([^\s]+)/g)];
     if (dMatches.length > 0) {
-        const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-
         for (let i = dMatches.length - 1; i >= 0; i--) {
-            const dRaw = dMatches[i][1].toLowerCase();
-            const dClean = dRaw.replace(/[.,;:]$/, '');
-            let parsedDate = '';
-
-            if (dClean === 'oggi' || dClean === 'stasera') {
-                parsedDate = getISODate(now);
-            } else if (dClean === 'domani') {
-                const d = new Date(now);
-                d.setDate(now.getDate() + 1);
-                parsedDate = getISODate(d);
-            } else if (dClean === 'dopodomani') {
-                const d = new Date(now);
-                d.setDate(now.getDate() + 2);
-                parsedDate = getISODate(d);
-            } else if (dClean === 'prossimasettimana' || dClean === 'settimanaprossima') {
-                const curDay = now.getDay();
-                let addDays = (1 - curDay + 7) % 7;
-                if (addDays === 0) addDays = 7;
-                const d = new Date(now);
-                d.setDate(now.getDate() + addDays);
-                parsedDate = getISODate(d);
-            } else if (dClean === 'finemese') {
-                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                parsedDate = getISODate(lastDay);
-            } else if (dClean === 'prossimomese' || dClean === 'meseprossimo') {
-                const nextM = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                parsedDate = getISODate(nextM);
-            } else if (dClean === 'prossimoanno' || dClean === 'annoprossimo') {
-                parsedDate = `${now.getFullYear() + 1}-01-01`;
-            } else if (ITALIAN_WEEKDAYS[dClean] !== undefined) {
-                const targetDay = ITALIAN_WEEKDAYS[dClean];
-                const currentDay = now.getDay();
-                let daysToAdd = (targetDay - currentDay + 7) % 7;
-                if (daysToAdd === 0) daysToAdd = 7;
-                const d = new Date(now);
-                d.setDate(now.getDate() + daysToAdd);
-                parsedDate = getISODate(d);
-            } else if (ITALIAN_MONTHS[dClean] !== undefined) {
-                const targetMonth = ITALIAN_MONTHS[dClean];
-                let targetYear = now.getFullYear();
-                if (targetMonth < now.getMonth()) {
-                    targetYear += 1;
-                }
-                parsedDate = `${targetYear}-${pad(targetMonth + 1)}-01`;
-            } else if (/^20\d{2}$/.test(dClean)) {
-                parsedDate = `${dClean}-01-01`;
-            } else if (/^\d{4}-\d{2}-\d{2}$/.test(dClean)) {
-                parsedDate = dClean;
-            } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dClean)) {
-                const p = dClean.split('/');
-                parsedDate = `${p[2]}-${pad(p[1])}-${pad(p[0])}`;
-            } else if (/^\d{1,2}\/\d{1,2}$/.test(dClean)) {
-                const p = dClean.split('/');
-                parsedDate = `${now.getFullYear()}-${pad(p[1])}-${pad(p[0])}`;
-            }
-
-            if (parsedDate) {
-                date = parsedDate;
+            const parsed = parseNaturalDateString(dMatches[i][1]);
+            if (parsed) {
+                date = parsed;
                 break;
             }
         }
         title = title.replace(/@[^\s]+/g, ' ');
     }
     
-    // 3. Contesto: #nome (supporta sfere, progetti e sottoprogetti; usa l'ultimo contesto digitato)
+    // 4. Contesto: #nome (supporta sfere, progetti e sottoprogetti)
     const cMatches = [...title.matchAll(/#([^\s]+)/g)];
     if (cMatches.length > 0) {
         for (let i = cMatches.length - 1; i >= 0; i--) {
@@ -127,7 +205,7 @@ function parseSmartInput(inputStr, defaultCtx) {
         }
         title = title.replace(/#[^\s]+/g, ' ');
     }
-    return { title: title.trim().replace(/\s+/g, ' '), priority, date, contextId };
+    return { title: title.trim().replace(/\s+/g, ' '), priority, date, startDate, contextId };
 }
 
 let activeAutocompleteIndex = 0;
@@ -283,7 +361,7 @@ function handleSmartInput(inputEl, ctxId) {
         }
     }
 
-    // 2. Gestione Autocomplete Data @ (Date, Giorni della settimana, Mesi)
+    // 2. Gestione Autocomplete Data Scadenza @
     const atMatch = textBeforeCursor.match(/@([^\s]*)$/);
     if (atMatch) {
         const search = atMatch[1].toLowerCase();
@@ -311,7 +389,7 @@ function handleSmartInput(inputEl, ctxId) {
             }));
 
             let html = `<div class="text-[10px] font-bold text-slate-400 uppercase px-2 py-1 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-1 mb-1">
-                <span class="flex items-center gap-1.5"><i class="far fa-calendar-alt text-indigo-500"></i> Suggerimenti Data:</span>
+                <span class="flex items-center gap-1.5"><i class="far fa-calendar-alt text-indigo-500"></i> Suggerimenti Data Scadenza (@):</span>
                 <span class="text-[9px] text-slate-400 font-normal lowercase opacity-75">↑↓ naviga · invio seleziona</span>
             </div>`;
             dateSuggestions.forEach((s, idx) => { 
@@ -322,6 +400,47 @@ function handleSmartInput(inputEl, ctxId) {
                     <span class="flex items-center"><i class="far fa-clock mr-2 text-indigo-500"></i>${s.label} <code class="ml-2 text-[10px] opacity-60 bg-slate-200 dark:bg-slate-700 px-1 rounded">${s.tag}</code></span>
                     <span class="text-[9px] uppercase tracking-wider text-slate-400 opacity-70">${s.desc}</span>
                 </div>`; 
+            });
+            feedbackEl.innerHTML = html;
+            feedbackEl.classList.remove('hidden');
+            feedbackEl.classList.add('flex');
+            return;
+        }
+    }
+
+    // 2b. Gestione Autocomplete Data Programmazione / Inizio (^ o dal: o da:)
+    const startMatch = textBeforeCursor.match(/(?:^|\s)(\^|dal:|da:)([^\s]*)$/i);
+    if (startMatch) {
+        const prefix = startMatch[1];
+        const search = startMatch[2].toLowerCase();
+        const startSuggestions = [
+            { label: 'Attiva da Domani', tag: prefix + 'domani', desc: 'Inizio da domani' },
+            { label: 'Attiva da Lunedì', tag: prefix + 'lunedi', desc: 'Inizio prossimo lunedì' },
+            { label: 'Attiva tra 2 giorni', tag: prefix + 'dopodomani', desc: 'Inizio tra 2 giorni' },
+            { label: 'Attiva da Prossima Settimana', tag: prefix + 'prossimasettimana', desc: 'Inizio lunedì prossimo' },
+            { label: 'Attiva da Inizio Mese', tag: prefix + 'prossimomese', desc: '1° del mese prossimo' }
+        ].filter(s => !search || s.tag.toLowerCase().includes(search) || s.label.toLowerCase().includes(search)).slice(0, 5);
+
+        if (startSuggestions.length > 0) {
+            activeAutocompleteIndex = 0;
+            currentAutocompleteItems = startSuggestions.map(s => ({
+                patternToReplace: startMatch[0].trim(),
+                textToInsert: s.tag,
+                title: s.label
+            }));
+
+            let html = `<div class="text-[10px] font-bold text-amber-500 uppercase px-2 py-1 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-1 mb-1">
+                <span class="flex items-center gap-1.5"><i class="fas fa-hourglass-start text-amber-500"></i> Data di Inizio / Programmazione (${prefix}):</span>
+                <span class="text-[9px] text-slate-400 font-normal lowercase opacity-75">↑↓ naviga · invio seleziona</span>
+            </div>`;
+            startSuggestions.forEach((s, idx) => {
+                const isActive = idx === activeAutocompleteIndex;
+                html += `<div data-idx="${idx}" class="autocomplete-item ${isActive ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-600' : 'text-slate-700 dark:text-slate-200 border-transparent'} hover:bg-amber-50 dark:hover:bg-slate-700/60 rounded-lg p-2 text-xs font-semibold cursor-pointer flex items-center justify-between transition-colors border"
+                              onmouseenter="activeAutocompleteIndex=${idx}; updateAutocompleteVisual(this.parentElement)"
+                              onmousedown="event.preventDefault(); applyActiveAutocomplete(document.getElementById('${inputEl.id}'), ${idx})">
+                    <span class="flex items-center"><i class="fas fa-hourglass-start mr-2 text-amber-500"></i>${s.label} <code class="ml-2 text-[10px] opacity-60 bg-slate-200 dark:bg-slate-700 px-1 rounded">${s.tag}</code></span>
+                    <span class="text-[9px] uppercase tracking-wider text-slate-400 opacity-70">${s.desc}</span>
+                </div>`;
             });
             feedbackEl.innerHTML = html;
             feedbackEl.classList.remove('hidden');
@@ -388,6 +507,11 @@ function handleSmartInput(inputEl, ctxId) {
         badges += `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border shadow-xs ${cfg.bg}"><i class="fas ${cfg.icon}"></i> ${cfg.text}</span>`;
     }
 
+    if (parsed.startDate) {
+        hasRecognized = true;
+        badges += `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-xs"><i class="fas fa-hourglass-start text-amber-500"></i> Attiva dal: ${formatDisplayDate(parsed.startDate)}</span>`;
+    }
+
     if (parsed.date) {
         hasRecognized = true;
         const dueInfo = getDueDateStatus(parsed.date);
@@ -408,6 +532,10 @@ function handleSmartInput(inputEl, ctxId) {
             const pEl = document.getElementById('temPriority');
             if (pEl) pEl.value = parsed.priority;
         }
+        if (parsed.startDate) {
+            const sdEl = document.getElementById('temStartDate');
+            if (sdEl) sdEl.value = parsed.startDate;
+        }
         if (parsed.date) {
             const dEl = document.getElementById('temDueDate');
             if (dEl) dEl.value = parsed.date;
@@ -423,7 +551,10 @@ function handleSmartInput(inputEl, ctxId) {
         hints += `<div class="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi <b>p1</b>, <b>p2</b> o <b>p3</b> per la priorità</div>`;
     }
     if (/(?:^|\s)@$/.test(val)) {
-        hints += `<div class="text-[11px] text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi <b>@sabato</b>, <b>@novembre</b>, <b>@domani</b> o <b>@2027</b></div>`;
+        hints += `<div class="text-[11px] text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi <b>@oggi</b>, <b>@domani</b>, <b>@15/05</b>, <b>@sabato</b> o <b>@2027</b></div>`;
+    }
+    if (/(?:^|\s)(?:\^|dal:|da:)$/i.test(val)) {
+        hints += `<div class="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi <b>^domani</b>, <b>^lunedi</b> o <b>dal:15/05</b> per la data di inizio</div>`;
     }
     if (/(?:^|\s)#$/.test(val)) {
         hints += `<div class="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi le prime lettere di un progetto o sfera</div>`;
