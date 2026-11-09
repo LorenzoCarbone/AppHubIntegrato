@@ -13,7 +13,15 @@ const state = {
         calFilters: { task: true, focus: true, routine: true, break: true, gcal: true }, 
         taskSearchQuery: '',
         tmDependencyFilter: 'all',
-        expandedTasks: {} 
+        expandedTasks: {},
+        pagesViewMode: 'table',
+        pagesGroupBy: 'none',
+        selectedPageSphere: 'all',
+        selectedPageContext: 'all',
+        selectedPageTipologia: 'all',
+        selectedPageTag: 'all',
+        pageSearchQuery: '',
+        selectedPageIds: [] 
     },
     get data() { return AppData.data; },
     set data(val) { AppData.data = val; }
@@ -50,6 +58,25 @@ function toggleNavFolder(e, id) {
 
 function toggleArchivedView() { state.ui.showArchived = !state.ui.showArchived; render(); }
 
+function switchSettingsTab(tabName) {
+    const tabs = ['features', 'cloud', 'data'];
+    tabs.forEach(t => {
+        const el = document.getElementById('setTab_' + t);
+        const btn = document.getElementById('setTabBtn_' + t);
+        if (el) {
+            if (t === tabName) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+        if (btn) {
+            if (t === tabName) {
+                btn.className = 'pb-2.5 px-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 transition';
+            } else {
+                btn.className = 'pb-2.5 px-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition';
+            }
+        }
+    });
+}
+
 function toggleSettings(forceOpen) {
     const m = document.getElementById('settingsModal');
     if (!m) return;
@@ -83,6 +110,7 @@ function toggleSettings(forceOpen) {
         if (st) st.innerHTML = '';
         if (dt) { dt.innerHTML = ''; dt.classList.add('hidden'); }
 
+        switchSettingsTab('features');
         m.classList.remove('hidden');
         m.style.display = 'flex';
     } else {
@@ -103,9 +131,11 @@ function toggleFeatureSetting(key, enabled) {
         };
     }
     state.data.features[key] = !!enabled;
-    AppData.triggerSave();
+    localStorage.setItem('hub_features', JSON.stringify(state.data.features));
+    AppData.saveLocal();
+    AppData.pushToCloud();
     if (typeof render === 'function') render();
-    showToast(`Funzionalità ${enabled ? 'attivata' : 'disattivata'}`, "default");
+    showToast(`Modulo ${enabled ? 'attivato' : 'disattivato'}`, "default");
 }
 
 function openSettingsModal() {
@@ -244,11 +274,14 @@ function saveSettings() {
         const chk = document.getElementById('feat_' + k);
         if (chk) state.data.features[k] = chk.checked;
     });
-    AppData.triggerSave();
+    localStorage.setItem('hub_features', JSON.stringify(state.data.features));
     
+    AppData.saveLocal();
+    AppData.pushToCloud();
     toggleSettings(false);
-    showToast("Impostazioni salvate! Sincronizzazione in corso...", "success");
-    AppData.initialize();
+    showToast("Impostazioni salvate con successo!", "success");
+    if (typeof render === 'function') render();
+
     if (AppData.gcalApiKey && AppData.gcalId) {
         AppData.fetchGCalEvents().then(() => {
             if (typeof render === 'function') render();
@@ -264,10 +297,24 @@ function factoryReset() {
     }
 }
 
-function openImportModal() { document.getElementById('importDataArea').value = ''; document.getElementById('importModal').classList.remove('hidden'); }
-function closeImportModal() { document.getElementById('importModal').classList.add('hidden'); }
+function openImportModal() { 
+    const m = document.getElementById('importModal');
+    if (!m) return;
+    const a = document.getElementById('importDataArea');
+    if (a) a.value = '';
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+}
+
+function closeImportModal() { 
+    const m = document.getElementById('importModal');
+    if (!m) return;
+    m.classList.add('hidden');
+    m.style.display = 'none';
+}
+
 function executeImport() {
-    const txt = document.getElementById('importDataArea').value.trim();
+    const txt = document.getElementById('importDataArea')?.value.trim();
     if(!txt) return;
     const overwrite = document.getElementById('importOverwriteChk')?.checked || false;
     try {
@@ -279,6 +326,15 @@ function executeImport() {
         showToast("Errore formato JSON: " + e.message, "error");
     }
 }
+
+// Esponi helper su window per chiamate inline
+window.toggleSettings = toggleSettings;
+window.switchSettingsTab = switchSettingsTab;
+window.toggleFeatureSetting = toggleFeatureSetting;
+window.saveSettings = saveSettings;
+window.openImportModal = openImportModal;
+window.closeImportModal = closeImportModal;
+window.executeImport = executeImport;
 
 async function navigate(view, sId=null, pId=null, spId=null) { 
     state.view = view; 

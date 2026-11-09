@@ -480,13 +480,13 @@ function openTaskModal(id) {
     // Eisenhower
     document.getElementById('temEisenhower').value = t.eisenhower || 'auto';
     
-    // Stima e tempo
-    document.getElementById('temEstimated').value = t.estimatedMinutes || '';
-    document.getElementById('temSpent').value = t.spentMinutes || '';
     document.getElementById('temNotes').value = t.notes || '';
     
     // Subtasks
     renderModalSubtasks(t);
+
+    // Vincoli & Dipendenze
+    renderModalDependencies(t);
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -572,23 +572,31 @@ function saveTaskModal() {
     const t = (state.data.tasks || []).find(x => x.id === id);
     if (!t) return;
 
-    const title = document.getElementById('temTitleInput').value.trim();
-    if (!title) {
+    let rawTitle = document.getElementById('temTitleInput').value.trim();
+    if (!rawTitle) {
         showToast("Inserisci un titolo per la task", "error");
         return;
     }
-    t.title = title;
-    t.priority = parseInt(document.getElementById('temPriority').value) || 0;
-    t.dueDate = document.getElementById('temDueDate').value || '';
+
+    // Se l'utente ha inserito tag intelligenti tipo 'Fare spesa p3 @domani #Progetto', pulisci il testo e applica i parametri
+    const parsed = parseSmartInput(rawTitle, t.contextId);
+    t.title = parsed.title || rawTitle;
+
+    if (parsed.priority > 0) t.priority = parsed.priority;
+    else t.priority = parseInt(document.getElementById('temPriority').value) || 0;
+
+    if (parsed.date) t.dueDate = parsed.date;
+    else t.dueDate = document.getElementById('temDueDate').value || '';
+
+    if (parsed.contextId) t.contextId = parsed.contextId;
+    else t.contextId = document.getElementById('temContext')?.value || t.contextId || null;
+
     t.startDate = document.getElementById('temStartDate').value || '';
-    t.contextId = document.getElementById('temContext')?.value || t.contextId || null;
 
     const rec = document.getElementById('temRecurrence').value;
     t.recurrence = (rec === 'none') ? { frequency: 'none' } : { frequency: rec, interval: 1 };
 
     t.eisenhower = document.getElementById('temEisenhower').value || 'auto';
-    t.estimatedMinutes = Math.max(0, parseInt(document.getElementById('temEstimated').value) || 0);
-    t.spentMinutes = Math.max(0, parseInt(document.getElementById('temSpent').value) || 0);
     t.notes = document.getElementById('temNotes').value.trim();
 
     AppData.triggerSave();
@@ -604,6 +612,123 @@ function saveTaskModal() {
         render();
     }
 }
+
+// --- GESTIONE VINCOLI E DIPENDENZE NEL MODAL TASK ---
+function renderModalDependencies(task) {
+    const blockersList = document.getElementById('temBlockersList');
+    const blockersCount = document.getElementById('temBlockersCount');
+    const blockerSelect = document.getElementById('temAddBlockerSelect');
+    
+    const dependentsList = document.getElementById('temDependentsList');
+    const dependentsCount = document.getElementById('temDependentsCount');
+    const dependentSelect = document.getElementById('temAddDependentSelect');
+
+    const blockers = getTaskDependencies(task);
+    const dependents = getTasksDependentOn(task.id);
+
+    if (blockersCount) blockersCount.textContent = blockers.length;
+    if (dependentsCount) dependentsCount.textContent = dependents.length;
+
+    // 1. Blockers (prerequisiti)
+    if (blockersList) {
+        if (blockers.length === 0) {
+            blockersList.innerHTML = `<p class="text-[11px] text-slate-400 italic py-1">Nessun prerequisito (questa task è pronta per essere svolta).</p>`;
+        } else {
+            blockersList.innerHTML = blockers.map(b => `
+                <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg ${b.completed ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300' : 'bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300'} text-xs font-semibold">
+                    <div class="flex items-center gap-1.5 truncate">
+                        <i class="fas ${b.completed ? 'fa-check-circle text-emerald-500' : 'fa-lock text-amber-500'} text-xs shrink-0"></i>
+                        <span class="truncate ${b.completed ? 'line-through opacity-70' : ''}">${escapeHtml(b.title)}</span>
+                    </div>
+                    <button type="button" onclick="removeModalBlocker('${b.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi vincolo"><i class="fas fa-times text-xs"></i></button>
+                </div>
+            `).join('');
+        }
+    }
+
+    // 2. Dependents (sbloccate da questa task)
+    if (dependentsList) {
+        if (dependents.length === 0) {
+            dependentsList.innerHTML = `<p class="text-[11px] text-slate-400 italic py-1">Nessuna task dipende da questa (non vincola altre attività).</p>`;
+        } else {
+            dependentsList.innerHTML = dependents.map(d => `
+                <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                    <div class="flex items-center gap-1.5 truncate">
+                        <i class="fas fa-key text-emerald-500 text-xs shrink-0"></i>
+                        <span class="truncate">${escapeHtml(d.title)}</span>
+                    </div>
+                    <button type="button" onclick="removeModalDependent('${d.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition shrink-0" title="Rimuovi dipendenza"><i class="fas fa-times text-xs"></i></button>
+                </div>
+            `).join('');
+        }
+    }
+
+    // 3. Dropdowns per aggiungere nuovi vincoli
+    const otherTasks = (state.data.tasks || []).filter(x => x.id !== task.id && !x.completed);
+
+    if (blockerSelect) {
+        const availableBlockers = otherTasks.filter(x => !(task.dependsOn || []).includes(x.id) && !wouldCreateCycle(task.id, x.id));
+        blockerSelect.innerHTML = `<option value="">-- Seleziona una task prerequisito --</option>` + 
+            availableBlockers.map(x => `<option value="${x.id}">${escapeHtml(x.title)}</option>`).join('');
+    }
+
+    if (dependentSelect) {
+        const availableDependents = otherTasks.filter(x => !(x.dependsOn || []).includes(task.id) && !wouldCreateCycle(x.id, task.id));
+        dependentSelect.innerHTML = `<option value="">-- Seleziona una task da sbloccare --</option>` + 
+            availableDependents.map(x => `<option value="${x.id}">${escapeHtml(x.title)}</option>`).join('');
+    }
+}
+
+function addModalBlocker() {
+    const taskId = document.getElementById('temId').value;
+    const blockerId = document.getElementById('temAddBlockerSelect')?.value;
+    if (!taskId || !blockerId) return;
+    addDependency(taskId, blockerId);
+    const task = (state.data.tasks || []).find(x => x.id === taskId);
+    if (task) renderModalDependencies(task);
+}
+
+function removeModalBlocker(blockerId) {
+    const taskId = document.getElementById('temId').value;
+    if (!taskId || !blockerId) return;
+    removeDependency(taskId, blockerId);
+    const task = (state.data.tasks || []).find(x => x.id === taskId);
+    if (task) renderModalDependencies(task);
+}
+
+function addModalDependent() {
+    const taskId = document.getElementById('temId').value;
+    const dependentId = document.getElementById('temAddDependentSelect')?.value;
+    if (!taskId || !dependentId) return;
+    addDependency(dependentId, taskId);
+    const task = (state.data.tasks || []).find(x => x.id === taskId);
+    if (task) renderModalDependencies(task);
+}
+
+function removeModalDependent(dependentId) {
+    const taskId = document.getElementById('temId').value;
+    if (!taskId || !dependentId) return;
+    removeDependency(dependentId, taskId);
+    const task = (state.data.tasks || []).find(x => x.id === taskId);
+    if (task) renderModalDependencies(task);
+}
+
+function insertEditModalChip(text) {
+    const input = document.getElementById('temTitleInput');
+    if (!input) return;
+    input.value = (input.value ? input.value + ' ' : '') + text + ' ';
+    input.focus();
+    if (typeof handleSmartInput === 'function') {
+        handleSmartInput(input, 'editModal');
+    }
+}
+
+window.renderModalDependencies = renderModalDependencies;
+window.addModalBlocker = addModalBlocker;
+window.removeModalBlocker = removeModalBlocker;
+window.addModalDependent = addModalDependent;
+window.removeModalDependent = removeModalDependent;
+window.insertEditModalChip = insertEditModalChip;
 
 function deleteTaskFromModal() {
     const id = document.getElementById('temId').value;

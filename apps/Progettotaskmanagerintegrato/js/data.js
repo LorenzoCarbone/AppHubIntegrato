@@ -269,6 +269,12 @@ class LifeHubDataManager {
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
         n.gcalCompleted = d.gcalCompleted || [];
         n.trash = d.trash || [];
+        
+        let savedFeatures = null;
+        try {
+            const raw = localStorage.getItem('hub_features');
+            if (raw) savedFeatures = JSON.parse(raw);
+        } catch(e) {}
         n.features = Object.assign({
             dashboardAgenda: true,
             eisenhowerMatrix: true,
@@ -276,11 +282,30 @@ class LifeHubDataManager {
             contacts: true,
             timeBlocks: true,
             projectTimeline: true
-        }, d.features || {});
-        n.pages = (d.pages || []).map(p => ({
-            ...p,
-            tags: Array.isArray(p.tags) ? p.tags : []
-        }));
+        }, d.features || {}, savedFeatures || {});
+
+        const todayIso = new Date().toISOString().split('T')[0];
+        n.pages = (d.pages || []).map(p => {
+            let sphereId = p.sphereId || null;
+            if (!sphereId && p.contextId) {
+                const proj = (d.projects || []).find(x => x.id === p.contextId);
+                if (proj) sphereId = proj.sphereId;
+                else {
+                    const sp = (d.subprojects || []).find(x => x.id === p.contextId);
+                    if (sp) {
+                        const parent = (d.projects || []).find(x => x.id === sp.projectId);
+                        if (parent) sphereId = parent.sphereId;
+                    }
+                }
+            }
+            return {
+                ...p,
+                date: p.date || (p.createdAt ? p.createdAt.split('T')[0] : todayIso),
+                tipologia: p.tipologia || 'Riunione',
+                sphereId: sphereId,
+                tags: Array.isArray(p.tags) ? p.tags : []
+            };
+        });
 
         // Migra eventuali vecchi aggiornamenti/archivio o note fisse a pagine dedicate se non già presenti
         const migrateUpdatesToPages = (items) => {

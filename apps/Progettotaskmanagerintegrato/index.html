@@ -133,117 +133,174 @@
     </div>
 
     <!-- Modal Importazione Dati -->
-    <div id="importModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-2xl modal-animate">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-bold">Importazione Massiva (JSON)</h2>
-                <button type="button" onclick="document.getElementById('jsonFilePicker').click()" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer"><i class="fas fa-folder-open"></i> Carica file .json</button>
-                <input type="file" id="jsonFilePicker" accept=".json" class="hidden" onchange="const f = this.files[0]; if(f){ const r = new FileReader(); r.onload = e => document.getElementById('importDataArea').value = e.target.result; r.readAsText(f); }">
+    <div id="importModal" class="modal-overlay hidden" onclick="if(event.target === this) closeImportModal()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-animate">
+            <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-file-import text-blue-500"></i>
+                    <h2 class="text-base font-bold text-slate-800 dark:text-white">Importazione Dati (JSON)</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="document.getElementById('jsonFilePicker').click()" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer"><i class="fas fa-folder-open"></i> Scegli file .json</button>
+                    <input type="file" id="jsonFilePicker" accept=".json" class="hidden" onchange="const f = this.files[0]; if(f){ const r = new FileReader(); r.onload = e => document.getElementById('importDataArea').value = e.target.result; r.readAsText(f); }">
+                    <button type="button" onclick="closeImportModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition"><i class="fas fa-times text-xs"></i></button>
+                </div>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Incolla qui il codice JSON per generare o recuperare i tuoi dati.</p>
-            <textarea id="importDataArea" class="input-base font-mono text-xs h-64 mb-4" placeholder='{ "spheres": [...], "projects": [...] }'></textarea>
-            <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-darkborder">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Incolla qui il codice JSON per ripristinare o importare i tuoi dati, oppure carica un file salvato.</p>
+            <textarea id="importDataArea" class="input-base font-mono text-xs h-64 mb-4 resize-y" placeholder='{ "spheres": [...], "projects": [...] }'></textarea>
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder">
                 <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <input type="checkbox" id="importOverwriteChk" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                    <span>Sovrascrivi tutto</span>
+                    <span>Sovrascrivi tutto il database</span>
                 </label>
                 <div class="flex gap-2">
-                <button onclick="closeImportModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
-                <button onclick="executeImport()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Importa e Salva</button>
+                    <button type="button" onclick="closeImportModal()" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-xl">Annulla</button>
+                    <button type="button" onclick="executeImport()" class="px-5 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition active:scale-[0.98]">Importa e Salva</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Settings Supabase & Google Calendar -->
+    <!-- Modal Settings Supabase & Google Calendar & Moduli -->
     <div id="settingsModal" class="modal-overlay hidden" onclick="if(event.target === this) toggleSettings(false)">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
-            <h2 class="text-lg font-bold mb-5"><i class="fas fa-cog text-slate-500 mr-2"></i> Impostazioni Generali</h2>
-            
-            <div class="space-y-4 mb-6">
-                <div class="pb-3 border-b border-slate-200 dark:border-slate-700">
-                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-database text-blue-500 mr-2"></i> Database Supabase</h3>
-                    <div class="space-y-3">
-                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Project URL</label><input type="text" id="supabaseUrl" class="input-base" placeholder="https://xyz.supabase.co"></div>
-                        <div><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Anon Key (API)</label><input type="password" id="anonKey" class="input-base"></div>
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-xl modal-animate max-h-[85vh] flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                        <i class="fas fa-sliders-h text-base"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 dark:text-white">Impostazioni Life Hub</h2>
+                        <p class="text-[10px] text-slate-400">Moduli plancia, sincronizzazione cloud e backup</p>
                     </div>
                 </div>
-                
-                <div class="pt-2">
-                    <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fab fa-google text-emerald-500 mr-2"></i> Integrazione Google Calendar</h3>
-                    <div class="space-y-3">
+                <button type="button" onclick="toggleSettings(false)" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="flex border-b border-slate-200 dark:border-darkborder pt-3 px-1 gap-2 shrink-0">
+                <button type="button" id="setTabBtn_features" onclick="switchSettingsTab('features')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 transition">
+                    <i class="fas fa-sliders-h text-xs"></i> Moduli & Interfaccia
+                </button>
+                <button type="button" id="setTabBtn_cloud" onclick="switchSettingsTab('cloud')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <i class="fab fa-google text-xs"></i> Cloud & GCal
+                </button>
+                <button type="button" id="setTabBtn_data" onclick="switchSettingsTab('data')" class="pb-2.5 px-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition">
+                    <i class="fas fa-database text-xs"></i> Backup & Dati
+                </button>
+            </div>
+
+            <!-- Tab Contents (Scrollable body) -->
+            <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-4">
+                <!-- TAB 1: MODULI & INTERFACCIA -->
+                <div id="setTab_features" class="space-y-3">
+                    <div class="bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 text-[11px] text-slate-600 dark:text-slate-300">
+                        <i class="fas fa-info-circle text-blue-500 mr-1.5"></i> Attiva o disattiva i componenti per alleggerire e personalizzare la tua plancia di lavoro.
+                    </div>
+                    <div class="space-y-2 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fas fa-calendar-day text-blue-500 w-4"></i> Widget Agenda & Google Calendar (Home)
+                            </span>
+                            <input type="checkbox" id="feat_dashboardAgenda" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('dashboardAgenda', this.checked)">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fas fa-th-large text-indigo-500 w-4"></i> Matrice di Eisenhower (4 Quadranti Task)
+                            </span>
+                            <input type="checkbox" id="feat_eisenhowerMatrix" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('eisenhowerMatrix', this.checked)">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fas fa-chart-line text-emerald-500 w-4"></i> Timeline & Avanzamento Progetti
+                            </span>
+                            <input type="checkbox" id="feat_projectTimeline" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('projectTimeline', this.checked)">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fas fa-users text-purple-500 w-4"></i> Modulo Contatti & Rubrica
+                            </span>
+                            <input type="checkbox" id="feat_contacts" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('contacts', this.checked)">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fas fa-clock text-amber-500 w-4"></i> Blocchi Orari Calendario (Time Blocking)
+                            </span>
+                            <input type="checkbox" id="feat_timeBlocks" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('timeBlocks', this.checked)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- TAB 2: CLOUD & GCAL -->
+                <div id="setTab_cloud" class="space-y-4 hidden">
+                    <div class="space-y-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-database text-blue-500"></i> Database Cloud (Supabase)
+                        </h3>
                         <div>
-                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">ID Calendari (separati da virgola)</label>
-                            <input type="text" id="gcalIdSettings" class="input-base" placeholder="es. tua.email@gmail.com, it.holiday@group.v.calendar.google.com">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Project URL</label>
+                            <input type="text" id="supabaseUrl" class="input-base text-xs font-medium py-1.5" placeholder="https://xyz.supabase.co">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">API Key Google Calendar</label>
-                            <input type="password" id="gcalApiSettings" class="input-base" placeholder="AIzaSy...">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Anon Key (API)</label>
+                            <input type="password" id="anonKey" class="input-base text-xs font-medium py-1.5">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fab fa-google text-emerald-500"></i> Integrazione Google Calendar
+                        </h3>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ID Calendari (separati da virgola)</label>
+                            <input type="text" id="gcalIdSettings" class="input-base text-xs font-medium py-1.5" placeholder="tua.email@gmail.com, it.holiday@group.v.calendar.google.com">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">API Key Google Calendar</label>
+                            <input type="password" id="gcalApiSettings" class="input-base text-xs font-medium py-1.5" placeholder="AIzaSy...">
                         </div>
                         <div class="flex flex-wrap items-center gap-2 pt-1">
-                            <button type="button" onclick="testGCalSettings()" id="testGcalBtn" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition flex items-center gap-2 active:scale-95">
+                            <button type="button" onclick="testGCalSettings()" id="testGcalBtn" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition flex items-center gap-2 active:scale-95">
                                 <i class="fas fa-plug"></i> Testa Connessione Google Calendar
                             </button>
                             <span id="gcalTestStatus" class="text-xs font-semibold"></span>
                         </div>
-                        <div id="gcalTestDetails" class="hidden text-xs p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 leading-relaxed"></div>
+                        <div id="gcalTestDetails" class="hidden text-xs p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 leading-relaxed"></div>
                     </div>
-                    <p class="text-[10px] text-slate-500 mt-3 leading-tight bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700"><i class="fas fa-info-circle mr-1 text-blue-500"></i> Puoi assegnare un colore custom aggiungendo |#colore dopo l'ID (es: tua.email@gmail.com|#8e24aa). Per l'API Key: Google Cloud Console &gt; Libreria &gt; Abilita <b>Google Calendar API</b> &gt; Credenziali &gt; Crea API Key.</p>
                 </div>
-            </div>
-            
-            <div class="pt-2 border-t border-slate-200 dark:border-slate-700 mb-6">
-                <h3 class="text-sm font-bold flex items-center mb-1 text-slate-700 dark:text-slate-200">
-                    <i class="fas fa-sliders-h text-purple-500 mr-2"></i> Funzionalità & Pulizia Interfaccia
-                </h3>
-                <p class="text-[11px] text-slate-400 mb-3">Attiva o disattiva i moduli per mantenere la plancia e i progetti leggeri e puliti.</p>
-                <div class="space-y-2.5 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            <i class="fas fa-calendar-day text-blue-500 w-4"></i> Widget Agenda & Google Cal (Home)
-                        </span>
-                        <input type="checkbox" id="feat_dashboardAgenda" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('dashboardAgenda', this.checked)">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            <i class="fas fa-th-large text-indigo-500 w-4"></i> Matrice di Eisenhower (Priorità)
-                        </span>
-                        <input type="checkbox" id="feat_eisenhowerMatrix" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('eisenhowerMatrix', this.checked)">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            <i class="fas fa-chart-line text-emerald-500 w-4"></i> Timeline & Avanzamento Progetti
-                        </span>
-                        <input type="checkbox" id="feat_projectTimeline" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('projectTimeline', this.checked)">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            <i class="fas fa-users text-purple-500 w-4"></i> Sezione Contatti & Rubrica
-                        </span>
-                        <input type="checkbox" id="feat_contacts" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('contacts', this.checked)">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            <i class="fas fa-clock text-amber-500 w-4"></i> Blocchi Orari Calendario (Time Blocking)
-                        </span>
-                        <input type="checkbox" id="feat_timeBlocks" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('timeBlocks', this.checked)">
-                    </label>
+
+                <!-- TAB 3: BACKUP & DATI -->
+                <div id="setTab_data" class="space-y-4 hidden">
+                    <div class="space-y-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <h3 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-file-export text-indigo-500"></i> Salvataggio & Ripristino Locale
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Esporta l'intero database in un file .json oppure ripristinalo per recuperare i tuoi dati.</p>
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <button type="button" onclick="AppData.exportJSON()" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-2 active:scale-95"><i class="fas fa-download"></i> Scarica Backup JSON</button>
+                            <button type="button" onclick="toggleSettings(false); openImportModal();" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition flex items-center gap-2 active:scale-95"><i class="fas fa-upload"></i> Ripristina da JSON</button>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-950/20 space-y-2">
+                        <h3 class="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle"></i> Zona Pericolosa
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Il Factory Reset cancellerà tutti i dati in locale e resetterà lo stato dell'applicazione.</p>
+                        <button type="button" onclick="factoryReset()" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 dark:border-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95">Ripristino di Fabbrica (Reset)</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="pt-2 border-t border-slate-200 dark:border-slate-700 mb-6">
-                <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-file-export text-indigo-500 mr-2"></i> Backup & Ripristino</h3>
-                <div class="flex flex-wrap gap-2">
-                    <button type="button" onclick="AppData.exportJSON()" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-2"><i class="fas fa-download"></i> Scarica Backup JSON</button>
-                    <button type="button" onclick="toggleSettings(false); openImportModal();" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition flex items-center gap-2"><i class="fas fa-upload"></i> Ripristina da JSON</button>
-                </div>
-            </div>
-            
-            <div class="flex justify-between items-center pt-5 border-t border-slate-200 dark:border-darkborder">
-                <button onclick="factoryReset()" class="text-red-500 hover:text-red-600 text-xs font-bold flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-exclamation-triangle mr-2"></i> Factory Reset</button>
+            <!-- Modal Footer -->
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder shrink-0">
+                <span class="text-[10px] text-slate-400">Life Hub OS v5.1</span>
                 <div class="flex gap-2">
-                    <button onclick="toggleSettings(false)" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Chiudi</button>
-                    <button onclick="saveSettings()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                    <button type="button" onclick="toggleSettings(false)" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-xl">Chiudi</button>
+                    <button type="button" onclick="saveSettings()" class="px-5 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition active:scale-95">Salva Impostazioni</button>
                 </div>
             </div>
         </div>
@@ -263,37 +320,54 @@
                         <p id="temSubtitle" class="text-[10px] text-slate-400">Modifica parametri, date, contesto e vincoli</p>
                     </div>
                 </div>
-                <button onclick="closeTaskModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
+                <button type="button" onclick="closeTaskModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
             </div>
 
             <div class="overflow-y-auto pr-1 py-4 space-y-4 flex-1">
                 <input type="hidden" id="temId">
                 
-                <!-- Titolo Task -->
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Titolo Task</label>
-                    <input type="text" id="temTitleInput" class="input-base text-sm font-bold py-2 w-full" placeholder="Nome dell'attività...">
+                <!-- Titolo Task con Smart Input Integrato -->
+                <div class="relative">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span>Titolo Task (Supporta @date, #progetti, p1-p3)</span>
+                    </label>
+                    <input type="text" id="temTitleInput" class="input-base text-sm font-bold py-2 w-full" placeholder="Nome dell'attività... (es. Finire relazione p3 @domani #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeyup="handleSmartInput(this, 'editModal')" onfocus="handleSmartInput(this, 'editModal')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+                    
+                    <!-- Quick chips rapidi per inserimento istantaneo -->
+                    <div class="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">Rapidi:</span>
+                        <button type="button" onclick="insertEditModalChip('@oggi')" class="px-2 py-0.5 rounded-md font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
+                        <button type="button" onclick="insertEditModalChip('@domani')" class="px-2 py-0.5 rounded-md font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
+                        <button type="button" onclick="insertEditModalChip('p3')" class="px-2 py-0.5 rounded-md font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0 active:scale-95 transition">🔴 p3 Alta</button>
+                        <button type="button" onclick="insertEditModalChip('p2')" class="px-2 py-0.5 rounded-md font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2 Media</button>
+                        <button type="button" onclick="insertEditModalChip('p1')" class="px-2 py-0.5 rounded-md font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1 Bassa</button>
+                    </div>
                 </div>
 
-                <!-- Riga Priorità, Scadenza, Attiva dal -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Riga Priorità & Scadenza -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Priorità</label>
                         <select id="temPriority" class="input-base text-xs font-bold py-2 w-full">
                             <option value="0">⚪ Nessuna</option>
-                            <option value="1">🔵 Bassa</option>
-                            <option value="2">🟡 Media</option>
-                            <option value="3">🔴 Alta</option>
+                            <option value="1">🔵 Bassa (p1)</option>
+                            <option value="2">🟡 Media (p2)</option>
+                            <option value="3">🔴 Alta (p3)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Scadenza</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Data Scadenza (Due Date)</label>
                         <input type="date" id="temDueDate" class="input-base text-xs font-bold py-2 w-full">
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1">⏳ Attiva dal</label>
-                        <input type="date" id="temStartDate" class="input-base text-xs font-bold py-2 w-full border-indigo-200 dark:border-indigo-800">
-                    </div>
+                </div>
+
+                <!-- Data di inizio / Attiva dal (Con spiegazione chiara) -->
+                <div class="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 space-y-1">
+                    <label class="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fas fa-hourglass-start"></i> Data di Inizio / Attiva dal
+                    </label>
+                    <input type="date" id="temStartDate" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800">
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400">Se impostata nel futuro, la task rimarrà nascosta dalle liste attive (Oggi, Inbox, Progetti) e comparirà solo a partire da questa data.</p>
                 </div>
 
                 <!-- Riga Contesto & Ricorrenza -->
@@ -314,25 +388,56 @@
                     </div>
                 </div>
 
-                <!-- Riga Eisenhower & Tempo -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Eisenhower</label>
-                        <select id="temEisenhower" class="input-base text-xs font-bold py-2 w-full">
-                            <option value="auto">Auto (per priorità)</option>
-                            <option value="q1">Q1: Fai Subito 🔥</option>
-                            <option value="q2">Q2: Pianifica 💎</option>
-                            <option value="q3">Q3: Delega ⚡</option>
-                            <option value="q4">Q4: Elimina 🌱</option>
-                        </select>
+                <!-- Quadrante Eisenhower -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Matrice di Eisenhower</label>
+                    <select id="temEisenhower" class="input-base text-xs font-bold py-2 w-full">
+                        <option value="auto">Auto (calcolata per priorità e scadenza)</option>
+                        <option value="q1">Q1: Urgente & Importante (Fai Subito 🔥)</option>
+                        <option value="q2">Q2: Non Urgente ma Importante (Pianifica 💎)</option>
+                        <option value="q3">Q3: Urgente ma non Importante (Delega ⚡)</option>
+                        <option value="q4">Q4: Né Urgente né Importante (Elimina 🌱)</option>
+                    </select>
+                </div>
+
+                <!-- Sezione Vincoli & Dipendenze -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fas fa-link text-indigo-500"></i> Vincoli & Dipendenze</span>
+                    </label>
+
+                    <!-- 1. Vincolata da (Prerequisiti) -->
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                <i class="fas fa-lock text-amber-500 text-[11px]"></i> Vincolata da (Prerequisiti - Devono finire prima):
+                            </span>
+                            <span id="temBlockersCount" class="text-[9px] font-mono font-bold text-slate-400">0</span>
+                        </div>
+                        <div id="temBlockersList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+                        <div class="flex items-center gap-2 pt-1">
+                            <select id="temAddBlockerSelect" class="input-base text-xs py-1.5 flex-1"></select>
+                            <button type="button" onclick="addModalBlocker()" class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs hover:bg-amber-100 transition active:scale-95 border border-amber-200 dark:border-amber-800 shrink-0">
+                                <i class="fas fa-plus mr-1"></i> Aggiungi Vincolo
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stima (Minuti)</label>
-                        <input type="number" id="temEstimated" min="0" step="5" class="input-base text-xs font-bold py-2 w-full" placeholder="es. 30">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tempo Speso (Minuti)</label>
-                        <input type="number" id="temSpent" min="0" step="5" class="input-base text-xs font-bold py-2 w-full" placeholder="es. 15">
+
+                    <!-- 2. Vincolante per (Sblocca) -->
+                    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                <i class="fas fa-key text-emerald-500 text-[11px]"></i> Vincolante per (Sblocca - In attesa di questa task):
+                            </span>
+                            <span id="temDependentsCount" class="text-[9px] font-mono font-bold text-slate-400">0</span>
+                        </div>
+                        <div id="temDependentsList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+                        <div class="flex items-center gap-2 pt-1">
+                            <select id="temAddDependentSelect" class="input-base text-xs py-1.5 flex-1"></select>
+                            <button type="button" onclick="addModalDependent()" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition active:scale-95 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                <i class="fas fa-plus mr-1"></i> Imposta come Vincolante
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -926,9 +1031,10 @@
         </div>
     </nav>
 
-    <!-- FLOATING SLASH MENU & WIKI LINK DROPDOWN -->
+    <!-- FLOATING SLASH MENU, WIKI LINK DROPDOWN & CONTACT MENTION MENU -->
     <div id="quillSlashMenu" class="slash-command-menu hidden"></div>
     <div id="wikiLinkDropdown" class="wiki-link-dropdown hidden"></div>
+    <div id="quillContactMenu" class="wiki-link-dropdown hidden"></div>
 
     <!-- Moduli Applicativi Life Hub OS (Zero Setup - Funzionamento nativo via doppio clic) -->
     <script src="js/touchManager.js"></script>

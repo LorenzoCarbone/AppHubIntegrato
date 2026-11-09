@@ -403,6 +403,21 @@ function handleSmartInput(inputEl, ctxId) {
         }
     }
 
+    if (ctxId === 'editModal' || inputEl.id === 'temTitleInput') {
+        if (parsed.priority > 0) {
+            const pEl = document.getElementById('temPriority');
+            if (pEl) pEl.value = parsed.priority;
+        }
+        if (parsed.date) {
+            const dEl = document.getElementById('temDueDate');
+            if (dEl) dEl.value = parsed.date;
+        }
+        if (parsed.contextId) {
+            const cEl = document.getElementById('temContext');
+            if (cEl) cEl.value = parsed.contextId;
+        }
+    }
+
     let hints = '';
     if (/(?:^|\s)p$/i.test(val)) {
         hints += `<div class="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5"><i class="fas fa-lightbulb"></i> Scrivi <b>p1</b>, <b>p2</b> o <b>p3</b> per la priorità</div>`;

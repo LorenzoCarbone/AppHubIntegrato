@@ -238,6 +238,9 @@ function closeCommandPalette() {
     modal.classList.remove('flex');
 }
 
+window.openCommandPalette = openCommandPalette;
+window.closeCommandPalette = closeCommandPalette;
+
 function filterCommandPalette(query = '') {
     const container = document.getElementById('commandPaletteResults');
     if (!container) return;
@@ -441,21 +444,17 @@ function enterFocusMode(container) {
         <div class="flex items-center gap-2.5">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <i class="fas fa-feather-alt text-blue-500"></i> Modalità Zen
+                <i class="fas fa-expand text-blue-500"></i> Schermo Intero
             </span>
             <span class="text-[11px] text-slate-400 hidden sm:inline">• Ambiente di scrittura privo di distrazioni</span>
         </div>
         <button onclick="exitFocusMode()" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 transition flex items-center gap-2 shadow-sm active:scale-95">
-            <i class="fas fa-compress text-xs"></i> <span>Esci dallo Zen</span> <kbd class="hidden md:inline bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-slate-300 dark:border-slate-600">Esc</kbd>
+            <i class="fas fa-compress text-xs"></i> <span>Riduci</span> <kbd class="hidden md:inline bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-slate-300 dark:border-slate-600">Esc</kbd>
         </button>
     `;
     document.body.appendChild(bar);
 
-    try {
-        history.pushState({ zenActive: true }, '');
-    } catch(e) {}
-
-    showToast("Modalità Zen attiva. Clicca 'Esci dallo Zen' o premi Esc per tornare.", "success");
+    showToast("Schermo intero attivo. Premi Esc o 'Riduci' per tornare.", "default");
 }
 
 function exitFocusMode() {
@@ -471,12 +470,7 @@ function exitFocusMode() {
     }
     
     if (wasActive) {
-        try {
-            if (history.state && history.state.zenActive) {
-                history.back();
-            }
-        } catch(e) {}
-        showToast("Uscito dalla modalità Zen", "default");
+        showToast("Schermo intero chiuso", "default");
     }
 }
 

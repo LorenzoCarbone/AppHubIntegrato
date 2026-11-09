@@ -1338,22 +1338,37 @@ function renderAdvancedTaskManager() {
                 </div>`;
         }
 
-// --- SCHEDA GLOBALE PAGINE & NOTE ---
+// --- SCHEDA GLOBALE PAGINE & NOTE (DATABASE CENTRALIZZATO NOTION-STYLE) ---
+
 function openGlobalPageEditor(pageId) {
     activeSubpageId = pageId;
     render();
 }
 
-function createGlobalNewPage() {
-    const title = prompt("Titolo della nuova pagina:", "Nuova Pagina");
-    if (!title || !title.trim()) return;
-    
-    const defaultProj = (state.data.projects && state.data.projects[0]) ? state.data.projects[0].id : null;
+function createGlobalNewPage(prefill = {}) {
+    const defaultProj = prefill.contextId || (state.ui.selectedPageContext !== 'all' ? state.ui.selectedPageContext : ((state.data.projects && state.data.projects[0]) ? state.data.projects[0].id : null));
+    let sphereId = prefill.sphereId || (state.ui.selectedPageSphere !== 'all' ? state.ui.selectedPageSphere : null);
+    if (!sphereId && defaultProj) {
+        const p = getEntity('project', defaultProj);
+        if (p) sphereId = p.sphereId;
+        else {
+            const sp = getEntity('subproject', defaultProj);
+            if (sp) {
+                const pp = getEntity('project', sp.projectId);
+                if (pp) sphereId = pp.sphereId;
+            }
+        }
+    }
+    const tipologia = prefill.tipologia || (state.ui.selectedPageTipologia !== 'all' ? state.ui.selectedPageTipologia : 'Riunione');
     const now = getISODate(new Date());
+
     const newPage = {
         id: 'page_' + Date.now(),
         contextId: defaultProj,
-        title: title.trim(),
+        sphereId: sphereId,
+        tipologia: tipologia,
+        date: now,
+        title: prefill.title || 'Nuova Pagina',
         content: '<p></p>',
         tags: [],
         createdAt: now,
@@ -1367,11 +1382,321 @@ function createGlobalNewPage() {
     showToast(`Pagina "${newPage.title}" creata`, "success");
 }
 
+// Helpers di risoluzione Progetto e Ambito per le pagine
+function resolvePageProject(page) {
+    if (!page || !page.contextId) return null;
+    const p = getEntity('project', page.contextId);
+    if (p) {
+        return { id: p.id, name: p.name, icon: p.icon || 'fa-folder', color: p.color || '#6366f1', isSub: false, sphereId: p.sphereId };
+    }
+    const sp = getEntity('subproject', page.contextId);
+    if (sp) {
+        const pp = getEntity('project', sp.projectId);
+        return { id: sp.id, name: sp.name, icon: sp.icon || 'fa-file-alt', color: sp.color || '#8b5cf6', isSub: true, sphereId: pp ? pp.sphereId : null, parentName: pp ? pp.name : '' };
+    }
+    return null;
+}
+
+function resolvePageSphere(page, projInfo = null) {
+    if (page && page.sphereId) {
+        const s = getEntity('sphere', page.sphereId);
+        if (s) return s;
+    }
+    const info = projInfo || resolvePageProject(page);
+    if (info && info.sphereId) {
+        const s = getEntity('sphere', info.sphereId);
+        if (s) return s;
+    }
+    return null;
+}
+
+function formatPageDateDisplay(dateStr) {
+    if (!dateStr) return '<span class="text-slate-400 dark:text-slate-600 text-[11px] italic">—</span>';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return escapeNoteHtml(dateStr);
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const monthName = months[mIdx] || parts[1];
+    return `${parts[2]} ${monthName} ${parts[0]}`;
+}
+
+function renderTipologiaBadge(tipologia) {
+    const tipo = tipologia || 'Riunione';
+    let badgeClass = 'bg-slate-700/60 text-slate-200 border-slate-600/50';
+    let dotClass = 'bg-slate-400';
+    if (tipo === 'Colloquio') {
+        badgeClass = 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50';
+        dotClass = 'bg-emerald-400';
+    } else if (tipo === 'Call') {
+        badgeClass = 'bg-sky-950/70 text-sky-300 border-sky-800/50';
+        dotClass = 'bg-sky-400';
+    } else if (tipo === 'Appunti') {
+        badgeClass = 'bg-amber-950/70 text-amber-300 border-amber-800/50';
+        dotClass = 'bg-amber-400';
+    } else if (tipo === 'Brief') {
+        badgeClass = 'bg-purple-950/70 text-purple-300 border-purple-800/50';
+        dotClass = 'bg-purple-400';
+    } else if (tipo === 'Verbale') {
+        badgeClass = 'bg-teal-950/70 text-teal-300 border-teal-800/50';
+        dotClass = 'bg-teal-400';
+    }
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${badgeClass}">
+        <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>
+        ${escapeNoteHtml(tipo)}
+    </span>`;
+}
+
+function renderAmbitoBadge(sphere) {
+    if (!sphere) {
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+            <i class="fas fa-circle text-[6px] text-slate-400"></i> Nessuno
+        </span>`;
+    }
+    const color = sphere.color || '#6366f1';
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border transition shadow-xs" style="background-color: ${color}22; color: ${color}; border-color: ${color}44;">
+        <i class="fas fa-circle text-[7px]" style="color: ${color};"></i>
+        ${escapeNoteHtml(sphere.name)}
+    </span>`;
+}
+
+function renderProjectBadge(projInfo) {
+    if (!projInfo) {
+        return `<span class="inline-flex items-center gap-1 text-[11px] text-slate-400 italic">
+            <i class="far fa-folder text-[10px]"></i> Generale
+        </span>`;
+    }
+    let iconHtml = '';
+    const icon = projInfo.icon || 'fa-folder';
+    if (icon.startsWith('fa-')) {
+        iconHtml = `<i class="fas ${icon} text-[10px]" style="color: ${projInfo.color || '#6366f1'};"></i>`;
+    } else {
+        iconHtml = `<span class="text-xs">${icon}</span>`;
+    }
+
+    return `<button type="button" onclick="event.stopPropagation(); navigateToNotebookContext('${projInfo.id}', ${projInfo.isSub})" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition group/p">
+        ${iconHtml}
+        <span class="group-hover/p:underline truncate max-w-[150px]">${escapeNoteHtml(projInfo.name)}</span>
+        ${projInfo.isSub ? '<span class="text-[9px] text-slate-400 font-normal">(sotto)</span>' : ''}
+    </button>`;
+}
+
+// Navigazione rapida al quaderno del progetto
+function navigateToNotebookContext(ctxId, isSub = false) {
+    if (isSub) {
+        const sp = getEntity('subproject', ctxId);
+        if (sp) {
+            const p = getEntity('project', sp.projectId);
+            navigate('subproject', p ? p.sphereId : null, sp.projectId, sp.id);
+            currentNotebookTab = 'pages';
+            return;
+        }
+    } else {
+        const p = getEntity('project', ctxId);
+        if (p) {
+            navigate('project', p.sphereId, p.id);
+            currentNotebookTab = 'pages';
+            return;
+        }
+    }
+}
+
+// Selezione pagine e azioni massive
+function togglePageSelection(pageId, checked) {
+    if (!state.ui.selectedPageIds) state.ui.selectedPageIds = [];
+    if (checked) {
+        if (!state.ui.selectedPageIds.includes(pageId)) state.ui.selectedPageIds.push(pageId);
+    } else {
+        state.ui.selectedPageIds = state.ui.selectedPageIds.filter(id => id !== pageId);
+    }
+    render();
+}
+
+function toggleSelectAllPages(checked, visibleIds) {
+    if (!state.ui.selectedPageIds) state.ui.selectedPageIds = [];
+    if (checked) {
+        visibleIds.forEach(id => {
+            if (!state.ui.selectedPageIds.includes(id)) state.ui.selectedPageIds.push(id);
+        });
+    } else {
+        state.ui.selectedPageIds = state.ui.selectedPageIds.filter(id => !visibleIds.includes(id));
+    }
+    render();
+}
+
+function clearPageSelection() {
+    state.ui.selectedPageIds = [];
+    render();
+}
+
+function deleteBulkSelectedPages() {
+    const ids = state.ui.selectedPageIds || [];
+    if (ids.length === 0) return;
+    if (!confirm(`Sei sicuro di voler eliminare le ${ids.length} pagine selezionate? L'operazione non è reversibile.`)) return;
+
+    state.data.pages = (state.data.pages || []).filter(p => !ids.includes(p.id));
+    if (ids.includes(activeSubpageId)) activeSubpageId = null;
+    state.ui.selectedPageIds = [];
+    AppData.triggerSave();
+    render();
+    showToast(`${ids.length} pagine eliminate con successo`, "success");
+}
+
+// Esportazione multipla pagine (Markdown, CSV, JSON, TXT)
+function exportBulkPages(format = 'markdown', specificIds = null) {
+    const pages = state.data.pages || [];
+    let targetPages = [];
+
+    if (specificIds && specificIds.length > 0) {
+        targetPages = pages.filter(p => specificIds.includes(p.id));
+    } else if (state.ui.selectedPageIds && state.ui.selectedPageIds.length > 0) {
+        targetPages = pages.filter(p => state.ui.selectedPageIds.includes(p.id));
+    } else {
+        // Se nessuna è spuntata, esporta tutte le pagine attualmente visibili dai filtri
+        const query = (state.ui.pageSearchQuery || '').toLowerCase().trim();
+        targetPages = pages.filter(p => {
+            if (state.ui.selectedPageSphere && state.ui.selectedPageSphere !== 'all') {
+                const s = resolvePageSphere(p);
+                if (!s || s.id !== state.ui.selectedPageSphere) return false;
+            }
+            if (state.ui.selectedPageContext && state.ui.selectedPageContext !== 'all') {
+                if (p.contextId !== state.ui.selectedPageContext) return false;
+            }
+            if (state.ui.selectedPageTipologia && state.ui.selectedPageTipologia !== 'all') {
+                if ((p.tipologia || 'Riunione') !== state.ui.selectedPageTipologia) return false;
+            }
+            if (state.ui.selectedPageTag && state.ui.selectedPageTag !== 'all') {
+                if (!p.tags || !p.tags.includes(state.ui.selectedPageTag)) return false;
+            }
+            if (query) {
+                const plain = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
+                const title = (p.title || '').toLowerCase();
+                const matchesTag = (p.tags || []).some(t => t.toLowerCase().includes(query));
+                return title.includes(query) || plain.includes(query) || matchesTag;
+            }
+            return true;
+        });
+    }
+
+    if (targetPages.length === 0) {
+        showToast("Nessuna pagina selezionata da esportare", "warning");
+        return;
+    }
+
+    const todayStr = getISODate(new Date());
+    let fileContent = '';
+    let mimeType = 'text/plain';
+    let ext = 'txt';
+
+    if (format === 'markdown') {
+        ext = 'md';
+        mimeType = 'text/markdown';
+        fileContent = `# Archivio Pagine & Riunioni - AppHub\n\n` +
+                      `*Esportazione generata il:* ${todayStr}  \n` +
+                      `*Totale pagine esportate:* ${targetPages.length}  \n\n` +
+                      `## Indice dei Contenuti\n\n`;
+
+        targetPages.forEach((p, idx) => {
+            const pInfo = resolvePageProject(p);
+            const sInfo = resolvePageSphere(p, pInfo);
+            fileContent += `${idx + 1}. [${p.title || 'Senza Titolo'}](#pagina-${idx + 1}) — 📅 ${p.date || 'Senza data'} | 📁 ${pInfo ? pInfo.name : 'Generale'} | ☉ ${p.tipologia || 'Riunione'} | Q ${sInfo ? sInfo.name : 'Ambito'}\n`;
+        });
+
+        fileContent += `\n\n---\n\n`;
+
+        targetPages.forEach((p, idx) => {
+            const pInfo = resolvePageProject(p);
+            const sInfo = resolvePageSphere(p, pInfo);
+            let md = p.content || '';
+            md = md.replace(/<h1>(.*?)<\/h1>/gi, '# $1\n\n')
+                   .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n\n')
+                   .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n\n')
+                   .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
+                   .replace(/<br\s*\/?>/gi, '\n')
+                   .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+                   .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+                   .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+                   .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+                   .replace(/<blockquote>(.*?)<\/blockquote>/gi, '> $1\n\n')
+                   .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
+                   .replace(/<[^>]+>/g, '');
+
+            fileContent += `## Pagina ${idx + 1}: ${p.title || 'Senza Titolo'}\n\n` +
+                           `**Data:** ${p.date || 'N/D'}  \n` +
+                           `**Progetto:** ${pInfo ? pInfo.name : 'Generale'}  \n` +
+                           `**Tipologia:** ${p.tipologia || 'Riunione'}  \n` +
+                           `**Ambito (Sfera):** ${sInfo ? sInfo.name : 'Nessun Ambito'}  \n` +
+                           `**Tag:** ${(p.tags && p.tags.length > 0) ? p.tags.map(t => '#' + t).join(' ') : 'nessuno'}  \n\n` +
+                           `${md.trim()}\n\n---\n\n`;
+        });
+    } else if (format === 'csv') {
+        ext = 'csv';
+        mimeType = 'text/csv;charset=utf-8';
+        const headers = ['ID', 'Titolo', 'Data', 'Progetto', 'Tipologia', 'Ambito', 'Tag', 'Contenuto'];
+        const csvRows = [headers.join(',')];
+
+        targetPages.forEach(p => {
+            const pInfo = resolvePageProject(p);
+            const sInfo = resolvePageSphere(p, pInfo);
+            const plain = (p.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const tagsStr = (p.tags || []).join('; ');
+
+            const row = [
+                `"${p.id}"`,
+                `"${(p.title || '').replace(/"/g, '""')}"`,
+                `"${p.date || ''}"`,
+                `"${(pInfo ? pInfo.name : '').replace(/"/g, '""')}"`,
+                `"${(p.tipologia || 'Riunione').replace(/"/g, '""')}"`,
+                `"${(sInfo ? sInfo.name : '').replace(/"/g, '""')}"`,
+                `"${tagsStr.replace(/"/g, '""')}"`,
+                `"${plain.replace(/"/g, '""')}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+        fileContent = csvRows.join('\r\n');
+    } else if (format === 'json') {
+        ext = 'json';
+        mimeType = 'application/json';
+        fileContent = JSON.stringify(targetPages, null, 2);
+    } else {
+        // Testo semplice (.txt)
+        ext = 'txt';
+        mimeType = 'text/plain';
+        fileContent = `ARCHIVIO PAGINE & NOTE - APPHUB\nData export: ${todayStr}\nTotale: ${targetPages.length} pagine\n\n` +
+                      `====================================================\n\n`;
+        targetPages.forEach((p, idx) => {
+            const pInfo = resolvePageProject(p);
+            const sInfo = resolvePageSphere(p, pInfo);
+            const plain = (p.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            fileContent += `[${idx + 1}] ${p.title || 'Senza Titolo'}\n` +
+                           `Data: ${p.date || 'N/D'} | Progetto: ${pInfo ? pInfo.name : 'Generale'} | Tipologia: ${p.tipologia || 'Riunione'} | Ambito: ${sInfo ? sInfo.name : 'Nessuno'}\n` +
+                           `Tag: ${(p.tags || []).join(', ')}\n\n` +
+                           `${plain}\n\n----------------------------------------------------\n\n`;
+        });
+    }
+
+    const blob = new Blob([fileContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pagine_export_${todayStr}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Esportate ${targetPages.length} pagine in formato .${ext}`, "success");
+}
+
+// Funzione principale di rendering della vista centralizzata Pagine
 function renderGlobalPages() {
     const pages = state.data.pages || [];
     const currentTagFilter = state.ui.selectedPageTag || 'all';
+    const currentSphereFilter = state.ui.selectedPageSphere || 'all';
     const currentContextFilter = state.ui.selectedPageContext || 'all';
+    const currentTipoFilter = state.ui.selectedPageTipologia || 'all';
+    const groupBy = state.ui.pagesGroupBy || 'none';
+    const viewMode = state.ui.pagesViewMode || 'table';
     const query = (state.ui.pageSearchQuery || '').toLowerCase().trim();
+    const selectedIds = state.ui.selectedPageIds || [];
 
     if (activeSubpageId) {
         return `
@@ -1383,6 +1708,7 @@ function renderGlobalPages() {
         `;
     }
 
+    // Calcolo tag per le pillole
     const tagCounts = {};
     pages.forEach(p => {
         (p.tags || []).forEach(t => {
@@ -1392,165 +1718,531 @@ function renderGlobalPages() {
     });
     const allTags = Object.keys(tagCounts).sort();
 
+    // Filtro pagine
     let filtered = pages.filter(p => {
-        if (currentTagFilter !== 'all') {
-            if (!p.tags || !p.tags.includes(currentTagFilter)) return false;
+        const pInfo = resolvePageProject(p);
+        const sInfo = resolvePageSphere(p, pInfo);
+
+        if (currentSphereFilter !== 'all') {
+            if (!sInfo || sInfo.id !== currentSphereFilter) return false;
         }
         if (currentContextFilter !== 'all') {
             if (p.contextId !== currentContextFilter) return false;
         }
+        if (currentTipoFilter !== 'all') {
+            const pt = p.tipologia || 'Riunione';
+            if (pt !== currentTipoFilter) return false;
+        }
+        if (currentTagFilter !== 'all') {
+            if (!p.tags || !p.tags.includes(currentTagFilter)) return false;
+        }
         if (query) {
             const plain = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
             const title = (p.title || '').toLowerCase();
-            const parentName = (typeof getPageContextName === 'function' ? getPageContextName(p.contextId) : '').toLowerCase();
+            const projName = (pInfo ? pInfo.name : '').toLowerCase();
+            const sphereName = (sInfo ? sInfo.name : '').toLowerCase();
+            const tipologia = (p.tipologia || '').toLowerCase();
             const matchesTag = (p.tags || []).some(t => t.toLowerCase().includes(query));
-            return title.includes(query) || plain.includes(query) || parentName.includes(query) || matchesTag;
+            return title.includes(query) || plain.includes(query) || projName.includes(query) || sphereName.includes(query) || tipologia.includes(query) || matchesTag;
         }
         return true;
     });
 
-    filtered.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
+    // Ordinamento predefinito per data decrescente (le più recenti in cima)
+    filtered.sort((a, b) => {
+        const da = a.date || a.createdAt || '';
+        const db = b.date || b.createdAt || '';
+        return db.localeCompare(da);
+    });
 
-    let ctxOptions = `<option value="all">Tutti i Progetti</option>`;
+    // Opzioni Filtri
+    let sphereOptions = `<option value="all">Tutti gli Ambiti</option>`;
+    (state.data.spheres || []).forEach(s => {
+        sphereOptions += `<option value="${s.id}" ${currentSphereFilter === s.id ? 'selected' : ''}>${s.name}</option>`;
+    });
+
+    let projOptions = `<option value="all">Tutti i Progetti</option>`;
     (state.data.projects || []).forEach(p => {
-        ctxOptions += `<option value="${p.id}" ${currentContextFilter === p.id ? 'selected' : ''}>📁 ${escapeNoteHtml(p.name)}</option>`;
+        projOptions += `<option value="${p.id}" ${currentContextFilter === p.id ? 'selected' : ''}>📁 ${escapeNoteHtml(p.name)}</option>`;
         (state.data.subprojects || []).filter(sp => sp.projectId === p.id).forEach(sp => {
-            ctxOptions += `<option value="${sp.id}" ${currentContextFilter === sp.id ? 'selected' : ''}>  ↳ ${escapeNoteHtml(sp.name)}</option>`;
+            projOptions += `<option value="${sp.id}" ${currentContextFilter === sp.id ? 'selected' : ''}>  ↳ ${escapeNoteHtml(sp.name)}</option>`;
         });
     });
 
+    const isAllVisibleSelected = filtered.length > 0 && filtered.every(p => selectedIds.includes(p.id));
+    const visibleIds = filtered.map(p => p.id);
+
+    // Funzione interna per generare una singola riga tabella (esatta tabella dello screenshot)
+    function renderTableRow(p) {
+        const isSelected = selectedIds.includes(p.id);
+        const pInfo = resolvePageProject(p);
+        const sInfo = resolvePageSphere(p, pInfo);
+        const dateDisplay = formatPageDateDisplay(p.date || p.createdAt);
+
+        return `
+            <tr class="group border-b border-slate-200 dark:border-darkborder hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors text-slate-700 dark:text-slate-200 ${isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''}">
+                <!-- Checkbox Selezione -->
+                <td class="py-2.5 px-3 w-8 text-center" onclick="event.stopPropagation();">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="togglePageSelection('${p.id}', this.checked)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer">
+                </td>
+
+                <!-- Colonna 1: Aa Titolo riunione -->
+                <td class="py-2.5 px-3 min-w-[220px]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-400 dark:text-slate-500 shrink-0 text-sm">
+                            <i class="far fa-file-alt"></i>
+                        </span>
+                        <div class="min-w-0">
+                            <a href="javascript:void(0)" onclick="openGlobalPageEditor('${p.id}')" class="font-bold text-xs text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition hover:underline truncate block max-w-xs md:max-w-md">
+                                ${escapeNoteHtml(p.title || 'Senza titolo')}
+                            </a>
+                            ${(p.tags && p.tags.length > 0) ? `
+                                <div class="flex flex-wrap gap-1 mt-0.5">
+                                    ${p.tags.slice(0, 3).map(t => `<span class="text-[9px] text-slate-400 font-mono">#${escapeNoteHtml(t)}</span>`).join('')}
+                                    ${p.tags.length > 3 ? `<span class="text-[9px] text-slate-400">+${p.tags.length - 3}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Colonna 2: 📅 Data -->
+                <td class="py-2.5 px-3 whitespace-nowrap text-xs font-medium text-slate-600 dark:text-slate-300 font-mono">
+                    ${dateDisplay}
+                </td>
+
+                <!-- Colonna 3: ↗ Progetto -->
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    ${renderProjectBadge(pInfo)}
+                </td>
+
+                <!-- Colonna 4: ☉ Tipologia -->
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    ${renderTipologiaBadge(p.tipologia)}
+                </td>
+
+                <!-- Colonna 5: Q Ambito -->
+                <td class="py-2.5 px-3 whitespace-nowrap">
+                    ${renderAmbitoBadge(sInfo)}
+                </td>
+
+                <!-- Colonna 6: Azioni Rapide -->
+                <td class="py-2.5 px-3 text-right whitespace-nowrap" onclick="event.stopPropagation();">
+                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openGlobalPageEditor('${p.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Apri ed elabora pagina">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                        <div class="relative group/exp inline-block">
+                            <button type="button" class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Esporta questa pagina">
+                                <i class="fas fa-download text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-1 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover/exp:opacity-100 group-hover/exp:visible transition-all z-50 p-1 text-left">
+                                <button onclick="exportSinglePage('${p.id}', 'markdown')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                    <i class="fab fa-markdown text-blue-500"></i> Markdown
+                                </button>
+                                <button onclick="exportSinglePage('${p.id}', 'text')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                    <i class="fas fa-file-alt text-slate-400"></i> Testo (.txt)
+                                </button>
+                                <button onclick="exportSinglePage('${p.id}', 'print')" class="w-full text-left px-2.5 py-1 text-[11px] font-semibold rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                                    <i class="fas fa-print text-purple-500"></i> Stampa / PDF
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30" title="Elimina pagina">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    // Render Table Header con colonne Notion esatte
+    function renderTableHeader() {
+        return `
+            <thead>
+                <tr class="border-b border-slate-200 dark:border-darkborder bg-slate-50/70 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider select-none">
+                    <th class="py-2.5 px-3 w-8 text-center">
+                        <input type="checkbox" ${isAllVisibleSelected ? 'checked' : ''} onchange="toggleSelectAllPages(this.checked, [${visibleIds.map(id => "'" + id + "'").join(',')}])" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer" title="Seleziona tutte">
+                    </th>
+                    <th class="py-2.5 px-3 text-left">
+                        <span class="flex items-center gap-1.5 font-normal normal-case text-slate-400 dark:text-slate-400">
+                            <span class="font-bold text-[10px] font-mono">Aa</span> Titolo riunione
+                        </span>
+                    </th>
+                    <th class="py-2.5 px-3 text-left">
+                        <span class="flex items-center gap-1 font-normal normal-case text-slate-400 dark:text-slate-400">
+                            <i class="far fa-calendar-alt text-[11px]"></i> Data
+                        </span>
+                    </th>
+                    <th class="py-2.5 px-3 text-left">
+                        <span class="flex items-center gap-1 font-normal normal-case text-slate-400 dark:text-slate-400">
+                            <i class="fas fa-arrow-up-right-from-square text-[10px]"></i> Progetto
+                        </span>
+                    </th>
+                    <th class="py-2.5 px-3 text-left">
+                        <span class="flex items-center gap-1 font-normal normal-case text-slate-400 dark:text-slate-400">
+                            <i class="far fa-dot-circle text-[11px]"></i> Tipologia
+                        </span>
+                    </th>
+                    <th class="py-2.5 px-3 text-left">
+                        <span class="flex items-center gap-1 font-normal normal-case text-slate-400 dark:text-slate-400">
+                            <i class="fas fa-layer-group text-[11px]"></i> Ambito
+                        </span>
+                    </th>
+                    <th class="py-2.5 px-3 text-right font-normal normal-case text-slate-400 dark:text-slate-400">
+                        <span class="text-xs">+ ...</span>
+                    </th>
+                </tr>
+            </thead>
+        `;
+    }
+
+    // Costruzione contenuto principale (Flat o Raggruppato)
+    let mainViewHtml = '';
+
+    if (filtered.length === 0) {
+        mainViewHtml = `
+            <div class="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 mx-auto flex items-center justify-center text-xl mb-3">
+                    <i class="fas fa-file-circle-question"></i>
+                </div>
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-200">Nessuna pagina o riunione trovata</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">Non ci sono elementi corrispondenti ai filtri attivi.</p>
+                <div class="flex items-center justify-center gap-3">
+                    <button onclick="createGlobalNewPage()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-md hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus mr-1"></i> Crea Pagina
+                    </button>
+                    <button onclick="state.ui.selectedPageSphere = 'all'; state.ui.selectedPageContext = 'all'; state.ui.selectedPageTipologia = 'all'; state.ui.selectedPageTag = 'all'; state.ui.pageSearchQuery = ''; render();" class="text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 underline">
+                        Azzera filtri
+                    </button>
+                </div>
+            </div>
+        `;
+    } else if (viewMode === 'table') {
+        if (groupBy === 'none') {
+            // Tabella unica (Flat) - esattamente identica allo screenshot
+            mainViewHtml = `
+                <div class="bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            ${renderTableHeader()}
+                            <tbody>
+                                ${filtered.map(p => renderTableRow(p)).join('')}
+                                <!-- Riga finale + New Page -->
+                                <tr onclick="createGlobalNewPage()" class="cursor-pointer border-t border-slate-200 dark:border-darkborder text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                                    <td colspan="7" class="py-2.5 px-4 font-semibold text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-plus text-[10px]"></i>
+                                            <span>Nuova pagina</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Tabella raggruppata per Ambito, Progetto o Tipologia
+            const groupsMap = new Map();
+
+            filtered.forEach(p => {
+                let groupKey = 'altro';
+                let groupTitle = 'Altro';
+                let groupColor = '#6366f1';
+                let groupIcon = 'fa-folder';
+
+                if (groupBy === 'sphere') {
+                    const s = resolvePageSphere(p);
+                    if (s) {
+                        groupKey = s.id;
+                        groupTitle = s.name;
+                        groupColor = s.color || '#6366f1';
+                        groupIcon = s.icon || 'fa-layer-group';
+                    } else {
+                        groupTitle = 'Nessun Ambito';
+                        groupColor = '#94a3b8';
+                    }
+                } else if (groupBy === 'project') {
+                    const proj = resolvePageProject(p);
+                    if (proj) {
+                        groupKey = proj.id;
+                        groupTitle = proj.name;
+                        groupColor = proj.color || '#6366f1';
+                        groupIcon = proj.icon || 'fa-folder';
+                    } else {
+                        groupTitle = 'Generale (Senza Progetto)';
+                        groupColor = '#94a3b8';
+                    }
+                } else if (groupBy === 'tipologia') {
+                    const tipo = p.tipologia || 'Riunione';
+                    groupKey = tipo;
+                    groupTitle = tipo;
+                    groupIcon = 'fa-dot-circle';
+                }
+
+                if (!groupsMap.has(groupKey)) {
+                    groupsMap.set(groupKey, { title: groupTitle, color: groupColor, icon: groupIcon, pages: [], key: groupKey });
+                }
+                groupsMap.get(groupKey).pages.push(p);
+            });
+
+            const groupsArray = Array.from(groupsMap.values());
+
+            mainViewHtml = `
+                <div class="space-y-6">
+                    ${groupsArray.map(grp => `
+                        <div class="bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden">
+                            <!-- HEADER DEL GRUPPO -->
+                            <div class="flex items-center justify-between px-4 py-3 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-darkborder">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-3 h-3 rounded-full shrink-0 shadow-xs" style="background-color: ${grp.color};"></span>
+                                    <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        ${escapeNoteHtml(grp.title)}
+                                    </h3>
+                                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-xs">${grp.pages.length}</span>
+                                </div>
+                                <button onclick="createGlobalNewPage({${groupBy === 'sphere' ? `sphereId: '${grp.key}'` : (groupBy === 'project' ? `contextId: '${grp.key}'` : `tipologia: '${grp.key}'`)}})" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                                    <i class="fas fa-plus text-[10px]"></i> Aggiungi qui
+                                </button>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    ${renderTableHeader()}
+                                    <tbody>
+                                        ${grp.pages.map(p => renderTableRow(p)).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    } else {
+        // Modalità Griglia (Card View)
+        mainViewHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${filtered.map(p => {
+                    const pInfo = resolvePageProject(p);
+                    const sInfo = resolvePageSphere(p, pInfo);
+                    const plain = (p.content || '').replace(/<[^>]*>?/gm, '').trim();
+                    let preview = plain.substring(0, 110);
+                    if (plain.length > 110) preview += '...';
+                    if (!preview) preview = 'Pagina vuota, clicca per scrivere o aggiungere contenuti...';
+                    const isSelected = selectedIds.includes(p.id);
+
+                    return `
+                        <div class="p-5 rounded-2xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-indigo-400 dark:hover:border-indigo-600 transition flex flex-col justify-between group shadow-sm hover:shadow-md ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/20' : ''}">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="togglePageSelection('${p.id}', this.checked)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer">
+                                        ${renderAmbitoBadge(sInfo)}
+                                    </div>
+                                    <span class="text-[10px] font-mono text-slate-400">${p.date || 'Oggi'}</span>
+                                </div>
+
+                                <div class="flex items-center gap-2 mb-2">
+                                    ${renderTipologiaBadge(p.tipologia)}
+                                    ${renderProjectBadge(pInfo)}
+                                </div>
+
+                                <h3 onclick="openGlobalPageEditor('${p.id}')" class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition cursor-pointer mb-2 line-clamp-1">
+                                    ${escapeNoteHtml(p.title || 'Senza titolo')}
+                                </h3>
+
+                                <p onclick="openGlobalPageEditor('${p.id}')" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed cursor-pointer mb-4">
+                                    ${escapeNoteHtml(preview)}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                                <button onclick="openGlobalPageEditor('${p.id}')" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
+                                    <i class="fas fa-edit text-[10px]"></i> Modifica
+                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="exportSinglePage('${p.id}', 'markdown')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded text-xs" title="Esporta Markdown">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                    <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs" title="Elimina">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
     return `
-        <div class="max-w-6xl mx-auto space-y-6">
-            <!-- HEADER & TITOLO -->
+        <div class="max-w-6xl mx-auto space-y-4">
+            <!-- HEADER DELLA PAGINA CON TITOLO E AZIONI PRINCIPALI -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-darkpanel p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl shrink-0">
-                        <i class="fas fa-book-open"></i>
+                        <i class="fas fa-table-list"></i>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h1 class="text-lg font-black text-slate-800 dark:text-white">Archivio Globale Note & Pagine</h1>
+                            <h1 class="text-lg font-black text-slate-800 dark:text-white">Note & Pagine Centralizzate</h1>
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-mono">${pages.length}</span>
                         </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Consulta, filtra per tipologia e gestisci tutta la documentazione dei progetti</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Database Notion-style: riunioni, verbali e documenti raggruppati per progetto e sfera</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="createGlobalNewPage()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <!-- Switcher Vista: Tabella vs Griglia -->
+                    <div class="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-darkborder text-xs">
+                        <button onclick="state.ui.pagesViewMode = 'table'; render();" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${viewMode === 'table' ? 'bg-white dark:bg-darkpanel text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}" title="Vista Tabella Database">
+                            <i class="fas fa-table"></i> <span class="hidden sm:inline">Tabella</span>
+                        </button>
+                        <button onclick="state.ui.pagesViewMode = 'grid'; render();" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${viewMode === 'grid' ? 'bg-white dark:bg-darkpanel text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}" title="Vista Schede Griglia">
+                            <i class="fas fa-th-large"></i> <span class="hidden sm:inline">Griglia</span>
+                        </button>
+                    </div>
+
+                    <!-- Esporta Globale Dropdown -->
+                    <div class="relative group/bulk">
+                        <button type="button" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-darkborder transition flex items-center gap-2 shadow-xs">
+                            <i class="fas fa-download text-indigo-500"></i> Esporta <i class="fas fa-chevron-down text-[9px] opacity-60"></i>
+                        </button>
+                        <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover/bulk:opacity-100 group-hover/bulk:visible transition-all z-50 p-1.5 space-y-1">
+                            <button onclick="exportBulkPages('markdown')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fab fa-markdown text-blue-500"></i> Markdown (.md)
+                            </button>
+                            <button onclick="exportBulkPages('csv')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-file-csv text-emerald-500"></i> Foglio CSV (.csv)
+                            </button>
+                            <button onclick="exportBulkPages('json')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-file-code text-amber-500"></i> JSON Completo (.json)
+                            </button>
+                            <button onclick="exportBulkPages('text')" class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-file-alt text-slate-400"></i> Testo semplice (.txt)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Nuova Pagina -->
+                    <button onclick="createGlobalNewPage()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
                         <i class="fas fa-plus"></i> Nuova Pagina
                     </button>
                 </div>
             </div>
 
-            <!-- BARRA DI RICERCA E FILTRI -->
-            <div class="bg-white dark:bg-darkpanel p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="relative flex-1">
-                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" value="${escapeNoteHtml(state.ui.pageSearchQuery || '')}" oninput="state.ui.pageSearchQuery = this.value; render();" placeholder="Cerca nel titolo, contenuto o tag..." class="input-base text-xs pl-9 py-2">
+            <!-- FLOATING / STICKY ACTION BAR QUANDO CI SONO PAGINE SELEZIONATE -->
+            ${selectedIds.length > 0 ? `
+                <div class="flex items-center justify-between p-3.5 bg-indigo-600 text-white rounded-2xl shadow-lg border border-indigo-500 animate-fade-in text-xs font-bold">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fas fa-check-circle text-base text-indigo-200"></i>
+                        <span>${selectedIds.length} ${selectedIds.length === 1 ? 'pagina selezionata' : 'pagine selezionate'}</span>
                     </div>
-                    <div class="sm:w-60">
-                        <select onchange="state.ui.selectedPageContext = this.value; render();" class="input-base text-xs py-2">
-                            ${ctxOptions}
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportBulkPages('markdown')" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs">
+                            <i class="fab fa-markdown"></i> Esporta MD
+                        </button>
+                        <button onclick="exportBulkPages('csv')" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs">
+                            <i class="fas fa-file-csv"></i> Esporta CSV
+                        </button>
+                        <button onclick="deleteBulkSelectedPages()" class="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition flex items-center gap-1.5 text-xs">
+                            <i class="fas fa-trash"></i> Elimina
+                        </button>
+                        <button onclick="clearPageSelection()" class="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs" title="Deseleziona tutto">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- BARRA DI RICERCA, FILTRI E RAGGRUPPAMENTO -->
+            <div class="bg-white dark:bg-darkpanel p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    <!-- Ricerca Testo -->
+                    <div class="relative lg:col-span-2">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" value="${escapeNoteHtml(state.ui.pageSearchQuery || '')}" oninput="state.ui.pageSearchQuery = this.value; render();" placeholder="Cerca titolo, contenuto, tag..." class="input-base text-xs pl-9 py-2 w-full">
+                    </div>
+
+                    <!-- Filtro Ambito (Sfera) -->
+                    <div>
+                        <select onchange="state.ui.selectedPageSphere = this.value; render();" class="input-base text-xs py-2 w-full">
+                            ${sphereOptions}
+                        </select>
+                    </div>
+
+                    <!-- Filtro Progetto -->
+                    <div>
+                        <select onchange="state.ui.selectedPageContext = this.value; render();" class="input-base text-xs py-2 w-full">
+                            ${projOptions}
+                        </select>
+                    </div>
+
+                    <!-- Raggruppamento -->
+                    <div>
+                        <select onchange="state.ui.pagesGroupBy = this.value; render();" class="input-base text-xs py-2 w-full font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800">
+                            <option value="none" ${groupBy === 'none' ? 'selected' : ''}>Raggruppa: Nessuno</option>
+                            <option value="sphere" ${groupBy === 'sphere' ? 'selected' : ''}>Raggruppa: Ambito (Sfera)</option>
+                            <option value="project" ${groupBy === 'project' ? 'selected' : ''}>Raggruppa: Progetto</option>
+                            <option value="tipologia" ${groupBy === 'tipologia' ? 'selected' : ''}>Raggruppa: Tipologia</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- PILLS DEI TAG -->
-                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0"><i class="fas fa-tags text-indigo-500"></i> Tipologia:</span>
-                    <button onclick="state.ui.selectedPageTag = 'all'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 ${currentTagFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
-                        Tutte <span class="text-[10px] opacity-75 font-mono ml-0.5">${pages.length}</span>
-                    </button>
-                    ${allTags.map(tag => {
-                        const isSel = currentTagFilter === tag;
+                <!-- FILTRI RAPIDI TIPOLOGIA E TAG -->
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs border-t border-slate-100 dark:border-slate-800">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
+                        <i class="far fa-dot-circle text-emerald-500"></i> Tipologia:
+                    </span>
+                    ${['all', 'Riunione', 'Colloquio', 'Call', 'Appunti', 'Brief', 'Verbale'].map(tipo => {
+                        const isSel = currentTipoFilter === tipo;
+                        const label = tipo === 'all' ? 'Tutte' : tipo;
                         return `
-                            <button onclick="state.ui.selectedPageTag = '${tag}'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${isSel ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600'}">
-                                #${escapeNoteHtml(tag)} <span class="text-[10px] font-mono px-1 rounded-full ${isSel ? 'bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${tagCounts[tag]}</span>
+                            <button onclick="state.ui.selectedPageTipologia = '${tipo}'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 ${isSel ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
+                                ${label}
                             </button>
                         `;
                     }).join('')}
+
+                    ${allTags.length > 0 ? `
+                        <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
+                            <i class="fas fa-tags text-purple-500"></i> Tag:
+                        </span>
+                        <button onclick="state.ui.selectedPageTag = 'all'; render();" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition shrink-0 ${currentTagFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">
+                            Tutti
+                        </button>
+                        ${allTags.map(tag => {
+                            const isSel = currentTagFilter === tag;
+                            return `
+                                <button onclick="state.ui.selectedPageTag = '${tag}'; render();" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition shrink-0 ${isSel ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 hover:bg-purple-100'}">
+                                    #${escapeNoteHtml(tag)}
+                                </button>
+                            `;
+                        }).join('')}
+                    ` : ''}
                 </div>
             </div>
 
-            <!-- GRIGLIA PAGINE -->
-            ${filtered.length === 0 ? `
-                <div class="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder">
-                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 mx-auto flex items-center justify-center text-xl mb-3">
-                        <i class="fas fa-folder-open"></i>
-                    </div>
-                    <p class="text-sm font-bold text-slate-700 dark:text-slate-200">Nessuna pagina trovata</p>
-                    <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">Non ci sono pagine che corrispondono ai filtri selezionati o alla ricerca.</p>
-                    <button onclick="state.ui.selectedPageTag = 'all'; state.ui.selectedPageContext = 'all'; state.ui.pageSearchQuery = ''; render();" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                        Azzera filtri
-                    </button>
-                </div>
-            ` : `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${filtered.map(p => {
-                        const plain = (p.content || '').replace(/<[^>]*>?/gm, '').trim();
-                        let preview = plain.substring(0, 120);
-                        if (plain.length > 120) preview += '...';
-                        if (!preview) preview = 'Pagina vuota, clicca per scrivere o aggiungere contenuti...';
-                        const parentName = typeof getPageContextName === 'function' ? getPageContextName(p.contextId) : 'Progetto';
-                        const tags = p.tags || [];
-
-                        return `
-                            <div class="p-5 rounded-2xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-indigo-400 dark:hover:border-indigo-600 transition flex flex-col justify-between group shadow-sm hover:shadow-md">
-                                <div>
-                                    <!-- CONTESTO -->
-                                    <div class="flex items-center justify-between gap-2 mb-2.5">
-                                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
-                                            <i class="fas fa-folder text-indigo-500 text-[10px]"></i> ${escapeNoteHtml(parentName)}
-                                        </span>
-                                        <span class="text-[10px] font-mono text-slate-400 shrink-0">${p.updatedAt || p.createdAt || 'Oggi'}</span>
-                                    </div>
-
-                                    <!-- TITOLO -->
-                                    <h3 onclick="openGlobalPageEditor('${p.id}')" class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition cursor-pointer mb-2 line-clamp-1">
-                                        ${escapeNoteHtml(p.title || 'Senza titolo')}
-                                    </h3>
-
-                                    <!-- TAGS -->
-                                    ${tags.length > 0 ? `
-                                        <div class="flex flex-wrap gap-1 mb-2.5">
-                                            ${tags.map(t => `
-                                                <span onclick="state.ui.selectedPageTag = '${t}'; render();" class="cursor-pointer px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 transition">
-                                                    #${escapeNoteHtml(t)}
-                                                </span>
-                                            `).join('')}
-                                        </div>
-                                    ` : ''}
-
-                                    <!-- PREVIEW -->
-                                    <p onclick="openGlobalPageEditor('${p.id}')" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed cursor-pointer mb-4">
-                                        ${escapeNoteHtml(preview)}
-                                    </p>
-                                </div>
-
-                                <!-- FOOTER ACTIONS -->
-                                <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                                    <button onclick="navigateToNotebookPage('${p.id}')" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
-                                        <i class="fas fa-external-link-alt text-[10px]"></i> Vai al Progetto
-                                    </button>
-                                    <div class="flex items-center gap-1">
-                                        <button onclick="openGlobalPageEditor('${p.id}')" class="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg text-xs" title="Modifica pagina">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs" title="Elimina pagina">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `}
+            <!-- CONTENUTO PRINCIPALE TABELLA / GRUPPI / GRIGLIA -->
+            ${mainViewHtml}
         </div>
     `;
 }
+
+// Esponi funzioni su window per chiamate inline
+window.openGlobalPageEditor = openGlobalPageEditor;
+window.createGlobalNewPage = createGlobalNewPage;
+window.togglePageSelection = togglePageSelection;
+window.toggleSelectAllPages = toggleSelectAllPages;
+window.clearPageSelection = clearPageSelection;
+window.deleteBulkSelectedPages = deleteBulkSelectedPages;
+window.exportBulkPages = exportBulkPages;
+window.navigateToNotebookContext = navigateToNotebookContext;
 
 // AVVIO
 window.onload = () => AppData.initialize();

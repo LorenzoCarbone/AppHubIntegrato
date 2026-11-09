@@ -376,6 +376,16 @@ const wikiLinkState = {
     selectedIndex: 0
 };
 
+const contactMentionState = {
+    isOpen: false,
+    startIndex: 0,
+    length: 0,
+    quill: null,
+    contacts: [],
+    selectedIndex: 0,
+    query: ''
+};
+
 // Comandi Slash Menu (Notion-style)
 const slashCommands = [
     { id: 'h1', title: 'Titolo 1', desc: 'Intestazione principale grande', icon: 'fa-heading', category: 'Testo', action: (q, idx) => { q.formatLine(idx, 1, 'header', 1); } },
@@ -540,6 +550,26 @@ function attachQuillAutocomplete(quill) {
                 return;
             }
         }
+
+        // Navigazione tastiera Contact Mention Menu (@)
+        if (contactMentionState.isOpen) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveContactMentionHighlight(1);
+                return;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveContactMentionHighlight(-1);
+                return;
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                selectHighlightedContact(quill);
+                return;
+            } else if (e.key === 'Escape') {
+                closeContactMentionMenu();
+                return;
+            }
+        }
     });
 
     quill.on('text-change', function(delta, oldDelta, source) {
@@ -548,6 +578,7 @@ function attachQuillAutocomplete(quill) {
         if (!sel) {
             closeSlashMenu();
             closeWikiLinkDropdown();
+            closeContactMentionMenu();
             return;
         }
 
@@ -565,12 +596,32 @@ function attachQuillAutocomplete(quill) {
             wikiLinkState.quill = quill;
             showWikiLinkDropdown(quill, cursor, query);
             closeSlashMenu();
+            closeContactMentionMenu();
             return;
         } else {
             closeWikiLinkDropdown();
         }
 
-        // 2. Rileva Slash command: /(comando)
+        // 2. Rileva Contact Mention: @(nome)
+        const contactMatch = textBefore.match(/(?:^|\s)@([a-zA-Z0-9_\u00C0-\u017F\s]*)$/);
+        if (contactMatch) {
+            const query = contactMatch[1];
+            const matchedFull = contactMatch[0];
+            const atOffset = matchedFull.indexOf('@');
+            const startIndex = cursor - (matchedFull.length - atOffset);
+            contactMentionState.isOpen = true;
+            contactMentionState.startIndex = startIndex;
+            contactMentionState.length = cursor - startIndex;
+            contactMentionState.quill = quill;
+            showContactMentionMenu(quill, cursor, query);
+            closeSlashMenu();
+            closeWikiLinkDropdown();
+            return;
+        } else {
+            closeContactMentionMenu();
+        }
+
+        // 3. Rileva Slash command: /(comando)
         const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z0-9_-]*)$/);
         if (slashMatch) {
             const query = slashMatch[1];
@@ -582,6 +633,7 @@ function attachQuillAutocomplete(quill) {
             slashMenuState.length = cursor - startIndex;
             slashMenuState.quill = quill;
             showSlashMenu(quill, cursor, query);
+            closeContactMentionMenu();
             return;
         } else {
             closeSlashMenu();
@@ -883,6 +935,119 @@ function createAndLinkNewPage(title) {
         saveActiveNotebookContent();
     }
     showToast(`Pagina "${newPage.title}" creata e collegata`, "success");
+}
+
+// --- AUTOCOMPLETE: GESTIONE CONTATTI MENU (@) ---
+function showContactMentionMenu(quill, cursor, query) {
+    const menu = document.getElementById('quillContactMenu');
+    if (!menu) return;
+
+    const bounds = quill.getBounds(cursor);
+    const containerRect = quill.container.getBoundingClientRect();
+    
+    let top = containerRect.top + bounds.bottom + 6;
+    let left = containerRect.left + bounds.left;
+
+    if (left + 330 > window.innerWidth) left = window.innerWidth - 340;
+    if (left < 10) left = 10;
+    if (top + 340 > window.innerHeight) top = Math.max(10, containerRect.top + bounds.top - 340);
+
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+
+    const q = (query || '').toLowerCase().trim();
+    const allContacts = state.data.contacts || [];
+    contactMentionState.query = query ? query.trim() : '';
+
+    const matching = allContacts.filter(c => {
+        if (!q) return true;
+        const name = (c.name || '').toLowerCase();
+        const role = (c.role || '').toLowerCase();
+        const email = (c.email || '').toLowerCase();
+        return name.includes(q) || role.includes(q) || email.includes(q);
+    });
+
+    contactMentionState.contacts = matching;
+    contactMentionState.selectedIndex = 0;
+
+    if (matching.length === 0) {
+        menu.innerHTML = `<div class="p-3 text-xs text-slate-400 italic text-center">Nessun contatto trovato per "${escapeNoteHtml(query)}"</div>`;
+        menu.classList.remove('hidden');
+        return;
+    }
+
+    let html = `
+        <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-darkborder flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fas fa-users text-purple-500"></i> Menziona Contatto:</span>
+            <span class="text-[9px] text-slate-400 font-normal lowercase">invio seleziona</span>
+        </div>
+        <div class="max-h-56 overflow-y-auto p-1 space-y-0.5">
+    `;
+
+    matching.slice(0, 20).forEach((c, idx) => {
+        const isSel = idx === contactMentionState.selectedIndex;
+        html += `
+            <div class="wiki-item ${isSel ? 'selected' : ''}" data-index="${idx}" onmouseenter="contactMentionState.selectedIndex=${idx}; this.parentElement.querySelectorAll('.wiki-item').forEach((el,i)=>el.classList.toggle('selected', i===${idx}))" onmousedown="event.preventDefault(); selectContactByIndex(${idx})">
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${escapeNoteHtml(c.name)}</div>
+                    ${c.role ? `<div class="text-[10px] text-slate-400 truncate">${escapeNoteHtml(c.role)}</div>` : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    menu.innerHTML = html;
+    menu.classList.remove('hidden');
+}
+
+function closeContactMentionMenu() {
+    contactMentionState.isOpen = false;
+    const menu = document.getElementById('quillContactMenu');
+    if (menu) menu.classList.add('hidden');
+}
+
+function moveContactMentionHighlight(direction) {
+    if (!contactMentionState.contacts || contactMentionState.contacts.length === 0) return;
+    const len = contactMentionState.contacts.length;
+    contactMentionState.selectedIndex = (contactMentionState.selectedIndex + direction + len) % len;
+    
+    const menu = document.getElementById('quillContactMenu');
+    if (!menu) return;
+    const items = menu.querySelectorAll('.wiki-item');
+    items.forEach((item, idx) => {
+        item.classList.toggle('selected', idx === contactMentionState.selectedIndex);
+        if (idx === contactMentionState.selectedIndex) item.scrollIntoView({ block: 'nearest' });
+    });
+}
+
+function selectHighlightedContact(quill) {
+    if (contactMentionState.contacts && contactMentionState.contacts.length > 0 && contactMentionState.selectedIndex >= 0) {
+        selectContactByIndex(contactMentionState.selectedIndex);
+    }
+}
+
+function selectContactByIndex(idx) {
+    if (!contactMentionState.contacts || !contactMentionState.contacts[idx]) return;
+    const contact = contactMentionState.contacts[idx];
+    const q = contactMentionState.quill || getActiveNotebookQuill();
+    if (!q) return;
+
+    const start = contactMentionState.startIndex;
+    const len = contactMentionState.length;
+    closeContactMentionMenu();
+
+    q.focus();
+    if (len > 0) {
+        q.deleteText(start, len);
+    }
+    q.insertEmbed(start, 'note-pill', { type: 'contact', contactId: contact.id, name: contact.name || 'Contatto' });
+    q.insertText(start + 1, ' ');
+    q.setSelection(start + 2);
+    saveActiveNotebookContent();
 }
 
 // --- AZIONI DI INSERIMENTO ROBUSTE (QUILL API) ---
@@ -1226,14 +1391,37 @@ function createAndInsertPage(title) {
 }
 
 // --- GESTIONE SOTTOPAGINE & NAVIGAZIONE CROCE-PROGETTO ---
-function createNotebookSubpage(type, entityId) {
-    const title = prompt("Titolo della nuova sottopagina:", "Nuova Pagina");
-    if (!title || !title.trim()) return;
+function createNotebookSubpage(type, entityId, initialTitle = null, initialTipologia = 'Riunione') {
+    const title = initialTitle || prompt("Titolo della nuova pagina:", "Nuova Pagina");
+    if (!title || !title.trim()) return null;
     const now = getISODate(new Date());
+
+    let contextId = entityId || state.path.subprojId || state.path.projId || null;
+    let sphereId = null;
+    if (contextId) {
+        const proj = (state.data.projects || []).find(p => p.id === contextId);
+        if (proj) {
+            sphereId = proj.sphereId;
+        } else {
+            const sub = (state.data.subprojects || []).find(sp => sp.id === contextId);
+            if (sub) {
+                const parentProj = (state.data.projects || []).find(p => p.id === sub.projectId);
+                if (parentProj) sphereId = parentProj.sphereId;
+            } else {
+                const sph = (state.data.spheres || []).find(s => s.id === contextId);
+                if (sph) sphereId = sph.id;
+            }
+        }
+    }
+
     const newPage = {
         id: 'page_' + Date.now(),
-        contextId: entityId,
+        contextId: contextId,
+        sphereId: sphereId,
         title: title.trim(),
+        date: now,
+        tipologia: initialTipologia || 'Riunione',
+        tags: [],
         content: '<p></p>',
         createdAt: now,
         updatedAt: now
@@ -1245,6 +1433,7 @@ function createNotebookSubpage(type, entityId) {
     AppData.triggerSave();
     render();
     showToast(`Pagina "${newPage.title}" creata`, "success");
+    return newPage;
 }
 
 function openNotebookSubpage(pageId) {
@@ -1403,7 +1592,7 @@ function renderProjectNotebook(type, entityId, entity) {
                         <i class="fas fa-plus text-xs mr-1"></i> <span>Nuova Pagina</span>
                     </button>
                     <button onclick="toggleFocusMode('quill-editor-${type}')" class="text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl border border-slate-200 dark:border-darkborder transition shadow-sm active:scale-95" title="Schermo intero senza distrazioni">
-                        <i class="fas fa-expand text-xs"></i> <span class="hidden sm:inline ml-1">Zen</span>
+                        <i class="fas fa-expand text-xs"></i>
                     </button>
                 </div>
             </div>
@@ -1563,8 +1752,41 @@ function renderSubpageEditor(type, entityId) {
         return renderProjectSubpagesList(type, entityId, (state.data.pages || []).filter(p => p.contextId === entityId));
     }
 
+    // Risoluzione Progetto e Sfera
+    let currentCtxId = page.contextId || '';
+    let currentSphere = null;
+    if (page.sphereId) {
+        currentSphere = getEntity('sphere', page.sphereId);
+    }
+    if (!currentSphere && currentCtxId) {
+        const p = getEntity('project', currentCtxId);
+        if (p) currentSphere = getEntity('sphere', p.sphereId);
+        else {
+            const sp = getEntity('subproject', currentCtxId);
+            if (sp) {
+                const pp = getEntity('project', sp.projectId);
+                if (pp) currentSphere = getEntity('sphere', pp.sphereId);
+            }
+        }
+    }
+    const sphereName = currentSphere ? currentSphere.name : 'Nessun Ambito';
+    const sphereColor = currentSphere ? (currentSphere.color || '#6366f1') : '#94a3b8';
+
+    // Opzioni progetti & sottoprogetti
+    let projOptionsHtml = `<option value="">Nessun Progetto (Generale)</option>`;
+    (state.data.projects || []).forEach(p => {
+        const isSel = p.id === currentCtxId;
+        projOptionsHtml += `<option value="${p.id}" ${isSel ? 'selected' : ''}>📁 ${escapeNoteHtml(p.name)}</option>`;
+        (state.data.subprojects || []).filter(sp => sp.projectId === p.id).forEach(sp => {
+            const isSubSel = sp.id === currentCtxId;
+            projOptionsHtml += `<option value="${sp.id}" ${isSubSel ? 'selected' : ''}>  ↳ ${escapeNoteHtml(sp.name)}</option>`;
+        });
+    });
+
+    const tipologia = page.tipologia || 'Riunione';
+
     return `
-        <div class="space-y-3">
+        <div class="space-y-3.5">
             <!-- TOP BAR SOTTOPAGINA -->
             <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-darkborder">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -1573,18 +1795,90 @@ function renderSubpageEditor(type, entityId) {
                     </button>
                     <div class="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
                     <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <i class="fas fa-file-alt text-purple-500 shrink-0"></i>
-                        <input type="text" value="${escapeNoteHtml(page.title)}" onchange="updateSubpageTitle('${page.id}', this.value)" class="text-sm font-bold bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 focus:border-purple-500 focus:outline-none text-slate-900 dark:text-white flex-1 min-w-0" placeholder="Titolo della pagina...">
+                        <i class="fas fa-file-lines text-purple-500 shrink-0"></i>
+                        <input type="text" value="${escapeNoteHtml(page.title)}" onchange="updateSubpageProperty('${page.id}', 'title', this.value)" class="text-sm font-bold bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 focus:border-purple-500 focus:outline-none text-slate-900 dark:text-white flex-1 min-w-0 px-1 py-0.5" placeholder="Titolo della pagina...">
                     </div>
                 </div>
 
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <button onclick="toggleFocusMode('quill-subpage-editor')" class="text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-darkborder transition shadow-sm" title="Modalità Zen">
-                        <i class="fas fa-expand text-xs"></i> <span class="hidden sm:inline ml-1">Zen</span>
+                    <!-- Esporta Singola Pagina Dropdown -->
+                    <div class="relative group">
+                        <button type="button" class="text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-darkborder transition flex items-center gap-1.5 shadow-xs" title="Esporta questa pagina">
+                            <i class="fas fa-download text-xs text-indigo-500"></i> <span class="hidden sm:inline">Esporta</span> <i class="fas fa-chevron-down text-[9px] opacity-60"></i>
+                        </button>
+                        <div class="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-1.5 space-y-1">
+                            <button onclick="exportSinglePage('${page.id}', 'markdown')" class="w-full text-left px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fab fa-markdown text-blue-500"></i> Markdown (.md)
+                            </button>
+                            <button onclick="exportSinglePage('${page.id}', 'text')" class="w-full text-left px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-file-alt text-slate-400"></i> Testo (.txt)
+                            </button>
+                            <button onclick="exportSinglePage('${page.id}', 'html')" class="w-full text-left px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-code text-emerald-500"></i> HTML (.html)
+                            </button>
+                            <button onclick="exportSinglePage('${page.id}', 'print')" class="w-full text-left px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                                <i class="fas fa-print text-purple-500"></i> Stampa / PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Schermo Intero (SOLO ICONA, NESSUNA SCRITTA ZEN) -->
+                    <button onclick="toggleFocusMode('quill-subpage-editor')" class="text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 p-2 rounded-xl border border-slate-200 dark:border-darkborder transition shadow-sm active:scale-95" title="Schermo intero senza distrazioni">
+                        <i class="fas fa-expand text-xs"></i>
                     </button>
-                    <button onclick="deleteNotebookSubpage('${page.id}')" class="text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-xl transition" title="Elimina questa sottopagina">
+                    <button onclick="deleteNotebookSubpage('${page.id}')" class="text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-xl transition active:scale-95" title="Elimina questa pagina">
                         <i class="fas fa-trash text-xs"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- PROPRIETÀ NOTION-STYLE DELLA PAGINA -->
+            <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/80 dark:border-darkborder grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <!-- 1. Data -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="far fa-calendar-alt text-indigo-500"></i> Data
+                    </label>
+                    <input type="date" value="${page.date || ''}" onchange="updateSubpageProperty('${page.id}', 'date', this.value)" class="input-base text-xs font-semibold py-1.5 w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                </div>
+
+                <!-- 2. Progetto di riferimento -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="fas fa-arrow-up-right-from-square text-amber-500"></i> Progetto
+                    </label>
+                    <select onchange="updateSubpageContext('${page.id}', this.value)" class="input-base text-xs font-semibold py-1.5 w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        ${projOptionsHtml}
+                    </select>
+                </div>
+
+                <!-- 3. Tipologia -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="far fa-dot-circle text-emerald-500"></i> Tipologia
+                    </label>
+                    <select onchange="updateSubpageProperty('${page.id}', 'tipologia', this.value)" class="input-base text-xs font-semibold py-1.5 w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        <option value="Riunione" ${tipologia === 'Riunione' ? 'selected' : ''}>Riunione</option>
+                        <option value="Colloquio" ${tipologia === 'Colloquio' ? 'selected' : ''}>Colloquio</option>
+                        <option value="Call" ${tipologia === 'Call' ? 'selected' : ''}>Call</option>
+                        <option value="Appunti" ${tipologia === 'Appunti' ? 'selected' : ''}>Appunti</option>
+                        <option value="Brief" ${tipologia === 'Brief' ? 'selected' : ''}>Brief</option>
+                        <option value="Verbale" ${tipologia === 'Verbale' ? 'selected' : ''}>Verbale</option>
+                        <option value="Altro" ${tipologia === 'Altro' ? 'selected' : ''}>Altro</option>
+                    </select>
+                </div>
+
+                <!-- 4. Ambito (Sfera) -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="fas fa-layer-group text-purple-500"></i> Ambito
+                    </label>
+                    <div class="py-1 px-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between min-h-[32px]">
+                        <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md" style="background-color: ${sphereColor}20; color: ${sphereColor};">
+                            <i class="fas fa-circle text-[7px]"></i> ${escapeNoteHtml(sphereName)}
+                        </span>
+                        <span class="text-[9px] text-slate-400 lowercase">sfera</span>
+                    </div>
                 </div>
             </div>
 
@@ -1663,6 +1957,145 @@ function archiveMobileNotes() {}
 function archiveNotes(type, entityId) {
     createNotebookSubpage(type, entityId);
 }
+
+function updateSubpageProperty(pageId, prop, value) {
+    const page = (state.data.pages || []).find(p => p.id === pageId);
+    if (!page) return;
+    page[prop] = value;
+    page.updatedAt = getISODate(new Date());
+    AppData.triggerSave();
+}
+
+function updateSubpageContext(pageId, newContextId) {
+    const page = (state.data.pages || []).find(p => p.id === pageId);
+    if (!page) return;
+    page.contextId = newContextId || null;
+    
+    // Auto-aggiorna sfera in base al progetto selezionato
+    let sphereId = null;
+    if (newContextId) {
+        const proj = (state.data.projects || []).find(p => p.id === newContextId);
+        if (proj) sphereId = proj.sphereId;
+        else {
+            const sub = (state.data.subprojects || []).find(sp => sp.id === newContextId);
+            if (sub) {
+                const parentProj = (state.data.projects || []).find(p => p.id === sub.projectId);
+                if (parentProj) sphereId = parentProj.sphereId;
+            }
+        }
+    }
+    page.sphereId = sphereId;
+    page.updatedAt = getISODate(new Date());
+    AppData.triggerSave();
+    render();
+    showToast("Contesto della pagina aggiornato", "default");
+}
+
+function exportSinglePage(pageId, format) {
+    const page = (state.data.pages || []).find(p => p.id === pageId);
+    if (!page) return;
+
+    const title = page.title || 'Senza Titolo';
+    const cleanTitle = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim() || 'pagina';
+    const date = page.date || page.createdAt || '';
+    const projName = getPageContextName(page.contextId);
+    const tipologia = page.tipologia || 'Riunione';
+
+    let sphereName = 'Generale';
+    if (page.sphereId) {
+        const s = getEntity('sphere', page.sphereId);
+        if (s) sphereName = s.name;
+    }
+
+    if (format === 'print') {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast("Consenti i popup per stampare", "error");
+            return;
+        }
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>${escapeNoteHtml(title)}</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+                    h1 { margin-bottom: 8px; font-size: 26px; color: #0f172a; }
+                    .meta { font-size: 13px; color: #64748b; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; display: flex; flex-wrap: wrap; gap: 16px; }
+                    .content { font-size: 15px; }
+                    blockquote { border-left: 3px solid #6366f1; margin: 12px 0; padding-left: 12px; color: #475569; font-style: italic; }
+                    .note-pill { font-weight: bold; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <h1>${escapeNoteHtml(title)}</h1>
+                <div class="meta">
+                    <span><b>Data:</b> ${date}</span>
+                    <span><b>Progetto:</b> ${escapeNoteHtml(projName)}</span>
+                    <span><b>Tipologia:</b> ${escapeNoteHtml(tipologia)}</span>
+                    <span><b>Ambito:</b> ${escapeNoteHtml(sphereName)}</span>
+                </div>
+                <div class="content">${page.content || '<p>Nessun contenuto.</p>'}</div>
+                <script>window.onload = function() { window.print(); }<\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        return;
+    }
+
+    let fileContent = '';
+    let mimeType = 'text/plain';
+    let ext = 'txt';
+
+    if (format === 'markdown') {
+        ext = 'md';
+        mimeType = 'text/markdown';
+        let md = page.content || '';
+        md = md.replace(/<h1>(.*?)<\/h1>/gi, '# $1\n\n')
+               .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n\n')
+               .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n\n')
+               .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
+               .replace(/<br\s*\/?>/gi, '\n')
+               .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+               .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+               .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+               .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+               .replace(/<blockquote>(.*?)<\/blockquote>/gi, '> $1\n\n')
+               .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
+               .replace(/<[^>]+>/g, '');
+
+        fileContent = `# ${title}\n\n` +
+                      `**Data:** ${date}  \n` +
+                      `**Progetto:** ${projName}  \n` +
+                      `**Tipologia:** ${tipologia}  \n` +
+                      `**Ambito:** ${sphereName}  \n\n` +
+                      `---\n\n${md.trim()}\n`;
+    } else if (format === 'html') {
+        ext = 'html';
+        mimeType = 'text/html';
+        fileContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeNoteHtml(title)}</title><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;line-height:1.6;color:#1e293b;}hr{margin:20px 0;border:0;border-top:1px solid #e2e8f0;}</style></head><body><h1>${escapeNoteHtml(title)}</h1><p><b>Data:</b> ${date} | <b>Progetto:</b> ${escapeNoteHtml(projName)} | <b>Tipologia:</b> ${escapeNoteHtml(tipologia)} | <b>Ambito:</b> ${escapeNoteHtml(sphereName)}</p><hr>${page.content || ''}</body></html>`;
+    } else {
+        const plain = (page.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        fileContent = `${title}\nData: ${date}\nProgetto: ${projName}\nTipologia: ${tipologia}\nAmbito: ${sphereName}\n\n${plain}`;
+    }
+
+    const blob = new Blob([fileContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${cleanTitle}_${date || 'note'}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Pagina esportata in .${ext}`, "success");
+}
+
+window.updateSubpageProperty = updateSubpageProperty;
+window.updateSubpageContext = updateSubpageContext;
+window.exportSinglePage = exportSinglePage;
 
 function initQuillEditors() {
     const tOpts = [['bold', 'italic', 'underline', 'strike'], ['blockquote', 'code-block'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'color': [] }, { 'background': [] }], ['link'], ['clean']];
