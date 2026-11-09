@@ -453,24 +453,188 @@ function toggleTask(id) {
 }
 
 function editTask(id) { 
+    openTaskModal(id);
+}
+
+function openTaskModal(id) {
     const t = (state.data.tasks || []).find(x => x.id === id);
-    if (t && t.contextId) {
-        const sp = (state.data.subprojects || []).find(s => s.id === t.contextId);
-        if (sp) {
-            state.path.subprojId = sp.id;
-            state.path.projId = sp.projectId;
-            state.view = 'workspace';
-        } else {
-            const p = (state.data.projects || []).find(proj => proj.id === t.contextId);
-            if (p) {
-                state.path.projId = p.id;
-                state.path.subprojId = null;
-                state.view = 'workspace';
-            }
+    if (!t) return;
+    const modal = document.getElementById('taskEditModal');
+    if (!modal) return;
+
+    document.getElementById('temId').value = t.id;
+    document.getElementById('temTitleInput').value = t.title || t.text || '';
+    document.getElementById('temPriority').value = t.priority !== undefined ? t.priority : 0;
+    document.getElementById('temDueDate').value = t.dueDate || '';
+    document.getElementById('temStartDate').value = t.startDate || '';
+    
+    // Contesto
+    const ctxSelect = document.getElementById('temContext');
+    if (ctxSelect && typeof generateCtxOpts === 'function') {
+        ctxSelect.innerHTML = generateCtxOpts(t.contextId);
+    }
+    
+    // Ricorrenza
+    document.getElementById('temRecurrence').value = t.recurrence?.frequency || 'none';
+    
+    // Eisenhower
+    document.getElementById('temEisenhower').value = t.eisenhower || 'auto';
+    
+    // Stima e tempo
+    document.getElementById('temEstimated').value = t.estimatedMinutes || '';
+    document.getElementById('temSpent').value = t.spentMinutes || '';
+    document.getElementById('temNotes').value = t.notes || '';
+    
+    // Subtasks
+    renderModalSubtasks(t);
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeTaskModal() {
+    const modal = document.getElementById('taskEditModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function renderModalSubtasks(task) {
+    const list = document.getElementById('temSubtaskList');
+    const count = document.getElementById('temSubtaskCount');
+    if (!list) return;
+    const subtasks = task.subtasks || [];
+    if (count) count.innerText = `${subtasks.filter(s => s.completed).length}/${subtasks.length}`;
+
+    if (subtasks.length === 0) {
+        list.innerHTML = `<p class="text-xs text-slate-400 italic py-2">Nessuna sotto-attività inserita.</p>`;
+        return;
+    }
+
+    list.innerHTML = subtasks.map(s => `
+        <div class="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
+            <input type="checkbox" class="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer" ${s.completed ? 'checked' : ''} onchange="toggleModalSubtask('${task.id}', '${s.id}')">
+            <input type="text" value="${escapeNoteHtml(s.title)}" class="bg-transparent text-xs flex-1 border-none focus:outline-none ${s.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'}" onchange="updateModalSubtaskTitle('${task.id}', '${s.id}', this.value)">
+            <button type="button" onclick="deleteModalSubtask('${task.id}', '${s.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded transition"><i class="fas fa-times text-xs"></i></button>
+        </div>
+    `).join('');
+}
+
+function addSubtaskFromModal() {
+    const id = document.getElementById('temId').value;
+    const input = document.getElementById('temNewSubtask');
+    if (!id || !input || !input.value.trim()) return;
+    const t = (state.data.tasks || []).find(x => x.id === id);
+    if (!t) return;
+    if (!t.subtasks) t.subtasks = [];
+    t.subtasks.push({
+        id: 'st_' + Date.now(),
+        title: input.value.trim(),
+        completed: false
+    });
+    input.value = '';
+    AppData.triggerSave();
+    renderModalSubtasks(t);
+}
+
+function toggleModalSubtask(taskId, subId) {
+    const t = (state.data.tasks || []).find(x => x.id === taskId);
+    if (!t || !t.subtasks) return;
+    const s = t.subtasks.find(x => x.id === subId);
+    if (s) {
+        s.completed = !s.completed;
+        AppData.triggerSave();
+        renderModalSubtasks(t);
+    }
+}
+
+function updateModalSubtaskTitle(taskId, subId, newTitle) {
+    const t = (state.data.tasks || []).find(x => x.id === taskId);
+    if (!t || !t.subtasks) return;
+    const s = t.subtasks.find(x => x.id === subId);
+    if (s) {
+        s.title = newTitle.trim();
+        AppData.triggerSave();
+    }
+}
+
+function deleteModalSubtask(taskId, subId) {
+    const t = (state.data.tasks || []).find(x => x.id === taskId);
+    if (!t || !t.subtasks) return;
+    t.subtasks = t.subtasks.filter(x => x.id !== subId);
+    AppData.triggerSave();
+    renderModalSubtasks(t);
+}
+
+function saveTaskModal() {
+    const id = document.getElementById('temId').value;
+    const t = (state.data.tasks || []).find(x => x.id === id);
+    if (!t) return;
+
+    const title = document.getElementById('temTitleInput').value.trim();
+    if (!title) {
+        showToast("Inserisci un titolo per la task", "error");
+        return;
+    }
+    t.title = title;
+    t.priority = parseInt(document.getElementById('temPriority').value) || 0;
+    t.dueDate = document.getElementById('temDueDate').value || '';
+    t.startDate = document.getElementById('temStartDate').value || '';
+    t.contextId = document.getElementById('temContext')?.value || t.contextId || null;
+
+    const rec = document.getElementById('temRecurrence').value;
+    t.recurrence = (rec === 'none') ? { frequency: 'none' } : { frequency: rec, interval: 1 };
+
+    t.eisenhower = document.getElementById('temEisenhower').value || 'auto';
+    t.estimatedMinutes = Math.max(0, parseInt(document.getElementById('temEstimated').value) || 0);
+    t.spentMinutes = Math.max(0, parseInt(document.getElementById('temSpent').value) || 0);
+    t.notes = document.getElementById('temNotes').value.trim();
+
+    AppData.triggerSave();
+    closeTaskModal();
+    showToast("Task aggiornata con successo", "success");
+
+    // Aggiorna eventuale pillola presente nel quaderno attivo
+    const pill = document.querySelector(`.note-task-pill[data-task-id="${id}"]`);
+    if (pill) {
+        const titleSpan = pill.querySelector('.note-task-title');
+        if (titleSpan) titleSpan.textContent = t.title;
+    } else {
+        render();
+    }
+}
+
+function deleteTaskFromModal() {
+    const id = document.getElementById('temId').value;
+    if (!id) return;
+    if (!confirm("Eliminare questa task?")) return;
+
+    deleteTask(id);
+    closeTaskModal();
+}
+
+function toggleTaskFromPill(taskId, chkEl) {
+    const task = (state.data.tasks || []).find(t => t.id === taskId);
+    if (!task) return;
+    task.completed = chkEl ? chkEl.checked : !task.completed;
+    if (task.completed) {
+        task.completedAt = getISODate(new Date());
+    } else {
+        delete task.completedAt;
+    }
+    AppData.triggerSave();
+
+    const pill = chkEl ? chkEl.closest('.note-task-pill') : document.querySelector(`.note-task-pill[data-task-id="${taskId}"]`);
+    if (pill) {
+        pill.classList.toggle('is-completed', task.completed);
+        const titleSpan = pill.querySelector('.note-task-title');
+        if (titleSpan) {
+            titleSpan.classList.toggle('line-through', task.completed);
+            titleSpan.classList.toggle('opacity-60', task.completed);
         }
     }
-    editingTaskId = id; 
-    render(); 
+    showToast(task.completed ? "Task completata! 🎉" : "Task riaperta", "default");
 }
 
 function saveTaskEdit(id, contextElementId) {

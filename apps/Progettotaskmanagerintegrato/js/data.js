@@ -20,7 +20,15 @@ class LifeHubDataManager {
             gcalCompleted: [],
             trash: [],
             pages: [],
-            pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}]
+            pinnedLevels: [{id: 'pl_default', name: 'In Evidenza'}],
+            features: {
+                dashboardAgenda: true,
+                eisenhowerMatrix: true,
+                habitsTracker: true,
+                contacts: true,
+                timeBlocks: true,
+                projectTimeline: true
+            }
         };
         
         this.data = JSON.parse(JSON.stringify(this.defaultData));
@@ -261,9 +269,20 @@ class LifeHubDataManager {
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
         n.gcalCompleted = d.gcalCompleted || [];
         n.trash = d.trash || [];
-        n.pages = d.pages || [];
+        n.features = Object.assign({
+            dashboardAgenda: true,
+            eisenhowerMatrix: true,
+            habitsTracker: true,
+            contacts: true,
+            timeBlocks: true,
+            projectTimeline: true
+        }, d.features || {});
+        n.pages = (d.pages || []).map(p => ({
+            ...p,
+            tags: Array.isArray(p.tags) ? p.tags : []
+        }));
 
-        // Migra eventuali vecchi aggiornamenti/archivio a pagine dedicate se non già presenti
+        // Migra eventuali vecchi aggiornamenti/archivio o note fisse a pagine dedicate se non già presenti
         const migrateUpdatesToPages = (items) => {
             (items || []).forEach(item => {
                 if (item.updates && Array.isArray(item.updates)) {
@@ -274,11 +293,27 @@ class LifeHubDataManager {
                                 contextId: item.id,
                                 title: `Archivio (${u.date || 'Storico'})`,
                                 content: u.content,
+                                tags: ['archivio'],
                                 createdAt: u.date || '2025-01-01',
                                 updatedAt: u.date || '2025-01-01'
                             });
                         }
                     });
+                }
+                // Migra permanentNotes (vecchie note fisse ridondanti) in una pagina dedicata
+                if (item.permanentNotes && item.permanentNotes.trim() && item.permanentNotes !== '<p><br></p>') {
+                    const permId = 'page_perm_' + item.id;
+                    if (!n.pages.some(pg => pg.id === permId)) {
+                        n.pages.push({
+                            id: permId,
+                            contextId: item.id,
+                            title: 'Note Fisse & Riferimenti',
+                            content: item.permanentNotes,
+                            tags: ['riferimenti'],
+                            createdAt: '2025-01-01',
+                            updatedAt: '2025-01-01'
+                        });
+                    }
                 }
             });
         };

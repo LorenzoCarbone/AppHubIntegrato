@@ -15,6 +15,7 @@ function render() {
             else if(state.view === 'global_tasks') c.innerHTML = renderAdvancedTaskManager();
             else if(state.view === 'global_contacts') c.innerHTML = renderGlobalContacts();
             else if(state.view === 'global_calendar') c.innerHTML = renderCalendar(); 
+            else if(state.view === 'global_pages') c.innerHTML = renderGlobalPages(); 
             
             initQuillEditors(); 
             if(typeof updateMobileBottomNav === 'function') updateMobileBottomNav();
@@ -293,7 +294,7 @@ function renderDashboard() {
                         </section>
                     </div>
                     <div class="space-y-6">
-                        ${renderDashboardAgendaWidget()}
+                        ${(state.data.features?.dashboardAgenda !== false) ? renderDashboardAgendaWidget() : ''}
                         <div class="panel p-6 flex flex-col bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm rounded-2xl">
                             <div class="flex flex-col border-b border-slate-200 dark:border-darkborder pb-4 mb-5 gap-3">
                                 <div class="flex justify-between items-center">
@@ -388,6 +389,7 @@ function renderSphere() {
 
 function renderEntityTimelineAndProgress(entity, type) {
     if (!entity) return '';
+    if (state.data.features && state.data.features.projectTimeline === false) return '';
     let validCtxIds = [entity.id];
     if (type === 'project') {
         const subs = getChildren('project', entity.id);
@@ -531,6 +533,7 @@ function renderProject() {
                             <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-4 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Progetto</h3>
                             ${renderInlineTasks(p.id)}
                         </div>
+                        ${(state.data.features?.contacts !== false) ? `
                         <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
                             <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-200 dark:border-darkborder">
                                 <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-users text-purple-500 mr-2 text-sm"></i> Contatti</h3>
@@ -538,6 +541,7 @@ function renderProject() {
                             </div>
                             ${renderContextContacts(p.id)}
                         </div>
+                        ` : ''}
                     </div>
                 </div>`;
         }
@@ -578,6 +582,7 @@ function renderSubproject() {
                             <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-5 pb-4 border-b border-slate-200 dark:border-darkborder flex items-center"><i class="fas fa-tasks text-blue-500 mr-2 text-sm"></i> Tasks Specifici</h3>
                             ${renderInlineTasks(sp.id)}
                         </div>
+                        ${(state.data.features?.contacts !== false) ? `
                         <div class="panel p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm">
                             <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-200 dark:border-darkborder">
                                 <h3 class="font-bold text-[11px] text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center"><i class="fas fa-users text-purple-500 mr-2 text-sm"></i> Contatti</h3>
@@ -585,6 +590,7 @@ function renderSubproject() {
                             </div>
                             ${renderContextContacts(sp.id)}
                         </div>
+                        ` : ''}
                     </div>
                 </div>`;
         }
@@ -1152,7 +1158,10 @@ function clearTaskSearch() {
 }
 
 function renderAdvancedTaskManager() {
-            let navHtml = `
+    if (state.data.features?.eisenhowerMatrix === false && state.ui.tmViewMode === 'eisenhower') {
+        state.ui.tmViewMode = 'list';
+    }
+    let navHtml = `
                 <div class="flex items-center gap-3 p-5 mb-2 md:hidden border-b border-slate-200 dark:border-slate-700">
                     <button onclick="navigate('home')" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-lg transition hover:text-blue-500 shadow-sm active:scale-95"><i class="fas fa-home"></i></button>
                     <div class="font-bold text-slate-800 dark:text-white flex-1 leading-tight text-sm">Dashboard<br><span class="text-[10px] text-slate-400 font-normal">Torna alla home</span></div>
@@ -1270,6 +1279,7 @@ function renderAdvancedTaskManager() {
                             </div>
                             
                             <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                                ${(state.data.features?.eisenhowerMatrix !== false) ? `
                                 <!-- Switcher Modalità: Lista vs Matrice Eisenhower -->
                                 <div class="flex items-center bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-300/60 dark:border-slate-700 text-xs font-bold shrink-0">
                                     <button type="button" onclick="state.ui.tmViewMode='list'; render();" class="px-2.5 py-1 rounded transition flex items-center gap-1.5 ${state.ui.tmViewMode !== 'eisenhower' ? 'bg-white dark:bg-darkpanel text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}">
@@ -1279,6 +1289,7 @@ function renderAdvancedTaskManager() {
                                         <i class="fas fa-th-large"></i> <span class="hidden sm:inline">Eisenhower</span>
                                     </button>
                                 </div>
+                                ` : ''}
 
                                 <div class="relative w-36 sm:w-64">
                                     <i class="fas fa-search absolute left-3 top-2.5 text-xs text-slate-400"></i>
@@ -1326,6 +1337,220 @@ function renderAdvancedTaskManager() {
                     </div>
                 </div>`;
         }
+
+// --- SCHEDA GLOBALE PAGINE & NOTE ---
+function openGlobalPageEditor(pageId) {
+    activeSubpageId = pageId;
+    render();
+}
+
+function createGlobalNewPage() {
+    const title = prompt("Titolo della nuova pagina:", "Nuova Pagina");
+    if (!title || !title.trim()) return;
+    
+    const defaultProj = (state.data.projects && state.data.projects[0]) ? state.data.projects[0].id : null;
+    const now = getISODate(new Date());
+    const newPage = {
+        id: 'page_' + Date.now(),
+        contextId: defaultProj,
+        title: title.trim(),
+        content: '<p></p>',
+        tags: [],
+        createdAt: now,
+        updatedAt: now
+    };
+    if (!state.data.pages) state.data.pages = [];
+    state.data.pages.push(newPage);
+    AppData.triggerSave();
+    activeSubpageId = newPage.id;
+    render();
+    showToast(`Pagina "${newPage.title}" creata`, "success");
+}
+
+function renderGlobalPages() {
+    const pages = state.data.pages || [];
+    const currentTagFilter = state.ui.selectedPageTag || 'all';
+    const currentContextFilter = state.ui.selectedPageContext || 'all';
+    const query = (state.ui.pageSearchQuery || '').toLowerCase().trim();
+
+    if (activeSubpageId) {
+        return `
+            <div class="max-w-5xl mx-auto space-y-4">
+                <div class="p-4 md:p-6 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-sm">
+                    ${renderSubpageEditor('global', null)}
+                </div>
+            </div>
+        `;
+    }
+
+    const tagCounts = {};
+    pages.forEach(p => {
+        (p.tags || []).forEach(t => {
+            const clean = t.trim().toLowerCase();
+            if (clean) tagCounts[clean] = (tagCounts[clean] || 0) + 1;
+        });
+    });
+    const allTags = Object.keys(tagCounts).sort();
+
+    let filtered = pages.filter(p => {
+        if (currentTagFilter !== 'all') {
+            if (!p.tags || !p.tags.includes(currentTagFilter)) return false;
+        }
+        if (currentContextFilter !== 'all') {
+            if (p.contextId !== currentContextFilter) return false;
+        }
+        if (query) {
+            const plain = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
+            const title = (p.title || '').toLowerCase();
+            const parentName = (typeof getPageContextName === 'function' ? getPageContextName(p.contextId) : '').toLowerCase();
+            const matchesTag = (p.tags || []).some(t => t.toLowerCase().includes(query));
+            return title.includes(query) || plain.includes(query) || parentName.includes(query) || matchesTag;
+        }
+        return true;
+    });
+
+    filtered.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
+
+    let ctxOptions = `<option value="all">Tutti i Progetti</option>`;
+    (state.data.projects || []).forEach(p => {
+        ctxOptions += `<option value="${p.id}" ${currentContextFilter === p.id ? 'selected' : ''}>📁 ${escapeNoteHtml(p.name)}</option>`;
+        (state.data.subprojects || []).filter(sp => sp.projectId === p.id).forEach(sp => {
+            ctxOptions += `<option value="${sp.id}" ${currentContextFilter === sp.id ? 'selected' : ''}>  ↳ ${escapeNoteHtml(sp.name)}</option>`;
+        });
+    });
+
+    return `
+        <div class="max-w-6xl mx-auto space-y-6">
+            <!-- HEADER & TITOLO -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-darkpanel p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl shrink-0">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-lg font-black text-slate-800 dark:text-white">Archivio Globale Note & Pagine</h1>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-mono">${pages.length}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Consulta, filtra per tipologia e gestisci tutta la documentazione dei progetti</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="createGlobalNewPage()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Nuova Pagina
+                    </button>
+                </div>
+            </div>
+
+            <!-- BARRA DI RICERCA E FILTRI -->
+            <div class="bg-white dark:bg-darkpanel p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" value="${escapeNoteHtml(state.ui.pageSearchQuery || '')}" oninput="state.ui.pageSearchQuery = this.value; render();" placeholder="Cerca nel titolo, contenuto o tag..." class="input-base text-xs pl-9 py-2">
+                    </div>
+                    <div class="sm:w-60">
+                        <select onchange="state.ui.selectedPageContext = this.value; render();" class="input-base text-xs py-2">
+                            ${ctxOptions}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- PILLS DEI TAG -->
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0"><i class="fas fa-tags text-indigo-500"></i> Tipologia:</span>
+                    <button onclick="state.ui.selectedPageTag = 'all'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 ${currentTagFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
+                        Tutte <span class="text-[10px] opacity-75 font-mono ml-0.5">${pages.length}</span>
+                    </button>
+                    ${allTags.map(tag => {
+                        const isSel = currentTagFilter === tag;
+                        return `
+                            <button onclick="state.ui.selectedPageTag = '${tag}'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${isSel ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600'}">
+                                #${escapeNoteHtml(tag)} <span class="text-[10px] font-mono px-1 rounded-full ${isSel ? 'bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${tagCounts[tag]}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- GRIGLIA PAGINE -->
+            ${filtered.length === 0 ? `
+                <div class="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-darkpanel rounded-2xl border border-slate-200 dark:border-darkborder">
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 mx-auto flex items-center justify-center text-xl mb-3">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <p class="text-sm font-bold text-slate-700 dark:text-slate-200">Nessuna pagina trovata</p>
+                    <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">Non ci sono pagine che corrispondono ai filtri selezionati o alla ricerca.</p>
+                    <button onclick="state.ui.selectedPageTag = 'all'; state.ui.selectedPageContext = 'all'; state.ui.pageSearchQuery = ''; render();" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                        Azzera filtri
+                    </button>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${filtered.map(p => {
+                        const plain = (p.content || '').replace(/<[^>]*>?/gm, '').trim();
+                        let preview = plain.substring(0, 120);
+                        if (plain.length > 120) preview += '...';
+                        if (!preview) preview = 'Pagina vuota, clicca per scrivere o aggiungere contenuti...';
+                        const parentName = typeof getPageContextName === 'function' ? getPageContextName(p.contextId) : 'Progetto';
+                        const tags = p.tags || [];
+
+                        return `
+                            <div class="p-5 rounded-2xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-indigo-400 dark:hover:border-indigo-600 transition flex flex-col justify-between group shadow-sm hover:shadow-md">
+                                <div>
+                                    <!-- CONTESTO -->
+                                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+                                            <i class="fas fa-folder text-indigo-500 text-[10px]"></i> ${escapeNoteHtml(parentName)}
+                                        </span>
+                                        <span class="text-[10px] font-mono text-slate-400 shrink-0">${p.updatedAt || p.createdAt || 'Oggi'}</span>
+                                    </div>
+
+                                    <!-- TITOLO -->
+                                    <h3 onclick="openGlobalPageEditor('${p.id}')" class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition cursor-pointer mb-2 line-clamp-1">
+                                        ${escapeNoteHtml(p.title || 'Senza titolo')}
+                                    </h3>
+
+                                    <!-- TAGS -->
+                                    ${tags.length > 0 ? `
+                                        <div class="flex flex-wrap gap-1 mb-2.5">
+                                            ${tags.map(t => `
+                                                <span onclick="state.ui.selectedPageTag = '${t}'; render();" class="cursor-pointer px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 transition">
+                                                    #${escapeNoteHtml(t)}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- PREVIEW -->
+                                    <p onclick="openGlobalPageEditor('${p.id}')" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed cursor-pointer mb-4">
+                                        ${escapeNoteHtml(preview)}
+                                    </p>
+                                </div>
+
+                                <!-- FOOTER ACTIONS -->
+                                <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                                    <button onclick="navigateToNotebookPage('${p.id}')" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
+                                        <i class="fas fa-external-link-alt text-[10px]"></i> Vai al Progetto
+                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button onclick="openGlobalPageEditor('${p.id}')" class="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg text-xs" title="Modifica pagina">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs" title="Elimina pagina">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `}
+        </div>
+    `;
+}
 
 // AVVIO
 window.onload = () => AppData.initialize();

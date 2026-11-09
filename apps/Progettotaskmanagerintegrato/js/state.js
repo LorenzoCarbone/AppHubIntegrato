@@ -64,6 +64,20 @@ function toggleSettings(forceOpen) {
         if (gId) gId.value = AppData.gcalId || '';
         if (gApi) gApi.value = AppData.gcalApiKey || '';
 
+        // Popola i toggle delle funzionalità
+        const feats = (state.data && state.data.features) ? state.data.features : {
+            dashboardAgenda: true,
+            eisenhowerMatrix: true,
+            habitsTracker: true,
+            contacts: true,
+            timeBlocks: true,
+            projectTimeline: true
+        };
+        ['dashboardAgenda', 'eisenhowerMatrix', 'habitsTracker', 'contacts', 'timeBlocks', 'projectTimeline'].forEach(k => {
+            const chk = document.getElementById('feat_' + k);
+            if (chk) chk.checked = feats[k] !== false;
+        });
+
         const st = document.getElementById('gcalTestStatus');
         const dt = document.getElementById('gcalTestDetails');
         if (st) st.innerHTML = '';
@@ -75,6 +89,23 @@ function toggleSettings(forceOpen) {
         m.classList.add('hidden');
         m.style.display = 'none';
     }
+}
+
+function toggleFeatureSetting(key, enabled) {
+    if (!state.data.features) {
+        state.data.features = {
+            dashboardAgenda: true,
+            eisenhowerMatrix: true,
+            habitsTracker: true,
+            contacts: true,
+            timeBlocks: true,
+            projectTimeline: true
+        };
+    }
+    state.data.features[key] = !!enabled;
+    AppData.triggerSave();
+    if (typeof render === 'function') render();
+    showToast(`Funzionalità ${enabled ? 'attivata' : 'disattivata'}`, "default");
 }
 
 function openSettingsModal() {
@@ -186,7 +217,7 @@ function updateMobileBottomNav() {
         if (calBtn) { calBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); calBtn.classList.add('text-emerald-600', 'dark:text-emerald-400', 'font-black'); }
     } else if (state.view === 'global_tasks') {
         if (tasksBtn) { tasksBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); tasksBtn.classList.add('text-blue-600', 'dark:text-blue-400', 'font-black'); }
-    } else if (state.view === 'global_contacts') {
+    } else if (['global_contacts', 'global_pages'].includes(state.view)) {
         if (moreBtn) { moreBtn.classList.remove('text-slate-500', 'dark:text-slate-400'); moreBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-black'); }
     }
 }
@@ -206,6 +237,14 @@ function saveSettings() {
     localStorage.setItem('hub_anon_key', aKey);
     localStorage.setItem('hub_gcal_id', gId);
     localStorage.setItem('hub_gcal_apikey', gKey);
+
+    // Salva impostazioni delle funzionalità
+    if (!state.data.features) state.data.features = {};
+    ['dashboardAgenda', 'eisenhowerMatrix', 'habitsTracker', 'contacts', 'timeBlocks', 'projectTimeline'].forEach(k => {
+        const chk = document.getElementById('feat_' + k);
+        if (chk) state.data.features[k] = chk.checked;
+    });
+    AppData.triggerSave();
     
     toggleSettings(false);
     showToast("Impostazioni salvate! Sincronizzazione in corso...", "success");

@@ -271,8 +271,12 @@ if (typeof Quill !== 'undefined') {
 
                 if (value.taskId) {
                     node.setAttribute('data-task-id', value.taskId);
-                    node.setAttribute('title', `Apri Task: ${value.title || ''}`);
-                    node.innerHTML = `<i class="fas fa-check-circle text-blue-500 mr-1"></i><span>${escapeNoteHtml(value.title || 'Task')}</span>`;
+                    const t = (state.data.tasks || []).find(x => x.id === value.taskId);
+                    const isCompleted = t ? (t.completed || t.status === 'done') : false;
+                    const taskTitle = t ? (t.title || t.text || 'Task') : (value.title || 'Task');
+                    if (isCompleted) node.classList.add('is-completed');
+                    node.setAttribute('title', `Task: ${taskTitle} (Clicca sul testo per dettagli)`);
+                    node.innerHTML = `<input type="checkbox" class="note-task-chk" ${isCompleted ? 'checked' : ''} onclick="event.stopPropagation(); toggleTaskFromPill('${value.taskId}', this)"/><span class="note-task-title ${isCompleted ? 'line-through text-slate-400 dark:text-darkmuted opacity-60' : ''}">${escapeNoteHtml(taskTitle)}</span>`;
                 } else if (value.contactId) {
                     node.setAttribute('data-contact-id', value.contactId);
                     node.setAttribute('title', `Contatto: ${value.name || value.title || ''}`);
@@ -286,12 +290,14 @@ if (typeof Quill !== 'undefined') {
             }
 
             static value(node) {
+                const titleSpan = node.querySelector('.note-task-title');
+                const rawTitle = titleSpan ? titleSpan.textContent : node.textContent;
                 return {
                     taskId: node.getAttribute('data-task-id'),
                     contactId: node.getAttribute('data-contact-id'),
                     pageId: node.getAttribute('data-page-id'),
                     type: node.classList.contains('note-task-pill') ? 'task' : (node.classList.contains('note-contact-pill') ? 'contact' : 'page'),
-                    title: node.textContent.trim()
+                    title: rawTitle.trim()
                 };
             }
         }
@@ -390,8 +396,9 @@ const slashCommands = [
 ];
 
 function switchNotebookTab(tabName) {
+    if (tabName === 'permanent') tabName = 'active';
     currentNotebookTab = tabName;
-    ['active', 'permanent', 'pages'].forEach(t => {
+    ['active', 'pages'].forEach(t => {
         const panel = document.getElementById(`notebook-tab-panel-${t}`);
         const btn = document.getElementById(`notebook-tab-btn-${t}`);
         if (panel) {
@@ -421,11 +428,6 @@ function getActiveNotebookQuill() {
     const type = state.path.subprojId ? 'subproject' : (state.path.projId ? 'project' : null);
     if (!type) return lastActiveNotebookQuill || null;
 
-    if (currentNotebookTab === 'permanent') {
-        const permEl = document.getElementById(`quill-perm-editor-${type}`);
-        if (permEl && permEl.__quill) return permEl.__quill;
-    }
-
     const el = document.getElementById(`quill-editor-${type}`);
     if (el && el.__quill) return el.__quill;
 
@@ -453,14 +455,9 @@ function saveActiveNotebookContent() {
     const entity = getEntity(type, id);
     if (!entity) return;
 
-    if (currentNotebookTab === 'permanent') {
-        entity.permanentNotes = q.root.innerHTML;
-        AppData.triggerSave();
-    } else {
-        entity.notes = q.root.innerHTML;
-        AppData.triggerSave();
-        updateNotebookStats(q, type);
-    }
+    entity.notes = q.root.innerHTML;
+    AppData.triggerSave();
+    updateNotebookStats(q, type);
 }
 
 function updateNotebookStats(quill, type) {
@@ -723,61 +720,74 @@ function showWikiLinkDropdown(quill, cursor, query) {
     const q = (query || '').toLowerCase().trim();
     const allPages = state.data.pages || [];
     const currentEntityId = state.path.subprojId || state.path.projId;
+    wikiLinkState.query = query ? query.trim() : '';
 
-    let filtered = allPages.filter(p => {
+    let matchingPages = allPages.filter(p => {
         if (!q) return true;
         const parentName = getPageContextName(p.contextId);
         return (p.title && p.title.toLowerCase().includes(q)) ||
                (parentName && parentName.toLowerCase().includes(q));
     });
 
-    wikiLinkState.filteredPages = filtered;
-    if (wikiLinkState.selectedIndex < 0 || wikiLinkState.selectedIndex >= filtered.length) {
+    const items = [];
+    matchingPages.slice(0, 15).forEach(p => {
+        items.push({ type: 'page', page: p });
+    });
+
+    // Se l'utente ha digitato del testo e non c'è una pagina esattamente identica, proponi "Crea nuova pagina"
+    const hasExactMatch = matchingPages.some(p => (p.title || '').trim().toLowerCase() === q);
+    if (q && !hasExactMatch) {
+        items.push({ type: 'create', title: query.trim() });
+    }
+
+    wikiLinkState.items = items;
+    if (wikiLinkState.selectedIndex < 0 || wikiLinkState.selectedIndex >= items.length) {
         wikiLinkState.selectedIndex = 0;
     }
 
     let html = `
         <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase px-2.5 pt-1.5 pb-1 tracking-wider flex justify-between items-center border-b border-slate-100 dark:border-slate-800 mb-1">
             <span><i class="fas fa-file-alt text-purple-500 mr-1"></i> Collega Pagina (Wiki)</span>
-            <span class="text-[9px] font-mono">${filtered.length} pagine</span>
+            <span class="text-[9px] font-mono">${matchingPages.length} pagine</span>
         </div>
     `;
 
-    if (filtered.length === 0) {
+    if (items.length === 0) {
         html += `<div class="p-3 text-xs text-slate-400 italic text-center">Nessuna pagina trovata</div>`;
     } else {
-        filtered.slice(0, 15).forEach((p, idx) => {
+        items.forEach((item, idx) => {
             const isSel = idx === wikiLinkState.selectedIndex;
-            const parentName = getPageContextName(p.contextId);
-            const isCurrent = p.contextId === currentEntityId;
-            html += `
-                <div class="wiki-item ${isSel ? 'selected' : ''}" data-index="${idx}" onmousedown="event.preventDefault(); selectWikiPageByIndex(${idx})">
-                    <div class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xs shrink-0 font-bold">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">${escapeNoteHtml(p.title)}</div>
-                        <div class="text-[10px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-1.5">
-                            <span>${escapeNoteHtml(parentName)}</span>
-                            ${isCurrent ? '<span class="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-1 rounded font-bold">Questo progetto</span>' : ''}
+            if (item.type === 'page') {
+                const p = item.page;
+                const parentName = getPageContextName(p.contextId);
+                const isCurrent = p.contextId === currentEntityId;
+                html += `
+                    <div class="wiki-item ${isSel ? 'selected' : ''}" data-index="${idx}" onmousedown="event.preventDefault(); selectWikiPageByIndex(${idx})">
+                        <div class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xs shrink-0 font-bold">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">${escapeNoteHtml(p.title)}</div>
+                            <div class="text-[10px] text-slate-400 dark:text-slate-500 truncate flex items-center gap-1.5">
+                                <span>${escapeNoteHtml(parentName)}</span>
+                                ${isCurrent ? '<span class="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-1 rounded font-bold">Questo progetto</span>' : ''}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        });
-    }
-
-    if (q) {
-        html += `
-            <div class="border-t border-slate-200 dark:border-darkborder mt-1 pt-1">
-                <div class="wiki-item text-purple-600 dark:text-purple-400 font-bold" onmousedown="event.preventDefault(); createAndLinkNewPage('${escapeNoteHtml(query)}')">
-                    <div class="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xs shrink-0">
-                        <i class="fas fa-plus"></i>
+                `;
+            } else if (item.type === 'create') {
+                html += `
+                    <div class="border-t border-slate-200 dark:border-darkborder mt-1 pt-1">
+                        <div class="wiki-item ${isSel ? 'selected' : ''} text-purple-600 dark:text-purple-400 font-bold" data-index="${idx}" onmousedown="event.preventDefault(); selectWikiPageByIndex(${idx})">
+                            <div class="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xs shrink-0">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                            <div class="text-xs truncate">Crea nuova pagina "<strong>${escapeNoteHtml(item.title)}</strong>"</div>
+                        </div>
                     </div>
-                    <div class="text-xs truncate">Crea nuova pagina "<strong>${escapeNoteHtml(query)}</strong>"</div>
-                </div>
-            </div>
-        `;
+                `;
+            }
+        });
     }
 
     menu.innerHTML = html;
@@ -794,8 +804,8 @@ function closeWikiLinkDropdown() {
 }
 
 function moveWikiLinkHighlight(direction) {
-    if (!wikiLinkState.filteredPages || wikiLinkState.filteredPages.length === 0) return;
-    const len = wikiLinkState.filteredPages.length;
+    if (!wikiLinkState.items || wikiLinkState.items.length === 0) return;
+    const len = wikiLinkState.items.length;
     wikiLinkState.selectedIndex = (wikiLinkState.selectedIndex + direction + len) % len;
     
     const menu = document.getElementById('wikiLinkDropdown');
@@ -808,35 +818,41 @@ function moveWikiLinkHighlight(direction) {
 }
 
 function selectHighlightedWikiLink(quill) {
-    if (wikiLinkState.selectedIndex >= 0 && wikiLinkState.filteredPages.length > wikiLinkState.selectedIndex) {
+    if (wikiLinkState.items && wikiLinkState.items.length > 0 && wikiLinkState.selectedIndex >= 0 && wikiLinkState.items[wikiLinkState.selectedIndex]) {
         selectWikiPageByIndex(wikiLinkState.selectedIndex);
+    } else if (wikiLinkState.query) {
+        createAndLinkNewPage(wikiLinkState.query);
     }
 }
 
 function selectWikiPageByIndex(idx) {
-    if (!wikiLinkState.filteredPages || !wikiLinkState.filteredPages[idx]) return;
-    const page = wikiLinkState.filteredPages[idx];
-    const q = wikiLinkState.quill || getActiveNotebookQuill();
-    if (!q) return;
+    if (!wikiLinkState.items || !wikiLinkState.items[idx]) return;
+    const item = wikiLinkState.items[idx];
+    if (item.type === 'create') {
+        createAndLinkNewPage(item.title);
+    } else {
+        const page = item.page;
+        const q = wikiLinkState.quill || getActiveNotebookQuill();
+        if (!q) return;
 
-    const start = wikiLinkState.startIndex;
-    const len = wikiLinkState.length;
-    closeWikiLinkDropdown();
+        const start = wikiLinkState.startIndex;
+        const len = wikiLinkState.length;
+        closeWikiLinkDropdown();
 
-    q.focus();
-    if (len > 0) {
-        q.deleteText(start, len);
+        q.focus();
+        if (len > 0) {
+            q.deleteText(start, len);
+        }
+        q.insertEmbed(start, 'note-pill', { type: 'page', pageId: page.id, title: page.title || 'Pagina' });
+        q.insertText(start + 1, ' ');
+        q.setSelection(start + 2);
+        saveActiveNotebookContent();
     }
-    q.insertEmbed(start, 'note-pill', { type: 'page', pageId: page.id, title: page.title || 'Pagina' });
-    q.insertText(start + 1, ' ');
-    q.setSelection(start + 2);
-    saveActiveNotebookContent();
 }
 
 function createAndLinkNewPage(title) {
     const q = wikiLinkState.quill || getActiveNotebookQuill();
-    const currentEntityId = state.path.subprojId || state.path.projId;
-    if (!currentEntityId) return;
+    const currentEntityId = state.path.subprojId || state.path.projId || (state.data.projects && state.data.projects[0] ? state.data.projects[0].id : null);
 
     const now = getISODate(new Date());
     const newPage = {
@@ -844,6 +860,7 @@ function createAndLinkNewPage(title) {
         contextId: currentEntityId,
         title: title || 'Nuova Pagina',
         content: '<p></p>',
+        tags: [],
         createdAt: now,
         updatedAt: now
     };
@@ -929,6 +946,30 @@ function closeNoteTaskPicker() {
     modal.classList.remove('flex');
 }
 
+function createNewTaskAndInsertIntoNote(title) {
+    const q = getActiveNotebookQuill();
+    const currentEntityId = state.path.subprojId || state.path.projId || (state.data.projects && state.data.projects[0] ? state.data.projects[0].id : null);
+    const taskTitle = (title || '').trim() || 'Nuova Task';
+
+    const newTask = {
+        id: 't_' + Date.now(),
+        title: taskTitle,
+        contextId: currentEntityId || null,
+        priority: 0,
+        status: 'todo',
+        completed: false,
+        createdAt: getISODate(new Date()),
+        subtasks: []
+    };
+
+    if (!state.data.tasks) state.data.tasks = [];
+    state.data.tasks.push(newTask);
+    AppData.triggerSave();
+
+    insertTaskIntoNote(newTask.id);
+    showToast(`Task "${taskTitle}" creata e collegata`, "success");
+}
+
 function renderNoteTaskPickerList(query = '') {
     const container = document.getElementById('noteTaskPickerList');
     if (!container) return;
@@ -954,12 +995,22 @@ function renderNoteTaskPickerList(query = '') {
         return 0;
     });
 
+    const createActionHtml = `
+        <div onclick="createNewTaskAndInsertIntoNote(document.getElementById('noteTaskSearchInput')?.value)" class="p-2.5 rounded-xl border border-dashed border-blue-400 dark:border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition cursor-pointer flex items-center justify-between gap-2 mb-2 font-bold text-xs group active:scale-95">
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fas fa-plus-circle text-blue-500"></i>
+                <span class="truncate">Crea "${q ? escapeNoteHtml(query.trim()) : 'nuova task'}" e inserisci</span>
+            </div>
+            <span class="text-[9px] bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded font-mono uppercase">Invio / Crea</span>
+        </div>
+    `;
+
     if (filtered.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">Nessun task trovato.</p>`;
+        container.innerHTML = createActionHtml + `<p class="text-xs text-slate-400 italic py-3 text-center">Nessun altro task esistente trovato con questo nome.</p>`;
         return;
     }
 
-    container.innerHTML = filtered.slice(0, 30).map(t => {
+    container.innerHTML = createActionHtml + filtered.slice(0, 30).map(t => {
         const title = t.title || t.text || 'Task';
         const aContext = t.contextId || t.projId || t.subprojId;
         const isCurrent = (aContext === currentSubprojId || aContext === currentProjId);
@@ -1229,6 +1280,52 @@ function updateSubpageTitle(pageId, newTitle) {
     }
 }
 
+// Gestione Tag Pagine (Es. "verbale riunione", "scheda tecnica", "brief")
+function addPageTag(pageId, tag) {
+    if (!tag || !tag.trim()) return;
+    const page = (state.data.pages || []).find(p => p.id === pageId);
+    if (!page) return;
+    if (!Array.isArray(page.tags)) page.tags = [];
+    const clean = tag.trim().toLowerCase();
+    if (!page.tags.includes(clean)) {
+        page.tags.push(clean);
+        page.updatedAt = getISODate(new Date());
+        AppData.triggerSave();
+        render();
+    }
+}
+
+function removePageTag(pageId, tag) {
+    const page = (state.data.pages || []).find(p => p.id === pageId);
+    if (!page || !Array.isArray(page.tags)) return;
+    page.tags = page.tags.filter(t => t !== tag);
+    page.updatedAt = getISODate(new Date());
+    AppData.triggerSave();
+    render();
+}
+
+// Modalità Zen a schermo intero senza distrazioni
+function toggleFocusMode(editorId) {
+    const el = document.getElementById(editorId);
+    if (!el) return;
+    const container = el.closest('.project-notebook-card') || el.closest('.project-notebook-editor') || el.parentElement;
+    if (!container) return;
+    container.classList.toggle('zen-focus-mode');
+    const isZen = container.classList.contains('zen-focus-mode');
+    if (isZen) {
+        showToast("Modalità Zen attiva. Premi Esc per uscire.", "default");
+    }
+}
+
+if (typeof window !== 'undefined' && !window.__zenEscapeListenerAttached) {
+    window.__zenEscapeListenerAttached = true;
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.zen-focus-mode').forEach(el => el.classList.remove('zen-focus-mode'));
+        }
+    });
+}
+
 // Navigazione Universale a una pagina Wiki (anche tra progetti diversi)
 function navigateToNotebookPage(pageId) {
     const page = (state.data.pages || []).find(p => p.id === pageId);
@@ -1296,11 +1393,8 @@ function renderProjectNotebook(type, entityId, entity) {
                     <button id="notebook-tab-btn-active" onclick="switchNotebookTab('active')" class="notebook-tab-btn ${activeTab === 'active' ? 'active' : ''}">
                         <i class="fas fa-file-signature text-xs"></i> Documento Principale
                     </button>
-                    <button id="notebook-tab-btn-permanent" onclick="switchNotebookTab('permanent')" class="notebook-tab-btn ${activeTab === 'permanent' ? 'active' : ''}">
-                        <i class="fas fa-thumbtack text-xs"></i> Note Fisse
-                    </button>
                     <button id="notebook-tab-btn-pages" onclick="switchNotebookTab('pages')" class="notebook-tab-btn ${activeTab === 'pages' ? 'active' : ''}">
-                        <i class="fas fa-layer-group text-xs"></i> Pagine <span class="text-[10px] px-1.5 py-0.5 rounded-full ${pagesCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${pagesCount}</span>
+                        <i class="fas fa-layer-group text-xs"></i> Pagine & Schede <span class="text-[10px] px-1.5 py-0.5 rounded-full ${pagesCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${pagesCount}</span>
                     </button>
                 </div>
 
@@ -1376,21 +1470,7 @@ function renderProjectNotebook(type, entityId, entity) {
             </div>
         </div>
 
-        <!-- TAB PANEL 2: NOTE FISSE E RIFERIMENTI -->
-        <div id="notebook-tab-panel-permanent" class="${activeTab === 'permanent' ? 'block' : 'hidden'} p-4 md:p-6">
-            <div class="mb-3 p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2.5">
-                <i class="fas fa-thumbtack text-blue-500 mt-0.5 shrink-0 text-sm"></i>
-                <div>
-                    <strong>Note Fisse di Riferimento:</strong> Spazio dedicato a informazioni sempreverdi, credenziali protette, link di riferimento e linee guida chiave del progetto.
-                </div>
-            </div>
-
-            <div class="project-notebook-editor bg-slate-50 dark:bg-[#1f293d] rounded-xl border border-slate-200 dark:border-darkborder shadow-inner">
-                <div id="quill-perm-editor-${type}" class="min-h-[180px] text-sm"></div>
-            </div>
-        </div>
-
-        <!-- TAB PANEL 3: PAGINE (SOTTOPAGINE & DOCUMENTI WIKI) -->
+        <!-- TAB PANEL 2: PAGINE (SOTTOPAGINE & DOCUMENTI WIKI) -->
         <div id="notebook-tab-panel-pages" class="${activeTab === 'pages' ? 'block' : 'hidden'} p-4 md:p-6">
             ${activeSubpageId ? renderSubpageEditor(type, entityId) : renderProjectSubpagesList(type, entityId, allPages)}
         </div>
@@ -1437,6 +1517,7 @@ function renderProjectSubpagesList(type, entityId, pages) {
                     let preview = plain.substring(0, 100);
                     if (plain.length > 100) preview += '...';
                     if (!preview) preview = 'Pagina vuota, clicca per scrivere...';
+                    const tags = p.tags || [];
                     return `
                         <div class="subpage-card p-4 rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-purple-300 dark:hover:border-purple-700 transition flex flex-col justify-between group shadow-sm">
                             <div class="cursor-pointer" onclick="openNotebookSubpage('${p.id}')">
@@ -1448,6 +1529,11 @@ function renderProjectSubpagesList(type, entityId, pages) {
                                         <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">${escapeNoteHtml(p.title)}</h4>
                                     </div>
                                 </div>
+                                ${tags.length > 0 ? `
+                                    <div class="flex flex-wrap gap-1 mb-2">
+                                        ${tags.map(t => `<span class="px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-[9px] font-bold text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">#${escapeNoteHtml(t)}</span>`).join('')}
+                                    </div>
+                                ` : ''}
                                 <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-3">${escapeNoteHtml(preview)}</p>
                             </div>
                             <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
@@ -1499,6 +1585,27 @@ function renderSubpageEditor(type, entityId) {
                     <button onclick="deleteNotebookSubpage('${page.id}')" class="text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-xl transition" title="Elimina questa sottopagina">
                         <i class="fas fa-trash text-xs"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- TAG MANAGEMENT SOTTOPAGINA -->
+            <div class="flex flex-wrap items-center gap-1.5 py-1 text-xs">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1 flex items-center gap-1"><i class="fas fa-tags text-purple-500"></i> Tag:</span>
+                ${(page.tags || []).map(tag => `
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                        #${escapeNoteHtml(tag)}
+                        <button type="button" onclick="removePageTag('${page.id}', '${escapeNoteHtml(tag)}')" class="hover:text-red-500 text-[10px] ml-0.5" title="Rimuovi tag"><i class="fas fa-times"></i></button>
+                    </span>
+                `).join('')}
+                <div class="inline-flex items-center gap-1">
+                    <input type="text" id="newPageTagInput_${page.id}" placeholder="+ nuovo tag..." onkeydown="if(event.key==='Enter'){event.preventDefault();addPageTag('${page.id}', this.value);}" class="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none focus:border-purple-500 w-28">
+                    <button type="button" onclick="addPageTag('${page.id}', document.getElementById('newPageTagInput_${page.id}').value)" class="p-1 text-purple-600 hover:text-purple-800 text-xs font-bold" title="Aggiungi tag"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="hidden sm:flex items-center gap-1 text-[10px] text-slate-400 ml-2">
+                    <span class="text-[9px]">Suggeriti:</span>
+                    ${['verbale riunione', 'scheda tecnica', 'brief', 'appunti'].filter(t => !(page.tags || []).includes(t)).slice(0, 3).map(t => `
+                        <button type="button" onclick="addPageTag('${page.id}', '${t}')" class="px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-purple-50 hover:text-purple-600 text-slate-500 dark:text-slate-400 transition">+ ${t}</button>
+                    `).join('')}
                 </div>
             </div>
 
@@ -1564,6 +1671,11 @@ function initQuillEditors() {
     if (activeSubpageId) {
         const subEl = document.getElementById('quill-subpage-editor');
         if (subEl) {
+            // Rimuovi eventuale toolbar orfana duplicata
+            const prev = subEl.previousElementSibling;
+            if (prev && prev.classList.contains('ql-toolbar')) {
+                prev.remove();
+            }
             const page = (state.data.pages || []).find(p => p.id === activeSubpageId);
             if (page) {
                 subEl.__quill = new Quill(subEl, {
@@ -1595,6 +1707,11 @@ function initQuillEditors() {
         if (type !== 'sphere') {
             const el = document.getElementById(`quill-editor-${type}`);
             if (el) {
+                // Rimuovi eventuale toolbar orfana duplicata
+                const prev = el.previousElementSibling;
+                if (prev && prev.classList.contains('ql-toolbar')) {
+                    prev.remove();
+                }
                 el.__quill = new Quill(el, {
                     theme: 'snow',
                     modules: { toolbar: tOpts },
@@ -1612,23 +1729,6 @@ function initQuillEditors() {
                 });
             }
         }
-
-        const permEl = document.getElementById(`quill-perm-editor-${type}`);
-        if (permEl) {
-            permEl.__quill = new Quill(permEl, {
-                theme: 'snow',
-                modules: { toolbar: tOpts },
-                placeholder: 'Scrivi qui le informazioni chiave permanenti...'
-            });
-            permEl.__quill.root.innerHTML = entity.permanentNotes || '';
-            attachQuillAutocomplete(permEl.__quill);
-            permEl.__quill.on('text-change', function(delta, oldDelta, source) { 
-                if (source === 'user') {
-                    entity.permanentNotes = permEl.__quill.root.innerHTML; 
-                    AppData.triggerSave(); 
-                }
-            });
-        }
     });
 }
 
@@ -1639,10 +1739,15 @@ if (typeof window !== 'undefined' && !window.__notebookDelegatedListenerAttached
         // Pillola Task
         const taskPill = e.target.closest('[data-task-id]');
         if (taskPill) {
+            // Se il click è sulla casella checkbox, lascia che sia toggleTaskFromPill a gestirla!
+            if (e.target.closest('.note-task-chk')) {
+                return;
+            }
             const taskId = taskPill.getAttribute('data-task-id');
             if (taskId) {
                 e.stopPropagation();
-                if (typeof editTask === 'function') editTask(taskId);
+                if (typeof openTaskModal === 'function') openTaskModal(taskId);
+                else if (typeof editTask === 'function') editTask(taskId);
                 return;
             }
         }

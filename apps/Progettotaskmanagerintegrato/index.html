@@ -3,8 +3,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Life Hub - OS</title>
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    <!-- Favicon Elegante Life Hub OS -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='lg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%233b82f6'/><stop offset='100%' stop-color='%236366f1'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='%230f172a'/><rect x='1' y='1' width='30' height='30' rx='7' fill='none' stroke='url(%23lg)' stroke-width='1.2' stroke-opacity='0.5'/><circle cx='16' cy='16' r='9' fill='none' stroke='url(%23lg)' stroke-width='2.2'/><circle cx='16' cy='16' r='5' fill='none' stroke='%2338bdf8' stroke-width='1.5'/><path d='M13 16.5l2.2 2.2 4.5-4.5' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -48,6 +48,7 @@
             </button>
             <button onclick="navigate('global_calendar')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-calendar-alt mr-1 text-emerald-500"></i> Calendario</button>
             <button onclick="navigate('global_tasks')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-check-double mr-1 text-blue-500"></i> Tasks</button>
+            <button onclick="navigate('global_pages')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-book-open mr-1 text-indigo-500"></i> Pagine & Note</button>
             <button onclick="navigate('global_contacts')" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-address-book mr-1 text-purple-500"></i> Rubrica</button>
             <div class="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1 hidden md:block"></div>
             <button onclick="openTrashModal()" class="text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 relative" title="Cestino di Recupero"><i class="fas fa-trash-alt text-base text-rose-500/80"></i></button>
@@ -192,6 +193,45 @@
             </div>
             
             <div class="pt-2 border-t border-slate-200 dark:border-slate-700 mb-6">
+                <h3 class="text-sm font-bold flex items-center mb-1 text-slate-700 dark:text-slate-200">
+                    <i class="fas fa-sliders-h text-purple-500 mr-2"></i> Funzionalità & Pulizia Interfaccia
+                </h3>
+                <p class="text-[11px] text-slate-400 mb-3">Attiva o disattiva i moduli per mantenere la plancia e i progetti leggeri e puliti.</p>
+                <div class="space-y-2.5 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-calendar-day text-blue-500 w-4"></i> Widget Agenda & Google Cal (Home)
+                        </span>
+                        <input type="checkbox" id="feat_dashboardAgenda" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('dashboardAgenda', this.checked)">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-th-large text-indigo-500 w-4"></i> Matrice di Eisenhower (Priorità)
+                        </span>
+                        <input type="checkbox" id="feat_eisenhowerMatrix" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('eisenhowerMatrix', this.checked)">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-emerald-500 w-4"></i> Timeline & Avanzamento Progetti
+                        </span>
+                        <input type="checkbox" id="feat_projectTimeline" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('projectTimeline', this.checked)">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-users text-purple-500 w-4"></i> Sezione Contatti & Rubrica
+                        </span>
+                        <input type="checkbox" id="feat_contacts" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('contacts', this.checked)">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <i class="fas fa-clock text-amber-500 w-4"></i> Blocchi Orari Calendario (Time Blocking)
+                        </span>
+                        <input type="checkbox" id="feat_timeBlocks" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" onchange="toggleFeatureSetting('timeBlocks', this.checked)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700 mb-6">
                 <h3 class="text-sm font-bold flex items-center mb-3 text-slate-700 dark:text-slate-200"><i class="fas fa-file-export text-indigo-500 mr-2"></i> Backup & Ripristino</h3>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" onclick="AppData.exportJSON()" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-2"><i class="fas fa-download"></i> Scarica Backup JSON</button>
@@ -204,6 +244,127 @@
                 <div class="flex gap-2">
                     <button onclick="toggleSettings(false)" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Chiudi</button>
                     <button onclick="saveSettings()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MODIFICA / DETTAGLI TASK UNIVERSALE -->
+    <div id="taskEditModal" class="modal-overlay hidden" onclick="if(event.target === this) closeTaskModal()">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-xl modal-animate max-h-[90vh] flex flex-col">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3 md:hidden"></div>
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                        <i class="fas fa-tasks text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 id="temTitle" class="font-bold text-sm text-slate-800 dark:text-white">Dettagli & Modifica Task</h3>
+                        <p id="temSubtitle" class="text-[10px] text-slate-400">Modifica parametri, date, contesto e vincoli</p>
+                    </div>
+                </div>
+                <button onclick="closeTaskModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
+            </div>
+
+            <div class="overflow-y-auto pr-1 py-4 space-y-4 flex-1">
+                <input type="hidden" id="temId">
+                
+                <!-- Titolo Task -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Titolo Task</label>
+                    <input type="text" id="temTitleInput" class="input-base text-sm font-bold py-2 w-full" placeholder="Nome dell'attività...">
+                </div>
+
+                <!-- Riga Priorità, Scadenza, Attiva dal -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Priorità</label>
+                        <select id="temPriority" class="input-base text-xs font-bold py-2 w-full">
+                            <option value="0">⚪ Nessuna</option>
+                            <option value="1">🔵 Bassa</option>
+                            <option value="2">🟡 Media</option>
+                            <option value="3">🔴 Alta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Scadenza</label>
+                        <input type="date" id="temDueDate" class="input-base text-xs font-bold py-2 w-full">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1">⏳ Attiva dal</label>
+                        <input type="date" id="temStartDate" class="input-base text-xs font-bold py-2 w-full border-indigo-200 dark:border-indigo-800">
+                    </div>
+                </div>
+
+                <!-- Riga Contesto & Ricorrenza -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contesto (Progetto/Sfera)</label>
+                        <select id="temContext" class="input-base text-xs font-bold py-2 w-full"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ricorrenza</label>
+                        <select id="temRecurrence" class="input-base text-xs font-bold py-2 w-full">
+                            <option value="none">No Ricorrenza</option>
+                            <option value="daily">🔁 Giornaliera</option>
+                            <option value="weekdays">🔁 Lunedì - Venerdì</option>
+                            <option value="weekly">🔁 Settimanale</option>
+                            <option value="monthly">🔁 Mensile</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Riga Eisenhower & Tempo -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Eisenhower</label>
+                        <select id="temEisenhower" class="input-base text-xs font-bold py-2 w-full">
+                            <option value="auto">Auto (per priorità)</option>
+                            <option value="q1">Q1: Fai Subito 🔥</option>
+                            <option value="q2">Q2: Pianifica 💎</option>
+                            <option value="q3">Q3: Delega ⚡</option>
+                            <option value="q4">Q4: Elimina 🌱</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stima (Minuti)</label>
+                        <input type="number" id="temEstimated" min="0" step="5" class="input-base text-xs font-bold py-2 w-full" placeholder="es. 30">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tempo Speso (Minuti)</label>
+                        <input type="number" id="temSpent" min="0" step="5" class="input-base text-xs font-bold py-2 w-full" placeholder="es. 15">
+                    </div>
+                </div>
+
+                <!-- Sezione Subtasks -->
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span><i class="fas fa-list-check mr-1.5 text-blue-500"></i> Sottotask / Checklist</span>
+                        <span id="temSubtaskCount" class="text-[9px] font-mono">0</span>
+                    </label>
+                    <div id="temSubtaskList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="text" id="temNewSubtask" placeholder="Aggiungi una sotto-attività..." class="input-base text-xs py-1.5 flex-1" onkeypress="if(event.key==='Enter') addSubtaskFromModal()">
+                        <button type="button" onclick="addSubtaskFromModal()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition active:scale-95">
+                            <i class="fas fa-plus mr-1"></i> Aggiungi
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sezione Note Task -->
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Note & Dettagli (Opzionale)</label>
+                    <textarea id="temNotes" rows="3" class="input-base text-xs py-2 w-full resize-y" placeholder="Aggiungi annotazioni, link o dettagli su questa task..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder shrink-0">
+                <button type="button" onclick="deleteTaskFromModal()" class="px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition flex items-center gap-1.5">
+                    <i class="fas fa-trash text-xs"></i> <span>Elimina</span>
+                </button>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition">Annulla</button>
+                    <button type="button" onclick="saveTaskModal()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition active:scale-95">Salva Modifiche</button>
                 </div>
             </div>
         </div>
@@ -447,7 +608,7 @@
                 </h3>
                 <button onclick="closeNoteTaskPicker()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
             </div>
-            <input type="text" id="noteTaskSearchInput" oninput="renderNoteTaskPickerList(this.value)" placeholder="Cerca task..." class="input-base text-xs py-2 mb-3">
+            <input type="text" id="noteTaskSearchInput" oninput="renderNoteTaskPickerList(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();createNewTaskAndInsertIntoNote(this.value);}" placeholder="Cerca task o premi Invio per crearne una nuova..." class="input-base text-xs py-2 mb-3">
             <div id="noteTaskPickerList" class="space-y-1.5 max-h-64 overflow-y-auto pr-1"></div>
         </div>
     </div>
@@ -676,6 +837,13 @@
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="closeMobileMoreSheet(); navigate('global_pages')" class="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-left flex items-center gap-3 transition active:scale-95">
+                    <i class="fas fa-book-open text-xl text-indigo-600 dark:text-indigo-400"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800 dark:text-white">Pagine & Note</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">Verbali & schede</div>
+                    </div>
+                </button>
                 <button onclick="closeMobileMoreSheet(); navigate('global_contacts')" class="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-left flex items-center gap-3 transition active:scale-95">
                     <i class="fas fa-address-book text-xl text-purple-600 dark:text-purple-400"></i>
                     <div>

@@ -397,6 +397,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
             color: #93c5fd !important;
             border-color: rgba(59, 130, 246, 0.4) !important;
         }
+        .note-task-chk {
+            width: 0.85rem !important;
+            height: 0.85rem !important;
+            margin: 0 !important;
+            accent-color: #3b82f6 !important;
+            cursor: pointer !important;
+        }
+        .note-task-pill.is-completed {
+            opacity: 0.75 !important;
+            background: rgba(148, 163, 184, 0.15) !important;
+            border-color: rgba(148, 163, 184, 0.3) !important;
+            color: #64748b !important;
+        }
+        .dark .note-task-pill.is-completed {
+            background: rgba(148, 163, 184, 0.2) !important;
+            color: #94a3b8 !important;
+            border-color: rgba(148, 163, 184, 0.3) !important;
+        }
         .note-contact-pill {
             background: rgba(168, 85, 247, 0.1) !important;
             border-color: rgba(168, 85, 247, 0.3) !important;
@@ -705,4 +723,39 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
         .task-swipe-content {
             transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform;
+        }
+
+        /* --- MODALITA ZEN PER IL QUADERNO --- */
+        .zen-focus-mode {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 9999 !important;
+            background: #ffffff !important;
+            padding: 2rem !important;
+            overflow-y: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+        }
+        .dark .zen-focus-mode {
+            background: #0f172a !important;
+        }
+        .zen-focus-mode .project-notebook-editor {
+            flex: 1 1 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            border-radius: 1rem !important;
+        }
+        .zen-focus-mode .ql-container {
+            flex: 1 1 auto !important;
+            font-size: 1.05rem !important;
+        }
+        .zen-focus-mode .ql-editor {
+            min-height: 70vh !important;
+            padding: 2rem !important;
+            font-size: 1.1rem !important;
+            line-height: 1.8 !important;
+            max-width: 900px !important;
+            margin: 0 auto !important;
         }
