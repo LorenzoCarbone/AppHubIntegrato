@@ -37,6 +37,7 @@ function addTaskFromGlobalMobile() {
     const parsed = parseSmartInput(tIn.value.trim(), ctxValue);
     const finalPri = parsed.priority > 0 ? parsed.priority : parseInt(pIn.value);
     const finalDate = parsed.date || dIn.value;
+    const maxOrderMobile = (state.data.tasks || []).reduce((max, x) => Math.max(max, x.order || 0), 0);
     state.data.tasks.push({ 
         id: 't_' + Date.now(), 
         title: parsed.title, 
@@ -45,6 +46,7 @@ function addTaskFromGlobalMobile() {
         dueDate: finalDate, 
         startDate: parsed.startDate || '',
         contextId: parsed.contextId, 
+        order: maxOrderMobile + 10,
         subtasks: [] 
     });
     
@@ -119,6 +121,7 @@ function addTask(cId) {
     const finalCtx = ctxSelect ? ctxSelect.value : (cId || '');
     
     const parsed = parseSmartInput(tIn.value.trim(), finalCtx);
+    const maxOrderCtx = (state.data.tasks || []).reduce((max, x) => Math.max(max, x.order || 0), 0);
     state.data.tasks.push({ 
         id: 't_' + Date.now(), 
         title: parsed.title, 
@@ -127,6 +130,7 @@ function addTask(cId) {
         dueDate: parsed.date, 
         startDate: parsed.startDate || '',
         contextId: parsed.contextId, 
+        order: maxOrderCtx + 10,
         subtasks: [] 
     });
     
@@ -146,6 +150,7 @@ function addTaskFromGlobal() {
     const finalPri = parsed.priority > 0 ? parsed.priority : parseInt(pIn.value);
     const finalDate = parsed.date || dIn.value;
     
+    const maxOrderMobile = (state.data.tasks || []).reduce((max, x) => Math.max(max, x.order || 0), 0);
     state.data.tasks.push({ 
         id: 't_' + Date.now(), 
         title: parsed.title, 
@@ -154,6 +159,7 @@ function addTaskFromGlobal() {
         dueDate: finalDate, 
         startDate: parsed.startDate || '',
         contextId: parsed.contextId, 
+        order: maxOrderMobile + 10,
         subtasks: [] 
     });
     
@@ -526,6 +532,7 @@ function duplicateTask(id) {
     clone.id = 't_' + Date.now();
     clone.title = clone.title + ' (Copia)';
     clone.completed = false;
+    clone.order = (t.order !== undefined ? t.order : 0) + 1;
     if (clone.subtasks) {
         clone.subtasks.forEach(st => {
             st.id = 'st_' + Math.random().toString(36).substr(2, 9);
@@ -572,3 +579,217 @@ function renderTaskBadges(t) {
     }
     return badges;
 }
+
+// --- GESTIONE DRAG & DROP E RIORDINAMENTO MANUALE DELLE TASK ---
+let draggedTaskId = null;
+let draggedTaskGroupName = null;
+
+function onTaskDragStart(e, taskId, groupName) {
+    draggedTaskId = taskId;
+    draggedTaskGroupName = groupName;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
+    document.body.classList.add('is-dragging');
+    const row = document.getElementById('taskRow_' + taskId);
+    if (row) {
+        setTimeout(() => row.classList.add('task-row-dragging'), 0);
+    }
+}
+
+function onTaskDragEnd(e) {
+    document.body.classList.remove('is-dragging');
+    document.querySelectorAll('.task-drag-over-top, .task-drag-over-bottom').forEach(el => {
+        el.classList.remove('task-drag-over-top', 'task-drag-over-bottom');
+    });
+    if (draggedTaskId) {
+        const row = document.getElementById('taskRow_' + draggedTaskId);
+        if (row) {
+            row.classList.remove('task-row-dragging');
+        }
+    }
+    draggedTaskId = null;
+    draggedTaskGroupName = null;
+}
+
+function onTaskDragOver(e) {
+    if (!draggedTaskId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+
+    const row = e.currentTarget;
+    if (row.id === 'taskRow_' + draggedTaskId) return;
+
+    const rect = row.getBoundingClientRect();
+    const isTopHalf = (e.clientY - rect.top) < (rect.height / 2);
+
+    if (isTopHalf) {
+        row.classList.add('task-drag-over-top');
+        row.classList.remove('task-drag-over-bottom');
+    } else {
+        row.classList.add('task-drag-over-bottom');
+        row.classList.remove('task-drag-over-top');
+    }
+}
+
+function onTaskDragLeave(e) {
+    const row = e.currentTarget;
+    row.classList.remove('task-drag-over-top', 'task-drag-over-bottom');
+}
+
+function onTaskDrop(e, targetTaskId, targetGroupName) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const row = e.currentTarget;
+    row.classList.remove('task-drag-over-top', 'task-drag-over-bottom');
+    document.body.classList.remove('is-dragging');
+
+    if (!draggedTaskId || draggedTaskId === targetTaskId) {
+        onTaskDragEnd(e);
+        return;
+    }
+
+    const rect = row.getBoundingClientRect();
+    const dropBefore = (e.clientY - rect.top) < (rect.height / 2);
+
+    const draggedTask = (state.data.tasks || []).find(t => t.id === draggedTaskId);
+    const targetTask = (state.data.tasks || []).find(t => t.id === targetTaskId);
+    if (!draggedTask || !targetTask) {
+        onTaskDragEnd(e);
+        return;
+    }
+
+    const listConf = tmListSettings[state.ui.tmView] || { groupBy: 'priority', sortBy: 'priority' };
+
+    // Se spostata tra gruppi diversi (es. da P2 a P3), adegua la proprietà corrispondente
+    if (listConf.groupBy === 'priority') {
+        draggedTask.priority = targetTask.priority;
+    } else if (listConf.groupBy === 'date') {
+        draggedTask.dueDate = targetTask.dueDate;
+    }
+
+    // Assicura che ogni task abbia un order numerico
+    state.data.tasks.forEach((t, i) => {
+        if (typeof t.order !== 'number' || isNaN(t.order)) t.order = i * 10;
+    });
+
+    // Isola il gruppo di task pertinente
+    let groupTasks = [];
+    if (listConf.groupBy === 'priority') {
+        groupTasks = state.data.tasks.filter(t => t.priority === targetTask.priority && t.completed === targetTask.completed);
+    } else if (listConf.groupBy === 'date') {
+        const todayStr = getISODate(new Date());
+        if (!targetTask.dueDate) {
+            groupTasks = state.data.tasks.filter(t => !t.dueDate && t.completed === targetTask.completed);
+        } else if (targetTask.dueDate === todayStr) {
+            groupTasks = state.data.tasks.filter(t => t.dueDate === todayStr && t.completed === targetTask.completed);
+        } else {
+            groupTasks = state.data.tasks.filter(t => t.dueDate && t.dueDate !== todayStr && t.completed === targetTask.completed);
+        }
+    } else {
+        groupTasks = state.data.tasks.filter(t => t.completed === targetTask.completed);
+    }
+
+    // Ordina il gruppo secondo il loro ordine attuale
+    groupTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // Rimuovi draggedTask dal gruppo
+    groupTasks = groupTasks.filter(t => t.id !== draggedTaskId);
+
+    // Inserisci draggedTask nella nuova posizione prima o dopo targetTask
+    const targetIdx = groupTasks.findIndex(t => t.id === targetTaskId);
+    if (targetIdx !== -1) {
+        const insertIdx = dropBefore ? targetIdx : targetIdx + 1;
+        groupTasks.splice(insertIdx, 0, draggedTask);
+    } else {
+        groupTasks.push(draggedTask);
+    }
+
+    // Riassegna valori di order sequenziali puliti (0, 10, 20...)
+    groupTasks.forEach((t, idx) => {
+        t.order = idx * 10;
+    });
+
+    AppData.triggerSave();
+    onTaskDragEnd(e);
+    render();
+    showToast("Posizione task salvata", "info");
+}
+
+function onTaskGroupDragOver(e) {
+    if (!draggedTaskId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function onTaskGroupDragLeave(e) {
+    // No-op
+}
+
+function onTaskGroupDrop(e, groupName) {
+    e.preventDefault();
+    document.body.classList.remove('is-dragging');
+
+    if (!draggedTaskId) return;
+    const draggedTask = (state.data.tasks || []).find(t => t.id === draggedTaskId);
+    if (!draggedTask) {
+        onTaskDragEnd(e);
+        return;
+    }
+
+    const listConf = tmListSettings[state.ui.tmView] || { groupBy: 'priority', sortBy: 'priority' };
+
+    // Se rilasciato sullo sfondo del gruppo
+    if (listConf.groupBy === 'priority') {
+        if (groupName === 'Alta') draggedTask.priority = 3;
+        else if (groupName === 'Media') draggedTask.priority = 2;
+        else if (groupName === 'Bassa') draggedTask.priority = 1;
+        else if (groupName === 'Nessuna') draggedTask.priority = 0;
+    } else if (listConf.groupBy === 'date') {
+        const todayStr = getISODate(new Date());
+        if (groupName === 'Oggi') draggedTask.dueDate = todayStr;
+        else if (groupName === 'Senza Data') draggedTask.dueDate = '';
+        else if (groupName === 'Prossimamente') {
+            if (!draggedTask.dueDate || draggedTask.dueDate === todayStr) {
+                const tmr = new Date();
+                tmr.setDate(tmr.getDate() + 1);
+                draggedTask.dueDate = getISODate(tmr);
+            }
+        }
+    }
+
+    // Posiziona in fondo al gruppo corrispondente
+    let groupTasks = [];
+    if (listConf.groupBy === 'priority') {
+        groupTasks = state.data.tasks.filter(t => t.priority === draggedTask.priority && !t.completed && t.id !== draggedTaskId);
+    } else if (listConf.groupBy === 'date') {
+        const todayStr = getISODate(new Date());
+        if (!draggedTask.dueDate) {
+            groupTasks = state.data.tasks.filter(t => !t.dueDate && !t.completed && t.id !== draggedTaskId);
+        } else if (draggedTask.dueDate === todayStr) {
+            groupTasks = state.data.tasks.filter(t => t.dueDate === todayStr && !t.completed && t.id !== draggedTaskId);
+        } else {
+            groupTasks = state.data.tasks.filter(t => t.dueDate && t.dueDate !== todayStr && !t.completed && t.id !== draggedTaskId);
+        }
+    } else {
+        groupTasks = state.data.tasks.filter(t => !t.completed && t.id !== draggedTaskId);
+    }
+
+    const maxOrder = groupTasks.reduce((max, t) => Math.max(max, t.order || 0), 0);
+    draggedTask.order = maxOrder + 10;
+
+    AppData.triggerSave();
+    onTaskDragEnd(e);
+    render();
+    showToast("Task spostata", "info");
+}
+
+window.onTaskDragStart = onTaskDragStart;
+window.onTaskDragEnd = onTaskDragEnd;
+window.onTaskDragOver = onTaskDragOver;
+window.onTaskDragLeave = onTaskDragLeave;
+window.onTaskDrop = onTaskDrop;
+window.onTaskGroupDragOver = onTaskGroupDragOver;
+window.onTaskGroupDragLeave = onTaskGroupDragLeave;
+window.onTaskGroupDrop = onTaskGroupDrop;

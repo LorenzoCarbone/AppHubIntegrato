@@ -910,12 +910,34 @@ function getFilteredAdvancedTasksData() {
     const hasCompleted = tasks.some(t => t.completed);
     if(!state.ui.showCompletedTasks) tasks = tasks.filter(t => !t.completed);
 
+    // Baseline numerico per l'ordinamento manuale persistente
+    tasks.forEach((t, i) => {
+        if (typeof t.order !== 'number' || isNaN(t.order)) {
+            t.order = i * 10;
+        }
+    });
+
     tasks.sort((a,b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        if(listConf.sortBy === 'priority') return b.priority - a.priority;
-        if(listConf.sortBy === 'date') return (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31');
-        if(listConf.sortBy === 'name') return a.title.localeCompare(b.title);
-        return 0;
+        if(listConf.sortBy === 'priority') {
+            if(b.priority !== a.priority) return b.priority - a.priority;
+            return (a.order ?? 0) - (b.order ?? 0);
+        }
+        if(listConf.sortBy === 'date') {
+            const da = a.dueDate || '9999-12-31';
+            const db = b.dueDate || '9999-12-31';
+            if(da !== db) return da.localeCompare(db);
+            return (a.order ?? 0) - (b.order ?? 0);
+        }
+        if(listConf.sortBy === 'name') {
+            const cmp = a.title.localeCompare(b.title);
+            if(cmp !== 0) return cmp;
+            return (a.order ?? 0) - (b.order ?? 0);
+        }
+        if(listConf.sortBy === 'manual') {
+            return (a.order ?? 0) - (b.order ?? 0);
+        }
+        return (a.order ?? 0) - (b.order ?? 0);
     });
 
     return { tasks, listTitle, listConf, hasCompleted, todayStr };
@@ -960,7 +982,7 @@ function generateAdvancedTasksHtml() {
                 tasksHtml += `<div class="flex justify-between items-center px-2 mb-3 mt-6"><h3 class="text-xs font-bold ${groupColor} uppercase tracking-wider">${groupName}</h3><span class="text-[10px] text-slate-400 font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">${groupTasks.length}</span></div>`;
             }
             
-            tasksHtml += `<div class="bg-white dark:bg-darkpanel rounded-2xl shadow-sm border border-slate-100 dark:border-darkborder overflow-hidden mb-5">`;
+            tasksHtml += `<div class="bg-white dark:bg-darkpanel rounded-2xl shadow-sm border border-slate-100 dark:border-darkborder overflow-hidden mb-5 drop-zone" ondragover="onTaskGroupDragOver(event)" ondragleave="onTaskGroupDragLeave(event)" ondrop="onTaskGroupDrop(event, '${escapeNoteHtml(groupName)}')">`;
             
             groupTasks.forEach((t, idx) => {
                 const ctx = getContextInfo(t.contextId);
@@ -1027,9 +1049,22 @@ function generateAdvancedTasksHtml() {
                     const effectiveCbClass = cbClass;
 
                     tasksHtml += `
-                        <div id="taskRow_${t.id}" class="p-2.5 md:p-3 flex flex-col ${borderBottom} group hover:bg-slate-50 dark:hover:bg-[#202938] transition-colors border-l-[3px] ${t.completed ? 'opacity-50 grayscale' : ''}" style="${ctxBorder}">
-                            <div class="flex items-start gap-3 w-full">
-                                <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-1 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')">
+                        <div id="taskRow_${t.id}" 
+                             draggable="true" 
+                             data-task-id="${t.id}"
+                             data-task-group="${escapeNoteHtml(groupName)}"
+                             ondragstart="onTaskDragStart(event, '${t.id}', '${escapeNoteHtml(groupName)}')" 
+                             ondragend="onTaskDragEnd(event)" 
+                             ondragover="onTaskDragOver(event)" 
+                             ondragleave="onTaskDragLeave(event)" 
+                             ondrop="onTaskDrop(event, '${t.id}', '${escapeNoteHtml(groupName)}')"
+                             class="p-2.5 md:p-3 flex flex-col ${borderBottom} group hover:bg-slate-50 dark:hover:bg-[#202938] transition-colors border-l-[3px] ${t.completed ? 'opacity-50 grayscale' : ''}" 
+                             style="${ctxBorder}">
+                            <div class="flex items-start gap-2.5 w-full">
+                                <div class="task-drag-handle cursor-grab active:cursor-grabbing text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 opacity-20 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center pt-1 shrink-0 select-none" title="Trascina per riordinare">
+                                    <i class="fas fa-grip-vertical text-xs"></i>
+                                </div>
+                                <input type="checkbox" class="task-checkbox shrink-0 mt-0.5 ml-0.5 ${effectiveCbClass}" ${t.completed ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleTask('${t.id}')">
                                 <div class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer select-none" onclick="editTask('${t.id}')">
                                     <p class="${t.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'} text-[13px] sm:text-[14px] font-medium leading-snug break-words">${t.title}</p>
                                     ${(t.dueDate || t.contextId || hasSub || t.startDate || t.recurrence || t.estimatedMinutes || t.spentMinutes) ? `
@@ -1245,6 +1280,7 @@ function renderAdvancedTaskManager() {
                                             <option value="priority" ${listConf.sortBy==='priority'?'selected':''}>Priorità</option>
                                             <option value="date" ${listConf.sortBy==='date'?'selected':''}>Data</option>
                                             <option value="name" ${listConf.sortBy==='name'?'selected':''}>Nome</option>
+                                            <option value="manual" ${listConf.sortBy==='manual'?'selected':''}>Ordine Manuale</option>
                                         </select>
                                     </div>
                                 </div>
