@@ -231,13 +231,13 @@ function renderDashboard() {
         const projs = (state.data.projects || []).filter(p => p.sphereId === s.id && !p.archived);
         spheresHtml += `
             <div onclick="navigate('sphere', '${s.id}')" 
-                 class="panel panel-hover p-5 flex flex-col items-center justify-center text-center rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition group cursor-pointer relative overflow-hidden" 
+                 class="panel panel-hover p-4 sm:p-5 flex flex-col items-center justify-center text-center rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition group cursor-pointer relative overflow-hidden" 
                  style="border-top: 4px solid ${s.color}">
-                <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-xs" style="background-color: ${s.color}18">
-                    <i class="fas ${s.icon} text-2xl" style="color: ${s.color}"></i>
+                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110 shadow-xs" style="background-color: ${s.color}18">
+                    <i class="fas ${s.icon} text-xl sm:text-2xl" style="color: ${s.color}"></i>
                 </div>
-                <h3 class="font-extrabold text-sm text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">${s.name}</h3>
-                <span class="text-[11px] font-bold text-slate-400 mt-1">${projs.length} ${projs.length === 1 ? 'progetto' : 'progetti'}</span>
+                <h3 class="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">${s.name}</h3>
+                <span class="text-[10px] sm:text-[11px] font-bold text-slate-400 mt-0.5">${projs.length} ${projs.length === 1 ? 'progetto' : 'progetti'}</span>
             </div>`;
     });
     
@@ -264,29 +264,70 @@ function renderDashboard() {
         });
 
         pinnedSectionsHtml += `
-            <div class="mb-8">
-                <div class="flex justify-between items-center mb-4 group">
-                    <h2 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3 group">
+                    <h3 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         <i class="fas fa-layer-group text-amber-500 mr-2 text-xs"></i> ${level.name}
-                    </h2>
+                    </h3>
                     <div class="opacity-0 group-hover:opacity-100 transition flex gap-1">
                         <button onclick="renamePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-blue-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Rinomina livello"><i class="fas fa-edit"></i></button>
                         ${level.id !== 'pl_default' ? `<button onclick="deletePinnedLevel('${level.id}')" class="text-xs p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Elimina livello"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-h-[60px] p-2 -m-2 rounded-2xl drop-zone" 
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 min-h-[50px] p-2 -m-2 rounded-2xl drop-zone" 
                      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, null, null, 'dashboard_pinned_${level.id}')">
-                    ${cardsHtml || `<p class="text-xs text-slate-400 italic col-span-full pt-3 pb-2 text-center">Trascina qui i progetti in evidenza per averli sempre a portata di mano.</p>`}
+                    ${cardsHtml || `<p class="text-xs text-slate-400 italic col-span-full py-4 text-center">Trascina qui i progetti in evidenza per averli sempre a portata di mano.</p>`}
                 </div>
             </div>`;
     });
 
-    pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-3.5 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 rounded-2xl mb-8"><i class="fas fa-plus mr-1.5"></i> Aggiungi Nuovo Livello</button>`;
+    pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-2.5 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 rounded-2xl"><i class="fas fa-plus mr-1.5"></i> Aggiungi Nuovo Livello</button>`;
 
-    // Metriche rapide
-    const activeTasksCount = (state.data.tasks || []).filter(t => !t.completed).length;
-    const pagesCount = (state.data.pages || []).length;
-    const contactsCount = (state.data.contacts || []).length;
+    // Task in scadenza oggi (AL MASSIMO le task in scadenza oggi)
+    const todayIso = getISODate(new Date());
+    const todayTasks = (state.data.tasks || []).filter(t => t.dueDate === todayIso);
+    const uncompletedToday = todayTasks.filter(t => !t.completed);
+    
+    let todayTasksHtml = '';
+    if (uncompletedToday.length > 0) {
+        todayTasksHtml = `
+            <div class="panel p-5 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-sm">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-darkborder">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                        <h2 class="text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fas fa-calendar-day text-rose-500"></i> In Scadenza Oggi
+                        </h2>
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">${uncompletedToday.length}</span>
+                    </div>
+                    <button onclick="navigate('global_tasks')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                        Task Manager <i class="fas fa-arrow-right text-[10px]"></i>
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    ${uncompletedToday.map(t => {
+                        const ctx = getContextInfo(t.contextId);
+                        let priColor = "border-slate-200 text-slate-400";
+                        if (t.priority === 3) priColor = "border-red-400 text-red-500";
+                        else if (t.priority === 2) priColor = "border-amber-400 text-amber-500";
+                        else if (t.priority === 1) priColor = "border-blue-400 text-blue-500";
+                        return `
+                            <div class="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-darkborder transition group">
+                                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox cursor-pointer shrink-0">
+                                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate cursor-pointer" onclick="editTask('${t.id}')">${t.title}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    ${t.contextId ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded border truncate" style="color:${ctx.color}; border-color:${ctx.color}40; background-color:${ctx.color}10">${ctx.name}</span>` : ''}
+                                    ${t.priority > 0 ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${priColor}">P${t.priority}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
 
     // Formattazione data odierna estesa
     const now = new Date();
@@ -295,89 +336,41 @@ function renderDashboard() {
     const dateFormatted = `${daysItalian[now.getDay()]}, ${now.getDate()} ${monthsItalian[now.getMonth()]} ${now.getFullYear()}`;
 
     return `
-        <div class="max-w-6xl mx-auto space-y-8 pb-10">
-            <!-- BANNER BENVENUTO / HERO -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-darkpanel p-6 rounded-3xl border border-slate-200 dark:border-darkborder shadow-sm">
+        <div class="max-w-6xl mx-auto space-y-7 pb-10">
+            <!-- HEADER BENVENUTO / HERO (Pulito, senza bottoni ridondanti) -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-darkborder">
                 <div>
                     <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mb-1">
                         <i class="far fa-calendar-alt"></i> ${dateFormatted}
                     </span>
-                    <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Panoramica Life Hub</h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">La tua centrale operativa personale: sfere, progetti e documentazione</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <button onclick="navigate('global_tasks')" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-2">
-                        <i class="fas fa-check-double text-xs"></i> Vai alle Task
-                    </button>
-                    <button onclick="navigate('global_pages')" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition active:scale-95 flex items-center gap-2">
-                        <i class="fas fa-book-open text-xs text-indigo-500"></i> Pagine & Note
-                    </button>
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Panoramica Life Hub</h1>
                 </div>
             </div>
 
-            <!-- 4 SCHEDE DI ACCESSO RAPIDO -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div onclick="navigate('global_tasks')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
-                            <i class="fas fa-check-double"></i>
-                        </div>
-                        <span class="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">${activeTasksCount}</span>
-                    </div>
-                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 transition">Attività in Corso</h4>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Task aperte e scadenze</p>
-                </div>
+            <!-- SEZIONE 1: AL MASSIMO LE TASK IN SCADENZA OGGI (Se presenti) -->
+            ${todayTasksHtml}
 
-                <div onclick="navigate('global_calendar')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <i class="fas fa-arrow-right text-xs text-slate-300 group-hover:text-emerald-500 transition-colors"></i>
-                    </div>
-                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 transition">Calendario</h4>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Time blocking e impegni</p>
-                </div>
-
-                <div onclick="navigate('global_pages')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
-                            <i class="fas fa-book-open"></i>
-                        </div>
-                        <span class="text-xl font-black text-purple-600 dark:text-purple-400 font-mono">${pagesCount}</span>
-                    </div>
-                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-purple-600 transition">Pagine & Note</h4>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Verbali, appunti e schede</p>
-                </div>
-
-                <div onclick="navigate('global_contacts')" class="p-4 rounded-2xl bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder shadow-sm hover:shadow-md transition cursor-pointer group">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
-                            <i class="fas fa-address-book"></i>
-                        </div>
-                        <span class="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">${contactsCount}</span>
-                    </div>
-                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 transition">Rubrica Contatti</h4>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Persone e collaboratori</p>
-                </div>
-            </div>
-
-            <!-- SEZIONE SFERE DI VITA -->
+            <!-- SEZIONE 2: PROGETTI IN EVIDENZA -->
             <section class="space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
+                    <h2 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        <i class="fas fa-star text-amber-500 mr-2 text-xs"></i> Progetti in Evidenza
+                    </h2>
+                </div>
+                ${pinnedSectionsHtml}
+            </section>
+
+            <!-- SEZIONE 3: SFERE DI VITA -->
+            <section class="space-y-4 pt-2">
                 <div class="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-darkborder">
                     <h2 class="text-xs font-bold flex items-center text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                         <i class="fas fa-globe text-blue-500 mr-2 text-xs"></i> Le tue Sfere di Vita
                     </h2>
-                    <button onclick="openEntityModal('create', 'sphere')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition flex items-center bg-blue-50 dark:bg-blue-900/20 px-3.5 py-1.5 rounded-xl active:scale-95 shadow-xs">
+                    <button onclick="openEntityModal('create', 'sphere')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition flex items-center bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-xl active:scale-95 shadow-xs">
                         <i class="fas fa-plus mr-1.5"></i> Nuova Sfera
                     </button>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">${spheresHtml}</div>
-            </section>
-
-            <!-- SEZIONE PROGETTI IN EVIDENZA -->
-            <section class="space-y-4 pt-2">
-                ${pinnedSectionsHtml}
             </section>
         </div>`;
 }
@@ -1422,26 +1415,32 @@ function exportBulkPages(format = 'markdown', specificIds = null, packageType = 
         targetPages = pages.filter(p => state.ui.selectedPageIds.includes(p.id));
     } else {
         // Se nessuna è spuntata, esporta tutte le pagine attualmente visibili dai filtri
+        const selSpheres = Array.isArray(state.ui.selectedPageSpheres) ? state.ui.selectedPageSpheres : (state.ui.selectedPageSphere && state.ui.selectedPageSphere !== 'all' ? [state.ui.selectedPageSphere] : []);
+        const selProjects = Array.isArray(state.ui.selectedPageProjects) ? state.ui.selectedPageProjects : (state.ui.selectedPageContext && state.ui.selectedPageContext !== 'all' ? [state.ui.selectedPageContext] : []);
+        const selTipologie = Array.isArray(state.ui.selectedPageTipologie) ? state.ui.selectedPageTipologie : (state.ui.selectedPageTipologia && state.ui.selectedPageTipologia !== 'all' ? [state.ui.selectedPageTipologia] : []);
         const query = (state.ui.pageSearchQuery || '').toLowerCase().trim();
+
         targetPages = pages.filter(p => {
-            if (state.ui.selectedPageSphere && state.ui.selectedPageSphere !== 'all') {
-                const s = resolvePageSphere(p);
-                if (!s || s.id !== state.ui.selectedPageSphere) return false;
+            const pInfo = resolvePageProject(p);
+            const sInfo = resolvePageSphere(p, pInfo);
+
+            if (selSpheres.length > 0) {
+                if (!sInfo || !selSpheres.includes(sInfo.id)) return false;
             }
-            if (state.ui.selectedPageContext && state.ui.selectedPageContext !== 'all') {
-                if (p.contextId !== state.ui.selectedPageContext) return false;
+            if (selProjects.length > 0) {
+                if (!p.contextId || !selProjects.includes(p.contextId)) return false;
             }
-            if (state.ui.selectedPageTipologia && state.ui.selectedPageTipologia !== 'all') {
-                if ((p.tipologia || 'Riunione') !== state.ui.selectedPageTipologia) return false;
-            }
-            if (state.ui.selectedPageTag && state.ui.selectedPageTag !== 'all') {
-                if (!p.tags || !p.tags.includes(state.ui.selectedPageTag)) return false;
+            if (selTipologie.length > 0) {
+                const pt = p.tipologia || 'Riunione';
+                if (!selTipologie.includes(pt)) return false;
             }
             if (query) {
                 const plain = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
                 const title = (p.title || '').toLowerCase();
-                const matchesTag = (p.tags || []).some(t => t.toLowerCase().includes(query));
-                return title.includes(query) || plain.includes(query) || matchesTag;
+                const projName = (pInfo ? pInfo.name : '').toLowerCase();
+                const sphereName = (sInfo ? sInfo.name : '').toLowerCase();
+                const tipologia = (p.tipologia || '').toLowerCase();
+                return title.includes(query) || plain.includes(query) || projName.includes(query) || sphereName.includes(query) || tipologia.includes(query);
             }
             return true;
         });
@@ -1530,14 +1529,14 @@ function exportBulkPages(format = 'markdown', specificIds = null, packageType = 
 // Funzione principale di rendering della vista centralizzata Pagine
 function renderGlobalPages() {
     const pages = state.data.pages || [];
-    const currentTagFilter = state.ui.selectedPageTag || 'all';
-    const currentSphereFilter = state.ui.selectedPageSphere || 'all';
-    const currentContextFilter = state.ui.selectedPageContext || 'all';
-    const currentTipoFilter = state.ui.selectedPageTipologia || 'all';
+    const selSpheres = Array.isArray(state.ui.selectedPageSpheres) ? state.ui.selectedPageSpheres : (state.ui.selectedPageSphere && state.ui.selectedPageSphere !== 'all' ? [state.ui.selectedPageSphere] : []);
+    const selProjects = Array.isArray(state.ui.selectedPageProjects) ? state.ui.selectedPageProjects : (state.ui.selectedPageContext && state.ui.selectedPageContext !== 'all' ? [state.ui.selectedPageContext] : []);
+    const selTipologie = Array.isArray(state.ui.selectedPageTipologie) ? state.ui.selectedPageTipologie : (state.ui.selectedPageTipologia && state.ui.selectedPageTipologia !== 'all' ? [state.ui.selectedPageTipologia] : []);
     const groupBy = state.ui.pagesGroupBy || 'none';
     const viewMode = state.ui.pagesViewMode || 'table';
     const query = (state.ui.pageSearchQuery || '').toLowerCase().trim();
     const selectedIds = state.ui.selectedPageIds || [];
+    const openFilterMenu = state.ui.openFilterMenu || null;
 
     if (activeSubpageId) {
         return `
@@ -1549,33 +1548,20 @@ function renderGlobalPages() {
         `;
     }
 
-    // Calcolo tag per le pillole
-    const tagCounts = {};
-    pages.forEach(p => {
-        (p.tags || []).forEach(t => {
-            const clean = t.trim().toLowerCase();
-            if (clean) tagCounts[clean] = (tagCounts[clean] || 0) + 1;
-        });
-    });
-    const allTags = Object.keys(tagCounts).sort();
-
-    // Filtro pagine
+    // Filtro pagine con multi-selezione
     let filtered = pages.filter(p => {
         const pInfo = resolvePageProject(p);
         const sInfo = resolvePageSphere(p, pInfo);
 
-        if (currentSphereFilter !== 'all') {
-            if (!sInfo || sInfo.id !== currentSphereFilter) return false;
+        if (selSpheres.length > 0) {
+            if (!sInfo || !selSpheres.includes(sInfo.id)) return false;
         }
-        if (currentContextFilter !== 'all') {
-            if (p.contextId !== currentContextFilter) return false;
+        if (selProjects.length > 0) {
+            if (!p.contextId || !selProjects.includes(p.contextId)) return false;
         }
-        if (currentTipoFilter !== 'all') {
+        if (selTipologie.length > 0) {
             const pt = p.tipologia || 'Riunione';
-            if (pt !== currentTipoFilter) return false;
-        }
-        if (currentTagFilter !== 'all') {
-            if (!p.tags || !p.tags.includes(currentTagFilter)) return false;
+            if (!selTipologie.includes(pt)) return false;
         }
         if (query) {
             const plain = (p.content || '').replace(/<[^>]*>?/gm, '').toLowerCase();
@@ -1583,8 +1569,7 @@ function renderGlobalPages() {
             const projName = (pInfo ? pInfo.name : '').toLowerCase();
             const sphereName = (sInfo ? sInfo.name : '').toLowerCase();
             const tipologia = (p.tipologia || '').toLowerCase();
-            const matchesTag = (p.tags || []).some(t => t.toLowerCase().includes(query));
-            return title.includes(query) || plain.includes(query) || projName.includes(query) || sphereName.includes(query) || tipologia.includes(query) || matchesTag;
+            return title.includes(query) || plain.includes(query) || projName.includes(query) || sphereName.includes(query) || tipologia.includes(query);
         }
         return true;
     });
@@ -1596,24 +1581,46 @@ function renderGlobalPages() {
         return db.localeCompare(da);
     });
 
-    // Opzioni Filtri
-    let sphereOptions = `<option value="all">Tutti gli Ambiti</option>`;
-    (state.data.spheres || []).forEach(s => {
-        sphereOptions += `<option value="${s.id}" ${currentSphereFilter === s.id ? 'selected' : ''}>${s.name}</option>`;
-    });
-
-    let projOptions = `<option value="all">Tutti i Progetti</option>`;
-    (state.data.projects || []).forEach(p => {
-        projOptions += `<option value="${p.id}" ${currentContextFilter === p.id ? 'selected' : ''}>📁 ${escapeNoteHtml(p.name)}</option>`;
-        (state.data.subprojects || []).filter(sp => sp.projectId === p.id).forEach(sp => {
-            projOptions += `<option value="${sp.id}" ${currentContextFilter === sp.id ? 'selected' : ''}>  ↳ ${escapeNoteHtml(sp.name)}</option>`;
-        });
-    });
-
-    const isAllVisibleSelected = filtered.length > 0 && filtered.every(p => selectedIds.includes(p.id));
     const visibleIds = filtered.map(p => p.id);
+    window._currentVisiblePageIds = visibleIds;
+    const isAllVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.includes(id));
+    const hasActiveFilters = selSpheres.length > 0 || selProjects.length > 0 || selTipologie.length > 0 || query.length > 0;
 
-    // Funzione interna per generare una singola riga tabella (esatta tabella dello screenshot)
+    // Etichette dinamiche per i bottoni multi-select a tendina
+    let sphereButtonLabel = 'Tutti gli Ambiti';
+    if (selSpheres.length === 1) {
+        const s = (state.data.spheres || []).find(x => x.id === selSpheres[0]);
+        sphereButtonLabel = s ? s.name : '1 Ambito';
+    } else if (selSpheres.length > 1) {
+        sphereButtonLabel = `${selSpheres.length} Ambiti`;
+    }
+
+    let projectButtonLabel = 'Tutti i Progetti';
+    if (selProjects.length === 1) {
+        const p = (state.data.projects || []).find(x => x.id === selProjects[0]) || (state.data.subprojects || []).find(x => x.id === selProjects[0]);
+        projectButtonLabel = p ? p.name : '1 Progetto';
+    } else if (selProjects.length > 1) {
+        projectButtonLabel = `${selProjects.length} Progetti`;
+    }
+
+    let tipoButtonLabel = 'Tutte le Tipologie';
+    if (selTipologie.length === 1) {
+        tipoButtonLabel = selTipologie[0];
+    } else if (selTipologie.length > 1) {
+        tipoButtonLabel = `${selTipologie.length} Tipologie`;
+    }
+
+    const allSpheres = state.data.spheres || [];
+    const allProjects = state.data.projects || [];
+    const allDocumentTypes = typeof getDocumentTypes === 'function' ? getDocumentTypes() : [
+        { name: 'Riunione', color: '#6366f1' },
+        { name: 'Call', color: '#0ea5e9' },
+        { name: 'Appunti liberi', color: '#10b981' },
+        { name: 'Colloquio', color: '#8b5cf6' },
+        { name: 'Briefing', color: '#f59e0b' }
+    ];
+
+    // Funzione interna per generare una singola riga tabella (esatta tabella dello screenshot Notion, senza tag)
     function renderTableRow(p) {
         const isSelected = selectedIds.includes(p.id);
         const pInfo = resolvePageProject(p);
@@ -1637,12 +1644,6 @@ function renderGlobalPages() {
                             <a href="javascript:void(0)" onclick="openGlobalPageEditor('${p.id}')" class="font-bold text-xs text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition hover:underline truncate block max-w-xs md:max-w-md">
                                 ${escapeNoteHtml(p.title || 'Senza titolo')}
                             </a>
-                            ${(p.tags && p.tags.length > 0) ? `
-                                <div class="flex flex-wrap gap-1 mt-0.5">
-                                    ${p.tags.slice(0, 3).map(t => `<span class="text-[9px] text-slate-400 font-mono">#${escapeNoteHtml(t)}</span>`).join('')}
-                                    ${p.tags.length > 3 ? `<span class="text-[9px] text-slate-400">+${p.tags.length - 3}</span>` : ''}
-                                </div>
-                            ` : ''}
                         </div>
                     </div>
                 </td>
@@ -1682,6 +1683,58 @@ function renderGlobalPages() {
                     </div>
                 </td>
             </tr>
+        `;
+    }
+
+    // Funzione interna per generare una singola scheda card per la modalità Griglia
+    function renderPageCard(p) {
+        const isSelected = selectedIds.includes(p.id);
+        const pInfo = resolvePageProject(p);
+        const sInfo = resolvePageSphere(p, pInfo);
+        const plain = (p.content || '').replace(/<[^>]*>?/gm, '').trim();
+        let preview = plain.substring(0, 110);
+        if (plain.length > 110) preview += '...';
+        if (!preview) preview = 'Pagina vuota, clicca per scrivere o aggiungere contenuti...';
+
+        return `
+            <div class="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-indigo-400 dark:hover:border-indigo-600 transition flex flex-col justify-between group shadow-sm hover:shadow-md ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/20' : ''}">
+                <div>
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="togglePageSelection('${p.id}', this.checked)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer">
+                            ${renderAmbitoBadge(sInfo)}
+                        </div>
+                        <span class="text-[10px] font-mono text-slate-400">${p.date || 'Oggi'}</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-2">
+                        ${renderTipologiaBadge(p.tipologia)}
+                        ${renderProjectBadge(pInfo)}
+                    </div>
+
+                    <h3 onclick="openGlobalPageEditor('${p.id}')" class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition cursor-pointer mb-2 line-clamp-1">
+                        ${escapeNoteHtml(p.title || 'Senza titolo')}
+                    </h3>
+
+                    <p onclick="openGlobalPageEditor('${p.id}')" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed cursor-pointer mb-4">
+                        ${escapeNoteHtml(preview)}
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button onclick="openGlobalPageEditor('${p.id}')" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
+                        <i class="fas fa-edit text-[10px]"></i> Modifica
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="event.stopPropagation(); openPageExportModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded text-xs" title="Esporta documento">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs" title="Elimina">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         `;
     }
 
@@ -1726,7 +1779,56 @@ function renderGlobalPages() {
         `;
     }
 
-    // Costruzione contenuto principale (Flat o Raggruppato)
+    // Costruzione della mappa dei gruppi (funziona sia per Tabella che per Griglia)
+    let groupsArray = [];
+    if (groupBy !== 'none') {
+        const groupsMap = new Map();
+
+        filtered.forEach(p => {
+            let groupKey = 'altro';
+            let groupTitle = 'Altro';
+            let groupColor = '#6366f1';
+            let groupIcon = 'fa-folder';
+
+            if (groupBy === 'sphere') {
+                const s = resolvePageSphere(p);
+                if (s) {
+                    groupKey = s.id;
+                    groupTitle = s.name;
+                    groupColor = s.color || '#6366f1';
+                    groupIcon = s.icon || 'fa-layer-group';
+                } else {
+                    groupTitle = 'Nessun Ambito';
+                    groupColor = '#94a3b8';
+                }
+            } else if (groupBy === 'project') {
+                const proj = resolvePageProject(p);
+                if (proj) {
+                    groupKey = proj.id;
+                    groupTitle = proj.name;
+                    groupColor = proj.color || '#6366f1';
+                    groupIcon = proj.icon || 'fa-folder';
+                } else {
+                    groupTitle = 'Generale (Senza Progetto)';
+                    groupColor = '#94a3b8';
+                }
+            } else if (groupBy === 'tipologia') {
+                const tipo = p.tipologia || 'Riunione';
+                groupKey = tipo;
+                groupTitle = tipo;
+                groupIcon = 'fa-dot-circle';
+            }
+
+            if (!groupsMap.has(groupKey)) {
+                groupsMap.set(groupKey, { title: groupTitle, color: groupColor, icon: groupIcon, pages: [], key: groupKey });
+            }
+            groupsMap.get(groupKey).pages.push(p);
+        });
+
+        groupsArray = Array.from(groupsMap.values());
+    }
+
+    // Costruzione contenuto principale (Flat o Raggruppato, per Tabella o Griglia)
     let mainViewHtml = '';
 
     if (filtered.length === 0) {
@@ -1741,7 +1843,7 @@ function renderGlobalPages() {
                     <button onclick="createGlobalNewPage()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-md hover:bg-indigo-700 transition">
                         <i class="fas fa-plus mr-1"></i> Crea Pagina
                     </button>
-                    <button onclick="state.ui.selectedPageSphere = 'all'; state.ui.selectedPageContext = 'all'; state.ui.selectedPageTipologia = 'all'; state.ui.selectedPageTag = 'all'; state.ui.pageSearchQuery = ''; render();" class="text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 underline">
+                    <button onclick="resetPageFilters()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 underline">
                         Azzera filtri
                     </button>
                 </div>
@@ -1773,51 +1875,6 @@ function renderGlobalPages() {
             `;
         } else {
             // Tabella raggruppata per Ambito, Progetto o Tipologia
-            const groupsMap = new Map();
-
-            filtered.forEach(p => {
-                let groupKey = 'altro';
-                let groupTitle = 'Altro';
-                let groupColor = '#6366f1';
-                let groupIcon = 'fa-folder';
-
-                if (groupBy === 'sphere') {
-                    const s = resolvePageSphere(p);
-                    if (s) {
-                        groupKey = s.id;
-                        groupTitle = s.name;
-                        groupColor = s.color || '#6366f1';
-                        groupIcon = s.icon || 'fa-layer-group';
-                    } else {
-                        groupTitle = 'Nessun Ambito';
-                        groupColor = '#94a3b8';
-                    }
-                } else if (groupBy === 'project') {
-                    const proj = resolvePageProject(p);
-                    if (proj) {
-                        groupKey = proj.id;
-                        groupTitle = proj.name;
-                        groupColor = proj.color || '#6366f1';
-                        groupIcon = proj.icon || 'fa-folder';
-                    } else {
-                        groupTitle = 'Generale (Senza Progetto)';
-                        groupColor = '#94a3b8';
-                    }
-                } else if (groupBy === 'tipologia') {
-                    const tipo = p.tipologia || 'Riunione';
-                    groupKey = tipo;
-                    groupTitle = tipo;
-                    groupIcon = 'fa-dot-circle';
-                }
-
-                if (!groupsMap.has(groupKey)) {
-                    groupsMap.set(groupKey, { title: groupTitle, color: groupColor, icon: groupIcon, pages: [], key: groupKey });
-                }
-                groupsMap.get(groupKey).pages.push(p);
-            });
-
-            const groupsArray = Array.from(groupsMap.values());
-
             mainViewHtml = `
                 <div class="space-y-6">
                     ${groupsArray.map(grp => `
@@ -1850,61 +1907,39 @@ function renderGlobalPages() {
             `;
         }
     } else {
-        // Modalità Griglia (Card View)
-        mainViewHtml = `
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${filtered.map(p => {
-                    const pInfo = resolvePageProject(p);
-                    const sInfo = resolvePageSphere(p, pInfo);
-                    const plain = (p.content || '').replace(/<[^>]*>?/gm, '').trim();
-                    let preview = plain.substring(0, 110);
-                    if (plain.length > 110) preview += '...';
-                    if (!preview) preview = 'Pagina vuota, clicca per scrivere o aggiungere contenuti...';
-                    const isSelected = selectedIds.includes(p.id);
-
-                    return `
-                        <div class="p-5 rounded-2xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkpanel hover:border-indigo-400 dark:hover:border-indigo-600 transition flex flex-col justify-between group shadow-sm hover:shadow-md ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/20' : ''}">
-                            <div>
-                                <div class="flex items-center justify-between gap-2 mb-2.5">
-                                    <div class="flex items-center gap-2">
-                                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="togglePageSelection('${p.id}', this.checked)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-900 cursor-pointer">
-                                        ${renderAmbitoBadge(sInfo)}
-                                    </div>
-                                    <span class="text-[10px] font-mono text-slate-400">${p.date || 'Oggi'}</span>
+        // Modalità Griglia (Card View): supporta sia Flat che Raggruppato!
+        if (groupBy === 'none') {
+            mainViewHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${filtered.map(p => renderPageCard(p)).join('')}
+                </div>
+            `;
+        } else {
+            // Visualizzazione a gruppi funzionante anche in Griglia
+            mainViewHtml = `
+                <div class="space-y-6">
+                    ${groupsArray.map(grp => `
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-darkborder shadow-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-3 h-3 rounded-full shrink-0 shadow-xs" style="background-color: ${grp.color};"></span>
+                                    <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        ${escapeNoteHtml(grp.title)}
+                                    </h3>
+                                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-xs">${grp.pages.length}</span>
                                 </div>
-
-                                <div class="flex items-center gap-2 mb-2">
-                                    ${renderTipologiaBadge(p.tipologia)}
-                                    ${renderProjectBadge(pInfo)}
-                                </div>
-
-                                <h3 onclick="openGlobalPageEditor('${p.id}')" class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition cursor-pointer mb-2 line-clamp-1">
-                                    ${escapeNoteHtml(p.title || 'Senza titolo')}
-                                </h3>
-
-                                <p onclick="openGlobalPageEditor('${p.id}')" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed cursor-pointer mb-4">
-                                    ${escapeNoteHtml(preview)}
-                                </p>
-                            </div>
-
-                            <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                                <button onclick="openGlobalPageEditor('${p.id}')" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
-                                    <i class="fas fa-edit text-[10px]"></i> Modifica
+                                <button onclick="createGlobalNewPage({${groupBy === 'sphere' ? `sphereId: '${grp.key}'` : (groupBy === 'project' ? `contextId: '${grp.key}'` : `tipologia: '${grp.key}'`)}})" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                                    <i class="fas fa-plus text-[10px]"></i> Aggiungi qui
                                 </button>
-                                <div class="flex items-center gap-1">
-                                    <button onclick="exportSinglePage('${p.id}', 'markdown')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded text-xs" title="Esporta Markdown">
-                                        <i class="fas fa-download"></i>
-                                    </button>
-                                    <button onclick="deleteNotebookSubpage('${p.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs" title="Elimina">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${grp.pages.map(p => renderPageCard(p)).join('')}
                             </div>
                         </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
+                    `).join('')}
+                </div>
+            `;
+        }
     }
 
     return `
@@ -1925,6 +1960,12 @@ function renderGlobalPages() {
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <!-- Seleziona tutti i visualizzati -->
+                    <button onclick="selectAllVisiblePages()" class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-xs active:scale-95 ${isAllVisibleSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-darkborder hover:bg-slate-200'}">
+                        <i class="${isAllVisibleSelected ? 'fas fa-check-square' : 'far fa-check-square text-indigo-500'}"></i>
+                        <span>${isAllVisibleSelected ? 'Deseleziona visualizzati' : 'Seleziona tutti i visualizzati'} (${filtered.length})</span>
+                    </button>
+
                     <!-- Switcher Vista: Tabella vs Griglia -->
                     <div class="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-darkborder text-xs">
                         <button onclick="state.ui.pagesViewMode = 'table'; render();" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${viewMode === 'table' ? 'bg-white dark:bg-darkpanel text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}" title="Vista Tabella Database">
@@ -1988,82 +2029,267 @@ function renderGlobalPages() {
                 </div>
             ` : ''}
 
-            <!-- BARRA DI RICERCA, FILTRI E RAGGRUPPAMENTO -->
-            <div class="bg-white dark:bg-darkpanel p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            <!-- BARRA DI RICERCA, FILTRI MULTI-SELEZIONE E RAGGRUPPAMENTO -->
+            <div class="bg-white dark:bg-darkpanel p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3 relative">
+                ${openFilterMenu ? `<div onclick="closeFilterMenus()" class="fixed inset-0 z-40 bg-transparent"></div>` : ''}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 relative z-40">
                     <!-- Ricerca Testo -->
-                    <div class="relative lg:col-span-2">
+                    <div class="relative lg:col-span-3">
                         <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" value="${escapeNoteHtml(state.ui.pageSearchQuery || '')}" oninput="state.ui.pageSearchQuery = this.value; render();" placeholder="Cerca titolo, contenuto, tag..." class="input-base text-xs pl-9 py-2 w-full">
+                        <input type="text" value="${escapeNoteHtml(state.ui.pageSearchQuery || '')}" oninput="state.ui.pageSearchQuery = this.value; render();" placeholder="Cerca titolo, testo, progetto, sfera..." class="input-base text-xs pl-9 py-2 w-full">
                     </div>
 
-                    <!-- Filtro Ambito (Sfera) -->
-                    <div>
-                        <select onchange="state.ui.selectedPageSphere = this.value; render();" class="input-base text-xs py-2 w-full">
-                            ${sphereOptions}
-                        </select>
+                    <!-- Filtro Ambito (Sfera) Multi-Select Dropdown -->
+                    <div class="relative lg:col-span-2">
+                        <button type="button" onclick="toggleFilterMenu('sphere', event)" class="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${selSpheres.length > 0 ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold ring-2 ring-indigo-500/20' : 'bg-white dark:bg-darkpanel border-slate-200 dark:border-darkborder text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                            <span class="flex items-center gap-1.5 truncate">
+                                <i class="fas fa-layer-group text-slate-400 text-[11px] shrink-0"></i>
+                                <span class="truncate">${sphereButtonLabel}</span>
+                            </span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                ${selSpheres.length > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-600 text-white font-mono">${selSpheres.length}</span>` : ''}
+                                <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
+                            </div>
+                        </button>
+
+                        ${openFilterMenu === 'sphere' ? `
+                            <div class="absolute left-0 mt-1.5 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 space-y-1" onclick="event.stopPropagation();">
+                                <div class="flex items-center justify-between pb-1.5 px-2 border-b border-slate-100 dark:border-slate-700 text-[11px]">
+                                    <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Filtra per Sfera</span>
+                                    ${selSpheres.length > 0 ? `<button type="button" onclick="clearFilterType('sphere', event)" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Azzera</button>` : ''}
+                                </div>
+                                <div class="max-h-56 overflow-y-auto space-y-0.5 py-1">
+                                    ${allSpheres.map(s => {
+                                        const isChecked = selSpheres.includes(s.id);
+                                        return `
+                                            <label class="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-xl cursor-pointer text-xs select-none">
+                                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('sphere', '${s.id}', this.checked, event)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer">
+                                                <span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style="background-color: ${s.color || '#6366f1'}"></span>
+                                                <span class="truncate font-medium text-slate-700 dark:text-slate-200">${escapeNoteHtml(s.name)}</span>
+                                            </label>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
 
-                    <!-- Filtro Progetto -->
-                    <div>
-                        <select onchange="state.ui.selectedPageContext = this.value; render();" class="input-base text-xs py-2 w-full">
-                            ${projOptions}
-                        </select>
+                    <!-- Filtro Progetto Multi-Select Dropdown -->
+                    <div class="relative lg:col-span-2">
+                        <button type="button" onclick="toggleFilterMenu('project', event)" class="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${selProjects.length > 0 ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold ring-2 ring-indigo-500/20' : 'bg-white dark:bg-darkpanel border-slate-200 dark:border-darkborder text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                            <span class="flex items-center gap-1.5 truncate">
+                                <i class="fas fa-folder text-slate-400 text-[11px] shrink-0"></i>
+                                <span class="truncate">${projectButtonLabel}</span>
+                            </span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                ${selProjects.length > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-600 text-white font-mono">${selProjects.length}</span>` : ''}
+                                <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
+                            </div>
+                        </button>
+
+                        ${openFilterMenu === 'project' ? `
+                            <div class="absolute left-0 mt-1.5 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 space-y-1" onclick="event.stopPropagation();">
+                                <div class="flex items-center justify-between pb-1.5 px-2 border-b border-slate-100 dark:border-slate-700 text-[11px]">
+                                    <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Filtra per Progetto</span>
+                                    ${selProjects.length > 0 ? `<button type="button" onclick="clearFilterType('project', event)" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Azzera</button>` : ''}
+                                </div>
+                                <div class="max-h-60 overflow-y-auto space-y-0.5 py-1">
+                                    ${allProjects.map(p => {
+                                        const isChecked = selProjects.includes(p.id);
+                                        const subprojs = (state.data.subprojects || []).filter(sp => sp.projectId === p.id);
+                                        return `
+                                            <div>
+                                                <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-xl cursor-pointer text-xs select-none font-semibold text-slate-800 dark:text-slate-100">
+                                                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('project', '${p.id}', this.checked, event)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer">
+                                                    <i class="fas fa-folder text-amber-500 text-[11px] shrink-0"></i>
+                                                    <span class="truncate">${escapeNoteHtml(p.name)}</span>
+                                                </label>
+                                                ${subprojs.map(sp => {
+                                                    const isSubChecked = selProjects.includes(sp.id);
+                                                    return `
+                                                        <label class="flex items-center gap-2 pl-6 pr-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-xl cursor-pointer text-[11px] select-none text-slate-600 dark:text-slate-300">
+                                                            <input type="checkbox" ${isSubChecked ? 'checked' : ''} onchange="toggleFilterValue('project', '${sp.id}', this.checked, event)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer">
+                                                            <i class="fas fa-level-down-alt text-slate-400 text-[9px] shrink-0"></i>
+                                                            <span class="truncate">${escapeNoteHtml(sp.name)}</span>
+                                                        </label>
+                                                    `;
+                                                }).join('')}
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
 
-                    <!-- Raggruppamento -->
-                    <div>
-                        <select onchange="state.ui.pagesGroupBy = this.value; render();" class="input-base text-xs py-2 w-full font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800">
+                    <!-- Filtro Tipologia Multi-Select Dropdown -->
+                    <div class="relative lg:col-span-2">
+                        <button type="button" onclick="toggleFilterMenu('tipologia', event)" class="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${selTipologie.length > 0 ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold ring-2 ring-indigo-500/20' : 'bg-white dark:bg-darkpanel border-slate-200 dark:border-darkborder text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                            <span class="flex items-center gap-1.5 truncate">
+                                <i class="far fa-dot-circle text-emerald-500 text-[11px] shrink-0"></i>
+                                <span class="truncate">${tipoButtonLabel}</span>
+                            </span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                ${selTipologie.length > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-600 text-white font-mono">${selTipologie.length}</span>` : ''}
+                                <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
+                            </div>
+                        </button>
+
+                        ${openFilterMenu === 'tipologia' ? `
+                            <div class="absolute left-0 mt-1.5 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 space-y-1" onclick="event.stopPropagation();">
+                                <div class="flex items-center justify-between pb-1.5 px-2 border-b border-slate-100 dark:border-slate-700 text-[11px]">
+                                    <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Tipologie</span>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="openDocumentTypesModal()" class="text-[10px] text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold flex items-center gap-1" title="Gestisci elenco tipologie">
+                                            <i class="fas fa-cog text-[9px]"></i> Modifica
+                                        </button>
+                                        ${selTipologie.length > 0 ? `<button type="button" onclick="clearFilterType('tipologia', event)" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Azzera</button>` : ''}
+                                    </div>
+                                </div>
+                                <div class="max-h-56 overflow-y-auto space-y-0.5 py-1">
+                                    ${allDocumentTypes.map(tipo => {
+                                        const isChecked = selTipologie.includes(tipo.name);
+                                        return `
+                                            <label class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-xl cursor-pointer text-xs select-none">
+                                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('tipologia', '${escapeNoteHtml(tipo.name)}', this.checked, event)" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer">
+                                                <span class="truncate font-medium text-slate-700 dark:text-slate-200">${renderTipologiaBadge(tipo.name)}</span>
+                                            </label>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Raggruppamento (GroupBy Dropdown) -->
+                    <div class="lg:col-span-2">
+                        <select onchange="state.ui.pagesGroupBy = this.value; render();" class="w-full px-3 py-2 rounded-xl text-xs font-bold border transition text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800">
                             <option value="none" ${groupBy === 'none' ? 'selected' : ''}>Raggruppa: Nessuno</option>
                             <option value="sphere" ${groupBy === 'sphere' ? 'selected' : ''}>Raggruppa: Ambito (Sfera)</option>
                             <option value="project" ${groupBy === 'project' ? 'selected' : ''}>Raggruppa: Progetto</option>
                             <option value="tipologia" ${groupBy === 'tipologia' ? 'selected' : ''}>Raggruppa: Tipologia</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- FILTRI RAPIDI TIPOLOGIA E TAG -->
-                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs border-t border-slate-100 dark:border-slate-800">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
-                        <i class="far fa-dot-circle text-emerald-500"></i> Tipologia:
-                    </span>
-                    <button type="button" onclick="openDocumentTypesModal()" class="px-2 py-1 rounded-lg text-xs font-bold transition shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 mr-1 flex items-center gap-1">
-                        <i class="fas fa-cog text-[10px]"></i> Modifica
-                    </button>
-                    ${['all', ...((typeof getDocumentTypes === 'function' ? getDocumentTypes() : []).map(t => t.name))].map(tipo => {
-                        const isSel = currentTipoFilter === tipo;
-                        const label = tipo === 'all' ? 'Tutte' : tipo;
-                        return `
-                            <button onclick="state.ui.selectedPageTipologia = '${tipo}'; render();" class="px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 ${isSel ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
-                                ${label}
-                            </button>
-                        `;
-                    }).join('')}
-
-                    ${allTags.length > 0 ? `
-                        <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
-                            <i class="fas fa-tags text-purple-500"></i> Tag:
-                        </span>
-                        <button onclick="state.ui.selectedPageTag = 'all'; render();" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition shrink-0 ${currentTagFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">
-                            Tutti
+                    <!-- Pulsante Reset Filtri -->
+                    <div class="lg:col-span-1">
+                        <button onclick="resetPageFilters()" class="w-full h-full min-h-[36px] px-2.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 shadow-xs active:scale-95 ${hasActiveFilters ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-100' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-darkborder hover:text-slate-600'}" title="Azzera tutti i filtri di ricerca e selezione">
+                            <i class="fas fa-undo text-[11px]"></i>
+                            <span class="sm:inline lg:hidden">Resetta</span>
                         </button>
-                        ${allTags.map(tag => {
-                            const isSel = currentTagFilter === tag;
-                            return `
-                                <button onclick="state.ui.selectedPageTag = '${tag}'; render();" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition shrink-0 ${isSel ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 hover:bg-purple-100'}">
-                                    #${escapeNoteHtml(tag)}
-                                </button>
-                            `;
-                        }).join('')}
-                    ` : ''}
+                    </div>
                 </div>
+
+                <!-- CHIP DI RIEPILOGO FILTRI ATTIVI -->
+                ${hasActiveFilters ? `
+                    <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Filtri attivi:</span>
+                        ${selSpheres.map(sId => {
+                            const s = (state.data.spheres || []).find(x => x.id === sId);
+                            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">${s ? escapeNoteHtml(s.name) : 'Sfera'} <button onclick="toggleFilterValue('sphere', '${sId}', false, event)" class="hover:text-rose-500 ml-0.5"><i class="fas fa-times text-[9px]"></i></button></span>`;
+                        }).join('')}
+                        ${selProjects.map(pId => {
+                            const p = (state.data.projects || []).find(x => x.id === pId) || (state.data.subprojects || []).find(x => x.id === pId);
+                            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">${p ? escapeNoteHtml(p.name) : 'Progetto'} <button onclick="toggleFilterValue('project', '${pId}', false, event)" class="hover:text-rose-500 ml-0.5"><i class="fas fa-times text-[9px]"></i></button></span>`;
+                        }).join('')}
+                        ${selTipologie.map(t => {
+                            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">${escapeNoteHtml(t)} <button onclick="toggleFilterValue('tipologia', '${escapeNoteHtml(t)}', false, event)" class="hover:text-rose-500 ml-0.5"><i class="fas fa-times text-[9px]"></i></button></span>`;
+                        }).join('')}
+                        <button onclick="resetPageFilters()" class="text-[10px] font-bold text-rose-500 hover:underline ml-1">Azzera tutti</button>
+                    </div>
+                ` : ''}
             </div>
 
             <!-- CONTENUTO PRINCIPALE TABELLA / GRUPPI / GRIGLIA -->
             ${mainViewHtml}
         </div>
     `;
+}
+
+// Funzioni helper per la gestione dei filtri e selezioni esposte globalmente
+function toggleFilterMenu(menuName, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    if (state.ui.openFilterMenu === menuName) {
+        state.ui.openFilterMenu = null;
+    } else {
+        state.ui.openFilterMenu = menuName;
+    }
+    render();
+}
+
+function closeFilterMenus() {
+    if (state.ui.openFilterMenu) {
+        state.ui.openFilterMenu = null;
+        render();
+    }
+}
+
+function toggleFilterValue(type, value, checked, event) {
+    if (event) event.stopPropagation();
+    if (type === 'sphere') {
+        if (!Array.isArray(state.ui.selectedPageSpheres)) state.ui.selectedPageSpheres = [];
+        if (checked) {
+            if (!state.ui.selectedPageSpheres.includes(value)) state.ui.selectedPageSpheres.push(value);
+        } else {
+            state.ui.selectedPageSpheres = state.ui.selectedPageSpheres.filter(v => v !== value);
+        }
+    } else if (type === 'project') {
+        if (!Array.isArray(state.ui.selectedPageProjects)) state.ui.selectedPageProjects = [];
+        if (checked) {
+            if (!state.ui.selectedPageProjects.includes(value)) state.ui.selectedPageProjects.push(value);
+        } else {
+            state.ui.selectedPageProjects = state.ui.selectedPageProjects.filter(v => v !== value);
+        }
+    } else if (type === 'tipologia') {
+        if (!Array.isArray(state.ui.selectedPageTipologie)) state.ui.selectedPageTipologie = [];
+        if (checked) {
+            if (!state.ui.selectedPageTipologie.includes(value)) state.ui.selectedPageTipologie.push(value);
+        } else {
+            state.ui.selectedPageTipologie = state.ui.selectedPageTipologie.filter(v => v !== value);
+        }
+    }
+    render();
+}
+
+function clearFilterType(type, event) {
+    if (event) event.stopPropagation();
+    if (type === 'sphere') state.ui.selectedPageSpheres = [];
+    if (type === 'project') state.ui.selectedPageProjects = [];
+    if (type === 'tipologia') state.ui.selectedPageTipologie = [];
+    render();
+}
+
+function resetPageFilters() {
+    state.ui.selectedPageSpheres = [];
+    state.ui.selectedPageProjects = [];
+    state.ui.selectedPageTipologie = [];
+    state.ui.selectedPageSphere = 'all';
+    state.ui.selectedPageContext = 'all';
+    state.ui.selectedPageTipologia = 'all';
+    state.ui.selectedPageTag = 'all';
+    state.ui.pageSearchQuery = '';
+    state.ui.openFilterMenu = null;
+    render();
+    showToast("Filtri azzerati", "info");
+}
+
+function selectAllVisiblePages() {
+    const visibleIds = window._currentVisiblePageIds || [];
+    if (visibleIds.length === 0) return;
+    if (!Array.isArray(state.ui.selectedPageIds)) state.ui.selectedPageIds = [];
+    const allSelected = visibleIds.every(id => state.ui.selectedPageIds.includes(id));
+    if (allSelected) {
+        state.ui.selectedPageIds = state.ui.selectedPageIds.filter(id => !visibleIds.includes(id));
+        showToast("Selezione annullata per le pagine visibili", "info");
+    } else {
+        state.ui.selectedPageIds = Array.from(new Set([...state.ui.selectedPageIds, ...visibleIds]));
+        showToast(`${visibleIds.length} pagine selezionate`, "success");
+    }
+    render();
 }
 
 // Esponi funzioni su window per chiamate inline
@@ -2075,6 +2301,12 @@ window.clearPageSelection = clearPageSelection;
 window.deleteBulkSelectedPages = deleteBulkSelectedPages;
 window.exportBulkPages = exportBulkPages;
 window.navigateToNotebookContext = navigateToNotebookContext;
+window.toggleFilterMenu = toggleFilterMenu;
+window.closeFilterMenus = closeFilterMenus;
+window.toggleFilterValue = toggleFilterValue;
+window.clearFilterType = clearFilterType;
+window.resetPageFilters = resetPageFilters;
+window.selectAllVisiblePages = selectAllVisiblePages;
 
 // AVVIO
 window.onload = () => AppData.initialize();

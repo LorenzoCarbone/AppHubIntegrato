@@ -1689,6 +1689,12 @@ function openPageExportModal(pageId) {
     if (!page) return;
     const modal = document.getElementById('pageExportModal');
     if (!modal) return;
+    const isBulkEl = document.getElementById('exportIsBulk');
+    if (isBulkEl) isBulkEl.value = 'false';
+    const pkgSel = document.getElementById('exportPackageTypeSelector');
+    if (pkgSel) pkgSel.classList.add('hidden');
+    const printBtn = document.getElementById('exportPrintBtn');
+    if (printBtn) printBtn.classList.remove('hidden');
     const targetIdEl = document.getElementById('exportTargetPageId');
     if (targetIdEl) targetIdEl.value = page.id;
     const titleEl = document.getElementById('exportModalPageTitle');
@@ -1789,7 +1795,7 @@ function renderProjectNotebook(type, entityId, entity) {
                         </div>
                     </div>
                     <div class="project-notebook-editor bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder shadow-inner focus-within:ring-2 focus-within:ring-purple-500/30 transition">
-                        <div id="quill-editor-${type}" class="min-h-[200px]"></div>
+                        <div id="quill-editor-${type}" class="min-h-[450px]"></div>
                     </div>
                 </div>
             ` : `
@@ -1840,12 +1846,6 @@ function renderProjectSubpagesList(type, entityId, pages) {
                                 <i class="far fa-file-alt text-purple-500 text-xs"></i>
                                 ${escapeNoteHtml(p.title || 'Senza titolo')}
                             </h4>
-
-                            ${tags.length > 0 ? `
-                                <div class="flex flex-wrap gap-1 mb-2">
-                                    ${tags.map(t => `<span class="px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-[9px] font-bold text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">#${escapeNoteHtml(t)}</span>`).join('')}
-                                </div>
-                            ` : ''}
 
                             <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-3">${escapeNoteHtml(preview)}</p>
                         </div>
@@ -1991,44 +1991,21 @@ function renderSubpageEditor(type, entityId) {
                 </div>
             </div>
 
-            <!-- TAG DELLA PAGINA -->
-            <div class="flex flex-wrap items-center gap-1.5 py-0.5 text-xs">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1"><i class="fas fa-tags text-purple-500"></i> Tag:</span>
-                ${(page.tags || []).map(tag => `
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                        #${escapeNoteHtml(tag)}
-                        <button type="button" onclick="removePageTag('${page.id}', '${escapeNoteHtml(tag)}')" class="hover:text-red-500 text-[10px] ml-0.5"><i class="fas fa-times"></i></button>
-                    </span>
-                `).join('')}
-                <div class="inline-flex items-center gap-1">
-                    <input type="text" id="newPageTagInput_${page.id}" placeholder="+ tag..." onkeydown="if(event.key==='Enter'){event.preventDefault();addPageTag('${page.id}', this.value);}" class="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none focus:border-purple-500 w-24">
+            <!-- TOOLBAR DI INSERIMENTO RAPIDO (Task, Contatti, Pagine e comandi con /) -->
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 text-xs">
+                <button type="button" onclick="openNoteTaskPicker()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 dark:border-slate-700 font-bold transition shrink-0 flex items-center gap-1.5 active:scale-95"><i class="fas fa-link text-blue-500"></i> Task</button>
+                <button type="button" onclick="openNoteContactPicker()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-purple-50 hover:text-purple-600 border border-slate-200 dark:border-slate-700 font-bold transition shrink-0 flex items-center gap-1.5 active:scale-95"><i class="fas fa-user-tag text-purple-500"></i> Contatto (@)</button>
+                <button type="button" onclick="openNotePagePicker()" class="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800/60 font-bold transition shrink-0 flex items-center gap-1.5 active:scale-95"><i class="fas fa-file-alt text-purple-600"></i> Pagina ([[)</button>
+                <div class="hidden sm:flex items-center gap-2 ml-auto text-[11px] text-slate-400">
+                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">/</span> comandi e snippet
+                    <span>•</span>
+                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">[[</span> collega pagina
                 </div>
             </div>
 
-            <!-- TOOLBAR DI INSERIMENTO PULITA & SPAZIOSA -->
-            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <button type="button" onclick="insertNoteCallout('idea')" class="px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40 font-bold hover:bg-amber-100 transition shrink-0 flex items-center gap-1 active:scale-95">💡 Idea</button>
-                <button type="button" onclick="insertNoteCallout('info')" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40 font-bold hover:bg-blue-100 transition shrink-0 flex items-center gap-1 active:scale-95">ℹ️ Info</button>
-                <button type="button" onclick="insertNoteCallout('warning')" class="px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/40 font-bold hover:bg-red-100 transition shrink-0 flex items-center gap-1 active:scale-95">⚠️ Avviso</button>
-                <button type="button" onclick="insertNoteCallout('success')" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-bold hover:bg-emerald-100 transition shrink-0 flex items-center gap-1 active:scale-95">✅ Decisione</button>
-                <button type="button" onclick="insertNoteQuote()" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40 font-bold hover:bg-indigo-100 transition shrink-0 flex items-center gap-1 active:scale-95">❝ Citazione</button>
-                <button type="button" onclick="insertNoteDivider()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold hover:bg-slate-200 transition shrink-0 active:scale-95">➖ Divisore</button>
-                <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
-                <button type="button" onclick="openNoteTaskPicker()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 dark:border-slate-700 font-bold transition shrink-0 flex items-center gap-1 active:scale-95"><i class="fas fa-link text-blue-500"></i> Task</button>
-                <button type="button" onclick="openNoteContactPicker()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-purple-50 hover:text-purple-600 border border-slate-200 dark:border-slate-700 font-bold transition shrink-0 flex items-center gap-1 active:scale-95"><i class="fas fa-user-tag text-purple-500"></i> Contatto</button>
-                <button type="button" onclick="openNotePagePicker()" class="px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800/60 font-bold transition shrink-0 flex items-center gap-1 active:scale-95"><i class="fas fa-file-alt text-purple-600"></i> Pagina ([[)</button>
-                <div class="hidden lg:flex items-center gap-1.5 ml-auto text-[11px] text-slate-400">
-                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">/</span> comandi
-                    <span class="mx-1">•</span>
-                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">@</span> contatti
-                    <span class="mx-1">•</span>
-                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">[[</span> wiki
-                </div>
-            </div>
-
-            <!-- CONTAINER EDITOR TESTO SPAZIOSO -->
+            <!-- CONTAINER EDITOR TESTO SPAZIOSO A CAPACITÀ ILLIMITATA -->
             <div class="project-notebook-editor bg-white dark:bg-darkbg rounded-xl border border-slate-200 dark:border-darkborder shadow-inner focus-within:ring-2 focus-within:ring-purple-500/30 transition">
-                <div id="quill-subpage-editor" class="min-h-[380px] text-sm"></div>
+                <div id="quill-subpage-editor" class="min-h-[550px] text-sm"></div>
             </div>
         </div>
     `;
