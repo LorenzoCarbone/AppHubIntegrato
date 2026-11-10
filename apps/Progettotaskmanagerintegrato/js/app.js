@@ -283,47 +283,122 @@ function renderDashboard() {
 
     pinnedSectionsHtml += `<button onclick="addPinnedLevel()" class="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition w-full text-center py-2.5 border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 rounded-2xl"><i class="fas fa-plus mr-1.5"></i> Aggiungi Nuovo Livello</button>`;
 
-    // Task in scadenza oggi (AL MASSIMO le task in scadenza oggi)
+    // Focus del Giorno: Task in scadenza oggi & Task a Massima Priorità (P3)
     const todayIso = getISODate(new Date());
-    const todayTasks = (state.data.tasks || []).filter(t => t.dueDate === todayIso);
-    const uncompletedToday = todayTasks.filter(t => !t.completed);
-    
-    let todayTasksHtml = '';
-    if (uncompletedToday.length > 0) {
-        todayTasksHtml = `
-            <div class="panel p-5 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-sm">
-                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-darkborder">
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = getISODate(tomorrow);
+
+    const uncompletedTasks = (state.data.tasks || []).filter(t => !t.completed);
+    const todayTasks = uncompletedTasks.filter(t => t.dueDate === todayIso);
+    const highPriTasks = uncompletedTasks.filter(t => t.priority === 3);
+
+    let focusTasksHtml = '';
+    if (todayTasks.length > 0 || highPriTasks.length > 0) {
+        // Helper per renderizzare una singola riga task in modo compatto ed elegante
+        function renderFocusTaskRow(t, mode) {
+            const ctx = getContextInfo(t.contextId);
+            let badgeHtml = '';
+
+            if (mode === 'today') {
+                if (t.priority === 3) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-0.5"><i class="fas fa-fire text-[8px]"></i> P3</span>`;
+                } else if (t.priority === 2) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold border border-amber-300 dark:border-amber-700/60 text-amber-600 dark:text-amber-400">P2</span>`;
+                } else if (t.priority === 1) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold border border-blue-300 dark:border-blue-700/60 text-blue-600 dark:text-blue-400">P1</span>`;
+                }
+            } else {
+                // mode === 'priority'
+                if (t.dueDate === todayIso) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1"><i class="fas fa-calendar-day text-[8px]"></i> Oggi</span>`;
+                } else if (t.dueDate === tomorrowIso) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1"><i class="far fa-calendar-alt text-[8px]"></i> Domani</span>`;
+                } else if (t.dueDate && t.dueDate < todayIso) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-300 dark:border-rose-700 flex items-center gap-1"><i class="fas fa-exclamation-triangle text-[8px]"></i> Scaduta</span>`;
+                } else if (t.dueDate) {
+                    badgeHtml = `<span class="px-1.5 py-0.5 rounded font-semibold text-slate-500 dark:text-slate-400 font-mono text-[9px] flex items-center gap-1 border border-slate-200 dark:border-slate-700"><i class="far fa-calendar text-[8px]"></i> ${formatPageDateDisplay(t.dueDate)}</span>`;
+                } else {
+                    badgeHtml = `<span class="text-slate-400 italic text-[9px]">Senza data</span>`;
+                }
+            }
+
+            return `
+                <div class="flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-darkborder transition group">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox cursor-pointer shrink-0">
+                        <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition" onclick="editTask('${t.id}')" title="${escapeNoteHtml(t.title)}">${escapeNoteHtml(t.title)}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0 text-[10px]">
+                        ${ctx ? `<span class="px-1.5 py-0.5 rounded font-bold truncate max-w-[90px]" style="color:${ctx.color}; border: 1px solid ${ctx.color}35; background-color:${ctx.color}10">${escapeNoteHtml(ctx.name)}</span>` : ''}
+                        ${badgeHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        const todayListHtml = todayTasks.length > 0 ? `
+            <div class="space-y-1.5 max-h-52 overflow-y-auto pr-1 no-scrollbar">
+                ${todayTasks.map(t => renderFocusTaskRow(t, 'today')).join('')}
+            </div>
+        ` : `
+            <div class="py-5 px-3 text-center rounded-xl bg-slate-50/60 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700/60 text-slate-400 flex flex-col items-center justify-center">
+                <i class="far fa-calendar-check text-emerald-500 text-base mb-1"></i>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Nessuna scadenza per oggi</p>
+                <p class="text-[10px] text-slate-400">Sei in pari con il programma del giorno</p>
+            </div>
+        `;
+
+        const highPriListHtml = highPriTasks.length > 0 ? `
+            <div class="space-y-1.5 max-h-52 overflow-y-auto pr-1 no-scrollbar">
+                ${highPriTasks.map(t => renderFocusTaskRow(t, 'priority')).join('')}
+            </div>
+        ` : `
+            <div class="py-5 px-3 text-center rounded-xl bg-slate-50/60 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700/60 text-slate-400 flex flex-col items-center justify-center">
+                <i class="fas fa-check-double text-emerald-500 text-base mb-1"></i>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Nessuna task a priorità massima</p>
+                <p class="text-[10px] text-slate-400">Nessuna urgenza P3 al momento</p>
+            </div>
+        `;
+
+        focusTasksHtml = `
+            <div class="panel p-4 sm:p-5 bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-sm space-y-3.5">
+                <!-- Header Focus con indicatore di stato e link Task Manager -->
+                <div class="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-darkborder">
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            <i class="fas fa-calendar-day text-rose-500"></i> In Scadenza Oggi
+                            <i class="fas fa-crosshairs text-rose-500"></i> Focus & Urgenze del Giorno
                         </h2>
-                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">${uncompletedToday.length}</span>
                     </div>
                     <button onclick="navigate('global_tasks')" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                         Task Manager <i class="fas fa-arrow-right text-[10px]"></i>
                     </button>
                 </div>
-                <div class="space-y-2">
-                    ${uncompletedToday.map(t => {
-                        const ctx = getContextInfo(t.contextId);
-                        let priColor = "border-slate-200 text-slate-400";
-                        if (t.priority === 3) priColor = "border-red-400 text-red-500";
-                        else if (t.priority === 2) priColor = "border-amber-400 text-amber-500";
-                        else if (t.priority === 1) priColor = "border-blue-400 text-blue-500";
-                        return `
-                            <div class="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-darkborder transition group">
-                                <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox cursor-pointer shrink-0">
-                                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate cursor-pointer" onclick="editTask('${t.id}')">${t.title}</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                    ${t.contextId ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded border truncate" style="color:${ctx.color}; border-color:${ctx.color}40; background-color:${ctx.color}10">${ctx.name}</span>` : ''}
-                                    ${t.priority > 0 ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${priColor}">P${t.priority}</span>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
+
+                <!-- Griglia a 2 colonne affiancate su desktop/tablet, stacked su mobile -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Colonna 1: In Scadenza Oggi -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+                                <i class="fas fa-calendar-day text-xs"></i> In Scadenza Oggi
+                            </span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${todayTasks.length > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}">${todayTasks.length}</span>
+                        </div>
+                        ${todayListHtml}
+                    </div>
+
+                    <!-- Colonna 2: Priorità Massima (P3) -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                                <i class="fas fa-fire text-xs"></i> Priorità Massima (P3)
+                            </span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${highPriTasks.length > 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}">${highPriTasks.length}</span>
+                        </div>
+                        ${highPriListHtml}
+                    </div>
                 </div>
             </div>
         `;
@@ -347,8 +422,8 @@ function renderDashboard() {
                 </div>
             </div>
 
-            <!-- SEZIONE 1: AL MASSIMO LE TASK IN SCADENZA OGGI (Se presenti) -->
-            ${todayTasksHtml}
+            <!-- SEZIONE 1: FOCUS SCADENZE OGGI & MASSIMA PRIORITÀ (Se presenti) -->
+            ${focusTasksHtml}
 
             <!-- SEZIONE 2: PROGETTI IN EVIDENZA -->
             <section class="space-y-4">
