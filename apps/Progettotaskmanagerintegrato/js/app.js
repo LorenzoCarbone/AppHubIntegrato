@@ -290,8 +290,8 @@ function renderDashboard() {
     const tomorrowIso = getISODate(tomorrow);
 
     const uncompletedTasks = (state.data.tasks || []).filter(t => !t.completed);
-    const todayTasks = uncompletedTasks.filter(t => t.dueDate === todayIso);
-    const highPriTasks = uncompletedTasks.filter(t => t.priority === 3);
+    const todayTasks = uncompletedTasks.filter(t => t.dueDate === todayIso && !(t.startDate && t.startDate > todayIso));
+    const highPriTasks = uncompletedTasks.filter(t => t.priority === 3 && !(t.startDate && t.startDate > todayIso));
 
     let focusTasksHtml = '';
     if (todayTasks.length > 0 || highPriTasks.length > 0) {

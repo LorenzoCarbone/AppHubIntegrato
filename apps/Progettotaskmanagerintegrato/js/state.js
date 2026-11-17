@@ -357,6 +357,12 @@ async function navigate(view, sId=null, pId=null, spId=null, fromPopState=false)
         else h.classList.remove('hidden', 'md:flex');
     });
     
+    if (view === 'global_calendar' && !state.ui.calAnchorDate) {
+        if (typeof getSmartCalendarDefaultDate === 'function') {
+            state.ui.calSelectedDate = getSmartCalendarDefaultDate();
+        }
+    }
+    
     render(); 
     updateMobileBottomNav();
 

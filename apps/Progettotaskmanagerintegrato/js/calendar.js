@@ -1,5 +1,127 @@
 // --- GESTIONE CALENDARIO & TIME BLOCKING ---
 
+// Giorno predefinito intelligente: su mobile dopo le 20:00 mostra domani (dopo le 00:00 torna oggi)
+function getSmartCalendarDefaultDate() {
+    const now = new Date();
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile && now.getHours() >= 20) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return getISODate(tomorrow);
+    }
+    return getISODate(now);
+}
+window.getSmartCalendarDefaultDate = getSmartCalendarDefaultDate;
+
+// Toggle espansione note per blocchi semplici
+function toggleBlockNotesExpand(blockId) {
+    if (!state.ui.expandedBlockNotes) state.ui.expandedBlockNotes = {};
+    state.ui.expandedBlockNotes[blockId] = !state.ui.expandedBlockNotes[blockId];
+    render();
+}
+window.toggleBlockNotesExpand = toggleBlockNotesExpand;
+
+// Spunta checklist all'interno delle note di un blocco calendario
+function toggleBlockNoteCheck(blockId, lineIndex, isChecked, event) {
+    if (event) event.stopPropagation();
+    const block = (state.data.blocks || []).find(b => b.id === blockId);
+    if (!block || !block.notes) return;
+    
+    const lines = block.notes.split('\n');
+    if (lines[lineIndex] !== undefined) {
+        if (isChecked) {
+            lines[lineIndex] = lines[lineIndex].replace(/-\s*\[\s*\]/, '- [x]');
+        } else {
+            lines[lineIndex] = lines[lineIndex].replace(/-\s*\[x\]/i, '- [ ]');
+        }
+        block.notes = lines.join('\n');
+        AppData.triggerSave();
+        render();
+    }
+}
+window.toggleBlockNoteCheck = toggleBlockNoteCheck;
+
+// Formattatore note blocchi semplici (supporta grassetti, corsivi, elenchi e checklist spuntabili)
+function renderSimpleBlockNotesHtml(block, isCompact = false) {
+    if (!block || !block.notes || !block.notes.trim()) return '';
+    const isExpanded = !!(state.ui.expandedBlockNotes && state.ui.expandedBlockNotes[block.id]);
+    const rawLines = block.notes.split('\n');
+    const isLong = rawLines.length > 2 || block.notes.length > 80;
+
+    let displayLines = (isExpanded || !isLong) ? rawLines : rawLines.slice(0, 2);
+
+    let linesHtml = displayLines.map((line, idx) => {
+        let trimmed = line.trim();
+        // Checklist: - [ ] o - [x]
+        const chkMatch = trimmed.match(/^-\s*\[([ xX])\]\s*(.*)$/);
+        if (chkMatch) {
+            const isChecked = chkMatch[1].toLowerCase() === 'x';
+            let contentText = escapeHtml(chkMatch[2]);
+            contentText = contentText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            contentText = contentText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            return `<div class="flex items-center gap-1.5 my-0.5 leading-snug">
+                <input type="checkbox" class="task-checkbox task-checkbox-sm shrink-0 cursor-pointer" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleBlockNoteCheck('${block.id}', ${idx}, this.checked, event)">
+                <span class="${isChecked ? 'line-through opacity-50' : 'text-slate-700 dark:text-slate-300'} text-[10px] break-words flex-1">${contentText}</span>
+            </div>`;
+        }
+
+        // Elenco puntato: - o *
+        const bulletMatch = trimmed.match(/^[-*]\s+(.*)$/);
+        if (bulletMatch) {
+            let contentText = escapeHtml(bulletMatch[1]);
+            contentText = contentText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            contentText = contentText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            return `<div class="flex items-start gap-1 my-0.5 text-[10px] text-slate-700 dark:text-slate-300 leading-snug">
+                <span class="text-slate-400 font-bold">•</span>
+                <span class="break-words flex-1">${contentText}</span>
+            </div>`;
+        }
+
+        // Testo normale formattato
+        let formattedLine = escapeHtml(line);
+        formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return `<div class="text-[10px] text-slate-600 dark:text-slate-300 leading-snug break-words">${formattedLine || '&nbsp;'}</div>`;
+    }).join('');
+
+    let toggleBtnHtml = '';
+    if (isLong) {
+        toggleBtnHtml = `
+            <button type="button" onclick="event.stopPropagation(); toggleBlockNotesExpand('${block.id}')" class="text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition flex items-center gap-1 mt-1.5 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 w-full justify-end">
+                <span>${isExpanded ? 'Riduci' : 'Note (' + rawLines.length + ' righe)'}</span>
+                <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[8px]"></i>
+            </button>
+        `;
+    }
+
+    return `
+        <div class="mt-1.5 p-2 rounded-lg bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-left transition-all max-h-56 overflow-y-auto">
+            <div class="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                <i class="fas fa-align-left text-[8px]"></i>
+                <span>Note</span>
+            </div>
+            <div class="space-y-0.5">${linesHtml}</div>
+            ${toggleBtnHtml}
+        </div>
+    `;
+}
+window.renderSimpleBlockNotesHtml = renderSimpleBlockNotesHtml;
+
+// Helper per inserimento rapido formattazione markdown nei campi note
+function insertNoteFormatting(textareaId, prefix, suffix = '') {
+    const el = document.getElementById(textareaId);
+    if (!el) return;
+    const start = el.selectionStart || 0;
+    const end = el.selectionEnd || 0;
+    const text = el.value;
+    const selected = text.substring(start, end);
+    const replacement = prefix + selected + suffix;
+    el.value = text.substring(0, start) + replacement + text.substring(end);
+    el.focus();
+    el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+}
+window.insertNoteFormatting = insertNoteFormatting;
+
 // Navigazione a scorrimento giorno per giorno (supporta swipe su mobile)
 function stepCalDay(direction) {
     let curr = state.ui.calSelectedDate ? new Date(state.ui.calSelectedDate) : new Date();
@@ -247,7 +369,7 @@ function changeCalWeek(offsetDays) {
 
 function resetCalWeek() {
     state.ui.calAnchorDate = null;
-    state.ui.calSelectedDate = getISODate(new Date());
+    state.ui.calSelectedDate = getSmartCalendarDefaultDate();
     render();
 }
 
@@ -337,6 +459,36 @@ function updateBlockModalSelectedCount() {
     if (el) el.innerText = `${currentBlockModalSelectedIds.size} selezionate`;
 }
 
+function createAndSelectBlockTask(title) {
+    const rawTitle = (title || '').trim();
+    if (!rawTitle) {
+        showToast("Inserisci un titolo per la task", "warning");
+        return;
+    }
+    const currentEntityId = state.path.subprojId || state.path.projId || null;
+    const newTask = {
+        id: 't_' + Date.now(),
+        title: rawTitle,
+        contextId: currentEntityId,
+        priority: 0,
+        status: 'todo',
+        completed: false,
+        dueDate: blockEditDate || '',
+        createdAt: getISODate(new Date()),
+        subtasks: []
+    };
+    if (!state.data.tasks) state.data.tasks = [];
+    state.data.tasks.push(newTask);
+    currentBlockModalSelectedIds.add(newTask.id);
+    AppData.triggerSave();
+
+    const searchInput = document.getElementById('bmTaskSearch');
+    if (searchInput) searchInput.value = '';
+    renderBlockModalTaskList('');
+    showToast(`Task "${rawTitle}" creata e collegata al blocco`, "success");
+}
+window.createAndSelectBlockTask = createAndSelectBlockTask;
+
 function toggleBlockTaskSelection(taskId, isChecked) {
     if (isChecked) currentBlockModalSelectedIds.add(taskId);
     else currentBlockModalSelectedIds.delete(taskId);
@@ -347,11 +499,22 @@ function renderBlockModalTaskList(searchQuery = '') {
     const listEl = document.getElementById('bmTaskAreaList');
     if (!listEl) return;
     
+    const trimmedQuery = (searchQuery || '').trim();
+    const createRowHtml = trimmedQuery ? `
+        <div onclick="createAndSelectBlockTask(document.getElementById('bmTaskSearch')?.value)" class="p-2 rounded-xl border border-dashed border-blue-400 dark:border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 transition cursor-pointer flex items-center justify-between gap-2 mb-2 font-bold text-xs group active:scale-95">
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fas fa-plus-circle text-blue-500"></i>
+                <span class="truncate">Crea "${escapeHtml(trimmedQuery)}" e seleziona</span>
+            </div>
+            <span class="text-[9px] bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded font-mono uppercase">Invio / Crea</span>
+        </div>
+    ` : '';
+
     // Mostra solo task attive non completate (o quelle già selezionate in precedenza per questo blocco)
     let tasks = state.data.tasks.filter(t => !t.completed || currentBlockModalSelectedIds.has(t.id));
     
-    if (searchQuery && searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
+    if (trimmedQuery) {
+        const q = trimmedQuery.toLowerCase();
         tasks = tasks.filter(t => {
             const titleMatch = t.title && t.title.toLowerCase().includes(q);
             const ctx = getContextInfo(t.contextId);
@@ -361,7 +524,7 @@ function renderBlockModalTaskList(searchQuery = '') {
     }
 
     if (tasks.length === 0) {
-        listEl.innerHTML = `<p class="text-xs text-slate-400 italic p-3 text-center">Nessuna task attiva trovata ${searchQuery ? 'per "' + searchQuery + '"' : ''}.</p>`;
+        listEl.innerHTML = createRowHtml + `<p class="text-xs text-slate-400 italic p-3 text-center">Nessuna task attiva trovata ${trimmedQuery ? 'per "' + escapeHtml(trimmedQuery) + '"' : ''}.</p>`;
         updateBlockModalSelectedCount();
         return;
     }
@@ -374,7 +537,7 @@ function renderBlockModalTaskList(searchQuery = '') {
         grouped[key].push(t);
     });
 
-    let html = '';
+    let html = createRowHtml;
     for (const [key, groupTasks] of Object.entries(grouped)) {
         const ctx = getContextInfo(key === 'inbox' ? '' : key);
         html += `
@@ -717,7 +880,10 @@ function duplicateBlock(id = null) {
                 daysArr.push(getISODate(d));
             }
 
-            if(!daysArr.includes(state.ui.calSelectedDate)) state.ui.calSelectedDate = daysArr[1]; 
+            if(!state.ui.calSelectedDate || !daysArr.includes(state.ui.calSelectedDate)) {
+                const smartDef = getSmartCalendarDefaultDate();
+                state.ui.calSelectedDate = daysArr.includes(smartDef) ? smartDef : daysArr[1];
+            } 
 
             const realTodayStr = getISODate(new Date());
             const dStart = new Date(daysArr[0]);
@@ -1005,8 +1171,8 @@ function duplicateBlock(id = null) {
                                     });
                                     extraHtml += `</div>`;
                                 }
-                                if(b.notes) {
-                                    extraHtml += `<div class="text-[10px] text-slate-600 dark:text-slate-400 opacity-90 mt-2 bg-slate-100/50 dark:bg-slate-800/30 p-1.5 rounded whitespace-pre-wrap leading-tight max-h-20 overflow-y-auto"><i class="fas fa-align-left mr-1.5 opacity-50"></i>${b.notes}</div>`;
+                                if(b.notes && b.notes.trim()) {
+                                    extraHtml += renderSimpleBlockNotesHtml(b);
                                 }
                             }
 

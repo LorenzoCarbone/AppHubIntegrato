@@ -30,6 +30,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Stili Custom Life Hub OS -->
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Rinforzo per cerchio geometrico perfetto 1:1 assoluto */
+        input[type="checkbox"].task-checkbox,
+        .task-checkbox {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            box-sizing: border-box !important;
+            width: 20px !important;
+            height: 20px !important;
+            min-width: 20px !important;
+            min-height: 20px !important;
+            max-width: 20px !important;
+            max-height: 20px !important;
+            border-radius: 50% !important;
+            aspect-ratio: 1 / 1 !important;
+            flex: 0 0 20px !important;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+        input[type="checkbox"].task-checkbox.task-checkbox-sm,
+        .task-checkbox.task-checkbox-sm {
+            width: 15px !important;
+            height: 15px !important;
+            min-width: 15px !important;
+            min-height: 15px !important;
+            max-width: 15px !important;
+            max-height: 15px !important;
+            flex: 0 0 15px !important;
+            border-radius: 50% !important;
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 flex flex-col relative pb-10">
     <div id="toast-container"></div>
@@ -463,8 +502,8 @@
     </div>
 
     <!-- Modale Time Block (Calendario) -->
-    <div id="blockModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-start pt-10 md:items-center md:pt-0 backdrop-blur-sm z-50 p-4 overflow-y-auto">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-5 w-full max-w-md modal-animate my-auto">
+    <div id="blockModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-start pt-6 md:items-center md:pt-0 backdrop-blur-sm z-50 p-3 sm:p-4 overflow-y-auto overflow-x-hidden">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-4 sm:p-5 w-full max-w-md modal-animate my-auto overflow-hidden">
             <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-3 md:hidden"></div>
             <h2 id="bmTitle" class="text-lg font-bold mb-3 flex items-center"><i class="fas fa-clock text-blue-500 mr-2"></i> Programma Blocco</h2>
             <div id="bmRecurringNotice" class="hidden mb-3"></div>
@@ -500,39 +539,49 @@
                     </div>
                     <div class="relative mb-2">
                         <i class="fas fa-search absolute left-2.5 top-2.5 text-xs text-slate-400"></i>
-                        <input type="text" id="bmTaskSearch" placeholder="Cerca task o progetto..." oninput="renderBlockModalTaskList(this.value)" class="input-base pl-8 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg">
+                        <input type="text" id="bmTaskSearch" placeholder="Cerca task o premi Invio per crearla..." oninput="renderBlockModalTaskList(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();createAndSelectBlockTask(this.value);}" class="input-base pl-8 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg">
                     </div>
                     <div id="bmTaskAreaList" class="input-base p-2 max-h-40 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-800/50">
                         <!-- Lista checkbox popolata in JS -->
                     </div>
                 </div>
 
-                <div class="flex gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Dalle</label>
-                        <input type="time" id="bmStart" class="input-base py-2 font-bold w-28">
+                <div class="space-y-2.5">
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Dalle</label>
+                            <input type="time" id="bmStart" class="input-base py-2 font-bold w-full text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Alle</label>
+                            <input type="time" id="bmEnd" class="input-base py-2 font-bold w-full text-center">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Alle</label>
-                        <input type="time" id="bmEnd" class="input-base py-2 font-bold w-28">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Data Inizio</label>
-                        <input type="date" id="bmDate" class="input-base py-2 text-sm font-bold">
+                        <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Data Blocco</label>
+                        <input type="date" id="bmDate" class="input-base py-2 text-sm font-bold w-full">
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1.5 -mt-2 mb-2">
+                <div class="flex flex-wrap items-center gap-1.5 -mt-1 mb-2">
                     <span class="text-[10px] text-slate-400 font-semibold mr-1">Durata rapida:</span>
-                    <button type="button" onclick="addBlockDuration(15)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+15m</button>
-                    <button type="button" onclick="addBlockDuration(30)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+30m</button>
-                    <button type="button" onclick="addBlockDuration(60)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+1h</button>
-                    <button type="button" onclick="addBlockDuration(120)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition">+2h</button>
+                    <button type="button" onclick="addBlockDuration(15)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 transition active:scale-95">+15m</button>
+                    <button type="button" onclick="addBlockDuration(30)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 transition active:scale-95">+30m</button>
+                    <button type="button" onclick="addBlockDuration(60)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 transition active:scale-95">+1h</button>
+                    <button type="button" onclick="addBlockDuration(120)" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 hover:text-blue-600 transition active:scale-95">+2h</button>
                 </div>
                 
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400 uppercase">Note (Opzionale)</label>
-                    <textarea id="bmNotes" class="input-base text-sm py-2 min-h-[90px] leading-relaxed resize-y" rows="4" placeholder="Scrivi note, indicazioni o scaletta per questo blocco..."></textarea>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Note / Scaletta</label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="insertNoteFormatting('bmNotes', '**', '**')" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" title="Grassetto"><strong>B</strong></button>
+                            <button type="button" onclick="insertNoteFormatting('bmNotes', '*', '*')" class="px-1.5 py-0.5 text-[10px] font-bold italic rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" title="Corsivo"><em>I</em></button>
+                            <button type="button" onclick="insertNoteFormatting('bmNotes', '- [ ] ')" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1" title="Aggiungi Casella Spuntabile"><i class="far fa-check-square"></i></button>
+                            <button type="button" onclick="insertNoteFormatting('bmNotes', '- ')" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" title="Elenco puntato"><i class="fas fa-list-ul text-[9px]"></i></button>
+                        </div>
+                    </div>
+                    <textarea id="bmNotes" class="input-base text-sm py-2 min-h-[90px] leading-relaxed resize-y" rows="4" placeholder="Scrivi note, scaletta, o usa '- [ ] ' per checklist spuntabili..."></textarea>
                 </div>
 
                 <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
@@ -567,14 +616,14 @@
                 </div>
             </div>
 
-            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder">
-                <div class="flex items-center gap-2">
-                    <button id="bmDeleteBtn" onclick="deleteBlock()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
-                    <button id="bmDuplicateBtn" onclick="duplicateBlock()" class="text-amber-500 hover:text-amber-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"><i class="fas fa-clone mr-1"></i> Duplica</button>
+            <div class="flex justify-between items-center mt-5 pt-3 border-t border-slate-200 dark:border-darkborder gap-2">
+                <div class="flex items-center gap-1.5">
+                    <button id="bmDeleteBtn" onclick="deleteBlock()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+                    <button id="bmDuplicateBtn" onclick="duplicateBlock()" class="text-amber-500 hover:text-amber-600 text-xs font-bold hidden px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"><i class="fas fa-clone mr-1"></i> Duplica</button>
                 </div>
-                <div class="flex gap-2 ml-auto">
-                    <button onclick="closeBlockModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
-                    <button onclick="saveBlock()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                <div class="flex gap-2 ml-auto shrink-0">
+                    <button onclick="closeBlockModal()" class="px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-xl">Annulla</button>
+                    <button onclick="saveBlock()" class="px-4.5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition active:scale-[0.98]">Salva</button>
                 </div>
             </div>
         </div>
@@ -596,7 +645,15 @@
                 </button>
             </div>
             <div class="flex-1 flex flex-col mb-4">
-                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Appunti, Scaletta & Indicazioni</label>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Appunti, Scaletta & Indicazioni</label>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="insertNoteFormatting('bnmNotesArea', '**', '**')" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700" title="Grassetto"><strong>B</strong></button>
+                        <button type="button" onclick="insertNoteFormatting('bnmNotesArea', '*', '*')" class="px-2 py-0.5 text-xs font-bold italic rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700" title="Corsivo"><em>I</em></button>
+                        <button type="button" onclick="insertNoteFormatting('bnmNotesArea', '- [ ] ')" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1" title="Aggiungi Casella Spuntabile"><i class="far fa-check-square"></i> <span class="text-[10px]">Checklist</span></button>
+                        <button type="button" onclick="insertNoteFormatting('bnmNotesArea', '- ')" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700" title="Elenco puntato"><i class="fas fa-list-ul text-[10px]"></i></button>
+                    </div>
+                </div>
                 <textarea id="bnmNotesArea" class="input-base flex-1 w-full p-4 font-normal text-sm leading-relaxed resize-none rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="Scrivi qui tutti i tuoi appunti, link, riferimenti o istruzioni per questo blocco..."></textarea>
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder">
