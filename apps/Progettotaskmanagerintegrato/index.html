@@ -106,31 +106,75 @@
 
     <!-- MOBILE QUICK ADD MODAL (Task Manager) -->
     <div id="mobileQuickAddModal" class="fixed inset-0 z-[100] hidden flex-col justify-end">
-        <div class="absolute inset-0 bg-slate-900/50 animate-fade-in-add backdrop-blur-sm" onclick="closeMobileQuickAdd()"></div>
-        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-5 shadow-2xl flex flex-col gap-3.5 animate-slide-up-add border-t border-slate-200 dark:border-slate-700 pb-8">
-            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-1 md:hidden"></div>
-            <div class="flex justify-between items-center mb-1">
-                <h3 class="font-bold text-slate-800 dark:text-white text-lg">Nuova Task</h3>
-                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition active:scale-95"><i class="fas fa-times"></i></button>
+        <div class="absolute inset-0 bg-slate-900/60 animate-fade-in-add backdrop-blur-sm" onclick="closeMobileQuickAdd()"></div>
+        <div class="relative bg-white dark:bg-darkpanel w-full rounded-t-3xl p-4 sm:p-5 shadow-2xl flex flex-col gap-3 animate-slide-up-add border-t border-slate-200 dark:border-slate-700 max-h-[92vh] overflow-y-auto pb-8">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-1"></div>
+            
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                        <i class="fas fa-plus text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 dark:text-white text-base">Nuova Task</h3>
+                        <p class="text-[10px] text-slate-400">Inserisci titolo o usa i comandi rapidi</p>
+                    </div>
+                </div>
+                <button onclick="closeMobileQuickAdd()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center transition active:scale-95"><i class="fas fa-times text-xs"></i></button>
             </div>
+
+            <!-- Campo Titolo con Smart Input -->
             <div class="relative">
-                <input type="text" id="gtInMobile" class="input-base text-base py-3.5 font-semibold bg-slate-50 dark:bg-slate-800/50 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition" placeholder="Cosa devi fare? (es. Studiare p2 @oggi #Diritto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+                <input type="text" id="gtInMobile" class="input-base text-sm sm:text-base py-3 px-3.5 font-semibold bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:bg-white dark:focus:bg-darkbg transition w-full" placeholder="Cosa devi fare? (es. Studiare p2 @oggi #Diritto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeypress="if(event.key==='Enter') addTaskFromGlobalMobile()" onkeyup="handleSmartInput(this, '')" onfocus="handleSmartInput(this, '')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
             </div>
-            <!-- Quick Chips Bar sopra la tastiera -->
-            <div class="flex overflow-x-auto no-scrollbar gap-2 py-0.5 text-xs">
-                <button type="button" onclick="insertMobileChip('@oggi')" class="px-3 py-1.5 rounded-full font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
-                <button type="button" onclick="insertMobileChip('@domani')" class="px-3 py-1.5 rounded-full font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
-                <button type="button" onclick="insertMobileChip('p3')" class="px-3 py-1.5 rounded-full font-bold bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0 active:scale-95 transition">🔴 p3 Alta</button>
-                <button type="button" onclick="insertMobileChip('p2')" class="px-3 py-1.5 rounded-full font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2 Media</button>
-                <button type="button" onclick="insertMobileChip('p1')" class="px-3 py-1.5 rounded-full font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1 Bassa</button>
-                <button type="button" onclick="insertMobileChip('#')" class="px-3 py-1.5 rounded-full font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0 active:scale-95 transition"># Progetto</button>
+
+            <!-- Quick Chips Bar orizzontale scrollabile -->
+            <div class="flex overflow-x-auto no-scrollbar gap-1.5 py-0.5 text-xs">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider self-center mr-0.5 shrink-0">Rapidi:</span>
+                <button type="button" onclick="insertMobileChip('@oggi')" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
+                <button type="button" onclick="insertMobileChip('@domani')" class="px-2.5 py-1 rounded-lg font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
+                <button type="button" onclick="insertMobileChip('p3')" class="px-2.5 py-1 rounded-lg font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0 active:scale-95 transition">🔴 p3</button>
+                <button type="button" onclick="insertMobileChip('p2')" class="px-2.5 py-1 rounded-lg font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2</button>
+                <button type="button" onclick="insertMobileChip('p1')" class="px-2.5 py-1 rounded-lg font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1</button>
+                <button type="button" onclick="insertMobileChip('#')" class="px-2.5 py-1 rounded-lg font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0 active:scale-95 transition"># Contesto</button>
             </div>
-            <div class="flex gap-3">
-                 <select id="gtPriMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg"><option value="0">Nessuna Prio</option><option value="1">Bassa Prio</option><option value="2">Media Prio</option><option value="3">Alta Prio</option></select>
-                 <input type="date" id="gtDateMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg">
+
+            <!-- Sezione Date Pulita -->
+            <div class="grid grid-cols-2 gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <i class="far fa-calendar-alt text-blue-500"></i> Scadenza
+                    </label>
+                    <input type="date" id="gtDateMobile" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-darkpanel border-slate-200 dark:border-slate-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <i class="fas fa-hourglass-start text-indigo-500"></i> Attiva dal
+                    </label>
+                    <input type="date" id="gtStartDateMobile" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-darkpanel border-indigo-200 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400">
+                </div>
             </div>
-            <div id="mobileCtxContainer"></div>
-            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98]"><i class="fas fa-arrow-up mr-2"></i> Aggiungi Task</button>
+
+            <!-- Sezione Priorità e Contesto -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Priorità</label>
+                    <select id="gtPriMobile" class="input-base text-xs font-bold py-2.5 w-full bg-slate-50 dark:bg-slate-800/50">
+                        <option value="0">⚪ Nessuna (p0)</option>
+                        <option value="1">🔵 Bassa (p1)</option>
+                        <option value="2">🟡 Media (p2)</option>
+                        <option value="3">🔴 Alta (p3)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contesto</label>
+                    <div id="mobileCtxContainer"></div>
+                </div>
+            </div>
+
+            <button onclick="addTaskFromGlobalMobile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition mt-1 active:scale-[0.98] flex items-center justify-center gap-2 text-sm min-h-[44px]">
+                <i class="fas fa-plus"></i> Aggiungi Task
+            </button>
         </div>
     </div>
 
@@ -307,72 +351,76 @@
 
     <!-- MODAL MODIFICA / DETTAGLI TASK UNIVERSALE -->
     <div id="taskEditModal" class="modal-overlay hidden" onclick="if(event.target === this) closeTaskModal()">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-xl modal-animate max-h-[90vh] flex flex-col">
-            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3 md:hidden"></div>
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-xl modal-animate max-h-[92vh] flex flex-col my-auto">
+            <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2.5 sm:hidden"></div>
             <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder shrink-0">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
                         <i class="fas fa-tasks text-sm"></i>
                     </div>
                     <div>
-                        <h3 id="temTitle" class="font-bold text-sm text-slate-800 dark:text-white">Dettagli & Modifica Task</h3>
-                        <p id="temSubtitle" class="text-[10px] text-slate-400">Modifica parametri, date, contesto e vincoli</p>
+                        <h3 id="temTitle" class="font-bold text-sm sm:text-base text-slate-800 dark:text-white">Dettagli & Modifica Task</h3>
+                        <p id="temSubtitle" class="text-[10px] text-slate-400">Modifica parametri, date, contesto e subtask</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeTaskModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition"><i class="fas fa-times text-xs"></i></button>
+                <button type="button" onclick="closeTaskModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition active:scale-95"><i class="fas fa-times text-xs"></i></button>
             </div>
 
-            <div class="overflow-y-auto pr-1 py-4 space-y-4 flex-1">
+            <div class="overflow-y-auto pr-1 py-3.5 space-y-3.5 flex-1 text-xs">
                 <input type="hidden" id="temId">
                 
-                <!-- Titolo Task con Smart Input Integrato -->
+                <!-- 1. Titolo Task con Smart Input Integrato -->
                 <div class="relative">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                        <span>Titolo Task (Supporta @date, #progetti, p1-p3)</span>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Titolo Task (Supporta @date, #progetti, p1-p3)
                     </label>
-                    <input type="text" id="temTitleInput" class="input-base text-sm font-bold py-2 w-full" placeholder="Nome dell'attività... (es. Finire relazione p3 @domani #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeyup="handleSmartInput(this, 'editModal')" onfocus="handleSmartInput(this, 'editModal')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
+                    <input type="text" id="temTitleInput" class="input-base text-sm font-bold py-2.5 px-3 w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-darkbg" placeholder="Nome dell'attività... (es. Finire relazione p3 @domani #Progetto)" onkeydown="return handleSmartInputKeyDown(event, this)" onkeyup="handleSmartInput(this, 'editModal')" onfocus="handleSmartInput(this, 'editModal')" onblur="setTimeout(()=>this.nextElementSibling?.classList.add('hidden'), 200)">
                     
                     <!-- Quick chips rapidi per inserimento istantaneo -->
-                    <div class="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar text-[11px] pt-0.5">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">Rapidi:</span>
-                        <button type="button" onclick="insertEditModalChip('@oggi')" class="px-2 py-0.5 rounded-md font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
-                        <button type="button" onclick="insertEditModalChip('@domani')" class="px-2 py-0.5 rounded-md font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
-                        <button type="button" onclick="insertEditModalChip('p3')" class="px-2 py-0.5 rounded-md font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0 active:scale-95 transition">🔴 p3 Alta</button>
-                        <button type="button" onclick="insertEditModalChip('p2')" class="px-2 py-0.5 rounded-md font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2 Media</button>
-                        <button type="button" onclick="insertEditModalChip('p1')" class="px-2 py-0.5 rounded-md font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1 Bassa</button>
+                    <div class="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar text-xs pt-0.5">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-0.5 shrink-0">Rapidi:</span>
+                        <button type="button" onclick="insertEditModalChip('@oggi')" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 active:scale-95 transition">@oggi</button>
+                        <button type="button" onclick="insertEditModalChip('@domani')" class="px-2.5 py-1 rounded-lg font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0 active:scale-95 transition">@domani</button>
+                        <button type="button" onclick="insertEditModalChip('p3')" class="px-2.5 py-1 rounded-lg font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0 active:scale-95 transition">🔴 p3</button>
+                        <button type="button" onclick="insertEditModalChip('p2')" class="px-2.5 py-1 rounded-lg font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0 active:scale-95 transition">🟡 p2</button>
+                        <button type="button" onclick="insertEditModalChip('p1')" class="px-2.5 py-1 rounded-lg font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 active:scale-95 transition">🔵 p1</button>
                     </div>
                 </div>
 
-                <!-- Riga Priorità & Scadenza -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- 2. Sezione Pianificazione & Date -->
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="far fa-calendar-alt text-blue-500"></i> Data Scadenza
+                            </label>
+                            <input type="date" id="temDueDate" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-darkpanel border-slate-200 dark:border-slate-700">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i class="fas fa-hourglass-start text-indigo-500"></i> Data di Inizio / Attiva dal
+                            </label>
+                            <input type="date" id="temStartDate" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-darkpanel border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-tight">
+                        <i class="fas fa-info-circle mr-1 text-slate-400"></i> Se la data di inizio è futura, la task rimarrà nascosta dalle liste attive fino a quel giorno.
+                    </p>
+                </div>
+
+                <!-- 3. Riga Priorità, Contesto & Ricorrenza -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Priorità</label>
                         <select id="temPriority" class="input-base text-xs font-bold py-2 w-full">
-                            <option value="0">⚪ Nessuna</option>
+                            <option value="0">⚪ Nessuna (p0)</option>
                             <option value="1">🔵 Bassa (p1)</option>
                             <option value="2">🟡 Media (p2)</option>
                             <option value="3">🔴 Alta (p3)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Data Scadenza (Due Date)</label>
-                        <input type="date" id="temDueDate" class="input-base text-xs font-bold py-2 w-full">
-                    </div>
-                </div>
-
-                <!-- Data di inizio / Attiva dal (Con spiegazione chiara) -->
-                <div class="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 space-y-1">
-                    <label class="block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="fas fa-hourglass-start"></i> Data di Inizio / Attiva dal
-                    </label>
-                    <input type="date" id="temStartDate" class="input-base text-xs font-bold py-2 w-full bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800">
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400">Se impostata nel futuro, la task rimarrà nascosta dalle liste attive (Oggi, Inbox, Progetti) e comparirà solo a partire da questa data.</p>
-                </div>
-
-                <!-- Riga Contesto & Ricorrenza -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contesto (Progetto/Sfera)</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contesto</label>
                         <select id="temContext" class="input-base text-xs font-bold py-2 w-full"></select>
                     </div>
                     <div>
@@ -387,97 +435,169 @@
                     </div>
                 </div>
 
-                <!-- Sezione Subtasks -->
+                <!-- 4. Sezione Subtasks -->
                 <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
                         <span><i class="fas fa-list-check mr-1.5 text-blue-500"></i> Sottotask / Checklist</span>
-                        <span id="temSubtaskCount" class="text-[9px] font-mono">0</span>
+                        <span id="temSubtaskCount" class="text-[9px] font-mono text-slate-400">0</span>
                     </label>
                     <div id="temSubtaskList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
                     <div class="flex items-center gap-2 mt-2">
-                        <input type="text" id="temNewSubtask" placeholder="Aggiungi una sotto-attività..." class="input-base text-xs py-1.5 flex-1" onkeypress="if(event.key==='Enter') addSubtaskFromModal()">
-                        <button type="button" onclick="addSubtaskFromModal()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition active:scale-95">
-                            <i class="fas fa-plus mr-1"></i> Aggiungi
+                        <input type="text" id="temNewSubtask" placeholder="Aggiungi una sotto-attività..." class="input-base text-xs py-2 flex-1 rounded-lg" onkeypress="if(event.key==='Enter') addSubtaskFromModal()">
+                        <button type="button" onclick="addSubtaskFromModal()" class="px-3.5 py-2 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition active:scale-95 shrink-0 flex items-center gap-1">
+                            <i class="fas fa-plus"></i> <span>Aggiungi</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Sezione Note Task -->
+                <!-- 5. Sezione Note Task -->
                 <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Note & Dettagli (Opzionale)</label>
-                    <textarea id="temNotes" rows="3" class="input-base text-xs py-2 w-full resize-y" placeholder="Aggiungi annotazioni, link o dettagli su questa task..."></textarea>
+                    <textarea id="temNotes" rows="3" class="input-base text-xs py-2 w-full resize-y rounded-xl" placeholder="Aggiungi annotazioni, link o dettagli su questa task..."></textarea>
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder shrink-0">
-                <button type="button" onclick="deleteTaskFromModal()" class="px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition flex items-center gap-1.5">
+            <div class="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-darkborder shrink-0 gap-2">
+                <button type="button" onclick="deleteTaskFromModal()" class="px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition flex items-center gap-1.5 min-h-[44px]">
                     <i class="fas fa-trash text-xs"></i> <span>Elimina</span>
                 </button>
                 <div class="flex gap-2">
-                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition">Annulla</button>
-                    <button type="button" onclick="saveTaskModal()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition active:scale-95">Salva Modifiche</button>
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition min-h-[44px]">Annulla</button>
+                    <button type="button" onclick="saveTaskModal()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition active:scale-95 min-h-[44px]">Salva Modifiche</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Modale Entità -->
-    <div id="entityModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-xl shadow-2xl p-6 w-full max-w-lg modal-animate">
-            <h2 id="emTitle" class="text-lg font-bold mb-5">Modifica</h2>
-            <div class="space-y-4">
-                <div class="flex gap-3">
-                    <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Nome</label><input type="text" id="emName" class="input-base"></div>
-                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Icona</label><input type="text" id="emIcon" class="input-base text-center" placeholder="fa-folder"></div>
-                    <div class="w-20"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Colore</label><input type="color" id="emColor" class="w-full h-[42px] bg-transparent cursor-pointer rounded-lg border border-slate-200 dark:border-darkborder p-1"></div>
+    <div id="entityModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-lg modal-animate my-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                        <i class="fas fa-folder text-sm"></i>
+                    </div>
+                    <h2 id="emTitle" class="text-base font-bold text-slate-800 dark:text-white">Modifica</h2>
+                </div>
+                <button type="button" onclick="closeEntityModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition active:scale-95">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Nome</label>
+                    <input type="text" id="emName" class="input-base text-sm font-bold py-2">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Icona FontAwesome</label>
+                        <input type="text" id="emIcon" class="input-base text-center font-mono py-2" placeholder="fa-folder">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Colore</label>
+                        <input type="color" id="emColor" class="w-full h-[38px] bg-transparent cursor-pointer rounded-xl border border-slate-200 dark:border-darkborder p-1">
+                    </div>
                 </div>
 
-                <div id="emProjectFields" class="hidden space-y-4 pt-2">
-                    <div class="flex gap-3">
-                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Tipologia</label><select id="emType" class="input-base"><option value="Costante">Costante</option><option value="A termine">A termine</option><option value="Ciclico">Ciclico</option></select></div>
-                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Status</label><select id="emStatus" class="input-base"><option value="Nuovo">Nuovo</option><option value="Attivo">Attivo</option><option value="In corso">In corso</option><option value="Completato">Completato</option><option value="In pausa">In pausa</option></select></div>
+                <div id="emProjectFields" class="hidden space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Tipologia</label>
+                            <select id="emType" class="input-base py-2 font-semibold">
+                                <option value="Costante">Costante</option>
+                                <option value="A termine">A termine</option>
+                                <option value="Ciclico">Ciclico</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Status</label>
+                            <select id="emStatus" class="input-base py-2 font-semibold">
+                                <option value="Nuovo">Nuovo</option>
+                                <option value="Attivo">Attivo</option>
+                                <option value="In corso">In corso</option>
+                                <option value="Completato">Completato</option>
+                                <option value="In pausa">In pausa</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="flex gap-3">
-                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Inizio</label><input type="date" id="emStartDate" class="input-base text-slate-500 dark:text-slate-400"></div>
-                        <div class="flex-1"><label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400">Data Fine</label><input type="date" id="emEndDate" class="input-base text-slate-500 dark:text-slate-400"></div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Data Inizio</label>
+                            <input type="date" id="emStartDate" class="input-base py-2 text-slate-600 dark:text-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Data Fine</label>
+                            <input type="date" id="emEndDate" class="input-base py-2 text-slate-600 dark:text-slate-300">
+                        </div>
                     </div>
-                    <div id="emRelocationArea" class="pt-4 border-t border-slate-200 dark:border-darkborder hidden mt-4">
-                        <label class="block text-xs font-bold mb-1.5 text-slate-600 dark:text-slate-400" id="emParentLabel">Sposta in...</label>
-                        <select id="emParentSelect" class="input-base"></select>
+                    <div id="emRelocationArea" class="pt-3 border-t border-slate-100 dark:border-slate-800 hidden">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400" id="emParentLabel">Sposta in...</label>
+                        <select id="emParentSelect" class="input-base py-2"></select>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-between items-center mt-8 pt-5 border-t border-slate-200 dark:border-darkborder">
-                <button id="emDeleteBtn" onclick="deleteCurrentEntity()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden flex items-center px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i class="fas fa-trash-alt mr-2"></i> Elimina</button>
+
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder gap-2">
+                <button id="emDeleteBtn" onclick="deleteCurrentEntity()" class="text-rose-500 hover:text-rose-600 text-xs font-bold hidden flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition min-h-[44px]">
+                    <i class="fas fa-trash-alt text-xs"></i> <span>Elimina</span>
+                </button>
                 <div class="flex gap-2 ml-auto">
-                    <button onclick="closeEntityModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
-                    <button onclick="saveEntityModal()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>
+                    <button onclick="closeEntityModal()" class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-xl min-h-[44px]">Annulla</button>
+                    <button onclick="saveEntityModal()" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition active:scale-[0.98] min-h-[44px]">Salva</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Modale Rubrica -->
-    <div id="contactModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-4">
-        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-6 w-full max-w-md modal-animate max-h-[90vh] overflow-y-auto">
-            <h2 id="cmTitle" class="text-lg font-bold mb-5 flex items-center"><i class="fas fa-user-circle text-purple-500 mr-2"></i> Contatto</h2>
-            <div class="space-y-3.5">
-                <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">NOME</label><input type="text" id="cmName" class="input-base"></div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">RUOLO</label><input type="text" id="cmRole" class="input-base"></div>
-                    <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">ORGANIZZAZIONE</label><input type="text" id="cmOrg" class="input-base"></div>
+    <div id="contactModal" class="fixed inset-0 bg-black/60 dark:bg-black/80 hidden flex justify-center items-center backdrop-blur-sm z-50 p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-md modal-animate max-h-[90vh] overflow-y-auto my-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-darkborder mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <h2 id="cmTitle" class="text-base font-bold text-slate-800 dark:text-white">Contatto</h2>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">TELEFONO</label><input type="text" id="cmPhone" class="input-base"></div>
-                    <div><label class="block text-[10px] font-bold mb-1 text-slate-500 dark:text-slate-400">EMAIL</label><input type="email" id="cmEmail" class="input-base"></div>
+                <button type="button" onclick="closeContactModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center hover:bg-slate-200 transition active:scale-95">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Nome</label>
+                    <input type="text" id="cmName" class="input-base text-sm font-bold py-2">
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Ruolo</label>
+                        <input type="text" id="cmRole" class="input-base py-2">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Organizzazione</label>
+                        <input type="text" id="cmOrg" class="input-base py-2">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Telefono</label>
+                        <input type="text" id="cmPhone" class="input-base py-2">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400">Email</label>
+                        <input type="email" id="cmEmail" class="input-base py-2">
+                    </div>
                 </div>
 
                 <!-- CRONOLOGIA INTERAZIONI -->
-                <div id="cmInteractionsContainer" class="hidden mt-4 pt-4 border-t border-slate-200 dark:border-darkborder">
+                <div id="cmInteractionsContainer" class="hidden mt-3 pt-3 border-t border-slate-200 dark:border-darkborder">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
                         <i class="fas fa-history text-purple-500"></i> Cronologia Interazioni & Note
                     </div>
-                    <div class="flex gap-2 mb-2.5">
+                    <div class="flex gap-2 mb-2">
                         <select id="newInteractionType" class="input-base text-xs py-1.5 w-28 font-bold">
                             <option value="call">📞 Chiamata</option>
                             <option value="whatsapp">💬 WhatsApp</option>
@@ -488,11 +608,18 @@
                         <input type="text" id="newInteractionText" placeholder="Aggiungi nota interazione..." class="input-base text-xs py-1.5 flex-1" onkeypress="if(event.key==='Enter') addContactInteraction()">
                         <button type="button" onclick="addContactInteraction()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition active:scale-95"><i class="fas fa-plus"></i></button>
                     </div>
-                    <div id="cmInteractionsList" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+                    <div id="cmInteractionsList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
                 </div>
             </div>
-            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder">
-                <button id="cmDeleteBtn" onclick="deleteContact()" class="text-red-500 hover:text-red-600 text-xs font-bold hidden px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">Elimina</button>
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 dark:border-darkborder gap-2">
+                <button id="cmDeleteBtn" onclick="deleteContact()" class="text-rose-500 hover:text-rose-600 text-xs font-bold hidden px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition min-h-[44px]">Elimina</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeContactModal()" class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-xl min-h-[44px]">Annulla</button>
+                    <button onclick="saveContact()" class="px-5 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition active:scale-[0.98] min-h-[44px]">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
                 <div class="flex gap-2 ml-auto">
                     <button onclick="closeContactModal()" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg">Annulla</button>
                     <button onclick="saveContact()" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow transition active:scale-[0.98]">Salva</button>

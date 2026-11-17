@@ -448,6 +448,11 @@ function saveActiveNotebookContent() {
     const q = getActiveNotebookQuill();
     if (!q) return;
 
+    const badge = document.getElementById('notebook-autosave-badge');
+    if (badge) {
+        badge.innerHTML = `<i class="fas fa-arrows-rotate animate-spin text-[9px] text-amber-500"></i> <span class="hidden sm:inline text-amber-600 dark:text-amber-400">Salvataggio...</span>`;
+    }
+
     if (activeSubpageId) {
         const page = (state.data.pages || []).find(p => p.id === activeSubpageId);
         if (page) {
@@ -456,18 +461,26 @@ function saveActiveNotebookContent() {
             AppData.triggerSave();
             updateNotebookStats(q, 'subpage');
         }
-        return;
+    } else {
+        const type = state.path.subprojId ? 'subproject' : (state.path.projId ? 'project' : null);
+        const id = state.path.subprojId || state.path.projId;
+        if (type && id) {
+            const entity = getEntity(type, id);
+            if (entity) {
+                entity.notes = q.root.innerHTML;
+                AppData.triggerSave();
+                updateNotebookStats(q, type);
+            }
+        }
     }
 
-    const type = state.path.subprojId ? 'subproject' : (state.path.projId ? 'project' : null);
-    const id = state.path.subprojId || state.path.projId;
-    if (!type || !id) return;
-    const entity = getEntity(type, id);
-    if (!entity) return;
-
-    entity.notes = q.root.innerHTML;
-    AppData.triggerSave();
-    updateNotebookStats(q, type);
+    if (badge) {
+        setTimeout(() => {
+            if (badge) {
+                badge.innerHTML = `<i class="fas fa-check-circle text-[9px] text-emerald-500"></i> <span class="hidden sm:inline text-emerald-600 dark:text-emerald-400">Salvato</span>`;
+            }
+        }, 300);
+    }
 }
 
 function updateNotebookStats(quill, type) {
@@ -1928,6 +1941,11 @@ function renderSubpageEditor(type, entityId) {
                 </div>
 
                 <div class="flex items-center gap-1.5 shrink-0">
+                    <!-- Badge Auto-Save -->
+                    <span id="notebook-autosave-badge" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 transition-all" title="Modifiche salvate automaticamente">
+                        <i class="fas fa-check-circle text-[9px]"></i> <span class="hidden sm:inline">Salvato</span>
+                    </span>
+
                     <!-- Esporta Singola Pagina (MODAL DIRETTO PULITO) -->
                     <button type="button" onclick="openPageExportModal('${page.id}')" class="text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-darkborder transition flex items-center gap-1.5 shadow-xs" title="Esporta documento in formato pulito">
                         <i class="fas fa-download text-xs text-indigo-500"></i> <span class="hidden sm:inline">Esporta</span>

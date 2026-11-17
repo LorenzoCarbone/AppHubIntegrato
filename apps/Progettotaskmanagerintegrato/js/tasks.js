@@ -2,11 +2,21 @@
 function openMobileQuickAdd() {
     const ctxValue = state.ui.tmView.startsWith('p_') || state.ui.tmView.startsWith('sp_') || state.ui.tmView.startsWith('s_') ? state.ui.tmView.replace(/^[ps_]+/, '') : '';
     const ctxOpts = generateCtxOpts(ctxValue);
-    document.getElementById('mobileCtxContainer').innerHTML = `<select id="gtCtxMobile" class="input-base text-xs font-bold py-3.5 flex-1 bg-slate-50 dark:bg-slate-800/50 border-transparent transition focus:bg-white dark:focus:bg-darkbg mt-3">${ctxOpts}</select>`;
+    const ctxContainer = document.getElementById('mobileCtxContainer');
+    if (ctxContainer) {
+        ctxContainer.innerHTML = `<select id="gtCtxMobile" class="input-base text-xs font-bold py-2.5 w-full bg-slate-50 dark:bg-slate-800/50">${ctxOpts}</select>`;
+    }
+    
+    const startIn = document.getElementById('gtStartDateMobile');
+    if (startIn) startIn.value = '';
+    const dIn = document.getElementById('gtDateMobile');
+    if (dIn) dIn.value = '';
+    const pIn = document.getElementById('gtPriMobile');
+    if (pIn) pIn.value = '0';
     
     document.getElementById('mobileQuickAddModal').classList.remove('hidden');
     document.getElementById('mobileQuickAddModal').classList.add('flex');
-    setTimeout(() => document.getElementById('gtInMobile').focus(), 100);
+    setTimeout(() => document.getElementById('gtInMobile')?.focus(), 100);
 }
 function closeMobileQuickAdd() {
     document.getElementById('mobileQuickAddModal').classList.add('hidden');
@@ -30,13 +40,18 @@ function insertMobileChip(token) {
 }
 function addTaskFromGlobalMobile() {
     if (window._justAppliedAutocomplete) return;
-    const tIn = document.getElementById('gtInMobile'), pIn = document.getElementById('gtPriMobile'), dIn = document.getElementById('gtDateMobile'), cIn = document.getElementById('gtCtxMobile');
+    const tIn = document.getElementById('gtInMobile'), 
+          pIn = document.getElementById('gtPriMobile'), 
+          dIn = document.getElementById('gtDateMobile'), 
+          sdIn = document.getElementById('gtStartDateMobile'),
+          cIn = document.getElementById('gtCtxMobile');
     let ctxValue = cIn ? cIn.value : '';
     
-    if(!tIn.value.trim()) return;
+    if(!tIn || !tIn.value.trim()) return;
     const parsed = parseSmartInput(tIn.value.trim(), ctxValue);
-    const finalPri = parsed.priority > 0 ? parsed.priority : parseInt(pIn.value);
-    const finalDate = parsed.date || dIn.value;
+    const finalPri = parsed.priority > 0 ? parsed.priority : parseInt(pIn?.value || 0);
+    const finalDate = parsed.date || (dIn ? dIn.value : '');
+    const finalStartDate = parsed.startDate || (sdIn ? sdIn.value : '');
     const maxOrderMobile = (state.data.tasks || []).reduce((max, x) => Math.max(max, x.order || 0), 0);
     state.data.tasks.push({ 
         id: 't_' + Date.now(), 
@@ -44,15 +59,18 @@ function addTaskFromGlobalMobile() {
         completed: false, 
         priority: finalPri, 
         dueDate: finalDate, 
-        startDate: parsed.startDate || '',
+        startDate: finalStartDate,
         contextId: parsed.contextId, 
         order: maxOrderMobile + 10,
         subtasks: [] 
     });
     
-    tIn.value = ''; dIn.value = ''; pIn.value = '0';
+    tIn.value = ''; 
+    if (dIn) dIn.value = ''; 
+    if (sdIn) sdIn.value = '';
+    if (pIn) pIn.value = '0';
     closeMobileQuickAdd();
-    showToast("Task creata", "success");
+    showToast("Task creata con successo", "success");
     AppData.triggerSave(); render();
 }
 
