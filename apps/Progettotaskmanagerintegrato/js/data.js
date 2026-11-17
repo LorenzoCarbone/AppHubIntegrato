@@ -17,6 +17,7 @@ class LifeHubDataManager {
             version: "5.1",
             spheres: [], projects: [], subprojects: [], tasks: [], contacts: [],
             calendarBlocks: [],
+            dailyNotes: {},
             gcalCompleted: [],
             trash: [],
             pages: [],
@@ -276,6 +277,7 @@ class LifeHubDataManager {
             calendarBlocks: (d.calendarBlocks || []).map(b => ({ ...b, excludedDates: b.excludedDates || [] })) 
         };
         n.pinnedLevels = d.pinnedLevels || [{id: 'pl_default', name: 'In Evidenza'}];
+        n.dailyNotes = (d.dailyNotes && typeof d.dailyNotes === 'object') ? d.dailyNotes : {};
         n.gcalCompleted = d.gcalCompleted || [];
         n.trash = d.trash || [];
         

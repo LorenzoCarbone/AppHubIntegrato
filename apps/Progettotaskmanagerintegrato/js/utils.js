@@ -679,7 +679,7 @@ function toggleShortcutsModal(forceOpen) {
 
 function closeAllModals() {
     const modalIds = [
-        'blockModal', 'entityModal', 'blockNotesModal', 'settingsModal', 
+        'blockModal', 'entityModal', 'settingsModal', 
         'importModal', 'mobileQuickAddModal', 'shortcutsModal', 'contactModal',
         'trashModal', 'commandPaletteModal', 'noteTaskPickerModal', 'noteContactPickerModal'
     ];

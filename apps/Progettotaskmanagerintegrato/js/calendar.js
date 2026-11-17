@@ -13,99 +13,239 @@ function getSmartCalendarDefaultDate() {
 }
 window.getSmartCalendarDefaultDate = getSmartCalendarDefaultDate;
 
-// Toggle espansione note per blocchi semplici
-function toggleBlockNotesExpand(blockId) {
-    if (!state.ui.expandedBlockNotes) state.ui.expandedBlockNotes = {};
-    state.ui.expandedBlockNotes[blockId] = !state.ui.expandedBlockNotes[blockId];
+// --- NOTE DEL GIORNO (DAILY NOTEPAD) ---
+
+function getDailyNote(dateStr) {
+    if (!state.data.dailyNotes) state.data.dailyNotes = {};
+    return state.data.dailyNotes[dateStr] || '';
+}
+window.getDailyNote = getDailyNote;
+
+let dailyNoteSaveTimeout = null;
+function saveDailyNote(dateStr, content, showBadge = true) {
+    if (!state.data.dailyNotes) state.data.dailyNotes = {};
+    state.data.dailyNotes[dateStr] = content;
+    
+    if (showBadge) {
+        const badge = document.getElementById(`dailyNoteBadge_${dateStr}`);
+        if (badge) {
+            badge.innerHTML = `<span class="text-amber-500 font-medium animate-pulse"><i class="fas fa-spinner fa-spin"></i> Salvataggio...</span>`;
+        }
+    }
+
+    clearTimeout(dailyNoteSaveTimeout);
+    dailyNoteSaveTimeout = setTimeout(() => {
+        AppData.triggerSave();
+        if (showBadge) {
+            const badge = document.getElementById(`dailyNoteBadge_${dateStr}`);
+            if (badge) {
+                badge.innerHTML = `<span class="text-emerald-500 font-medium flex items-center gap-1"><i class="fas fa-check"></i> Salvato</span>`;
+            }
+        }
+    }, 400);
+}
+window.saveDailyNote = saveDailyNote;
+
+function toggleDailyNotesPanel() {
+    state.ui.showDailyNotes = !(state.ui.showDailyNotes !== false);
     render();
 }
-window.toggleBlockNotesExpand = toggleBlockNotesExpand;
+window.toggleDailyNotesPanel = toggleDailyNotesPanel;
 
-// Spunta checklist all'interno delle note di un blocco calendario
-function toggleBlockNoteCheck(blockId, lineIndex, isChecked, event) {
+function setDailyNoteMode(dateStr, mode) {
+    if (!state.ui.dailyNoteModes) state.ui.dailyNoteModes = {};
+    state.ui.dailyNoteModes[dateStr] = mode;
+    render();
+}
+window.setDailyNoteMode = setDailyNoteMode;
+
+function openDailyNotesForDate(dateStr) {
+    state.ui.calSelectedDate = dateStr;
+    state.ui.showDailyNotes = true;
+    render();
+    setTimeout(() => {
+        const el = document.getElementById(`dailyNoteText_${dateStr}`) || document.getElementById(`dailyNotesPanel`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+}
+window.openDailyNotesForDate = openDailyNotesForDate;
+
+// Spunta o despunta una casella - [ ] / - [x] all'interno della nota del giorno
+function toggleDailyNoteCheck(dateStr, lineIdx, isChecked, event) {
     if (event) event.stopPropagation();
-    const block = (state.data.blocks || []).find(b => b.id === blockId);
-    if (!block || !block.notes) return;
-    
-    const lines = block.notes.split('\n');
-    if (lines[lineIndex] !== undefined) {
+    const raw = getDailyNote(dateStr);
+    const lines = raw.split('\n');
+    if (lines[lineIdx] !== undefined) {
         if (isChecked) {
-            lines[lineIndex] = lines[lineIndex].replace(/-\s*\[\s*\]/, '- [x]');
+            lines[lineIdx] = lines[lineIdx].replace(/^(\s*)-\s*\[\s*\]/, '$1- [x]');
         } else {
-            lines[lineIndex] = lines[lineIndex].replace(/-\s*\[x\]/i, '- [ ]');
+            lines[lineIdx] = lines[lineIdx].replace(/^(\s*)-\s*\[[xX]\]/, '$1- [ ]');
         }
-        block.notes = lines.join('\n');
-        AppData.triggerSave();
+        const updated = lines.join('\n');
+        saveDailyNote(dateStr, updated, false);
         render();
     }
 }
-window.toggleBlockNoteCheck = toggleBlockNoteCheck;
+window.toggleDailyNoteCheck = toggleDailyNoteCheck;
 
-// Formattatore note blocchi semplici (supporta grassetti, corsivi, elenchi e checklist spuntabili)
-function renderSimpleBlockNotesHtml(block, isCompact = false) {
-    if (!block || !block.notes || !block.notes.trim()) return '';
-    const isExpanded = !!(state.ui.expandedBlockNotes && state.ui.expandedBlockNotes[block.id]);
-    const rawLines = block.notes.split('\n');
-    const isLong = rawLines.length > 2 || block.notes.length > 80;
+// Inserisce formattazione nella textarea della nota del giorno attiva
+function insertDailyNoteFormatting(dateStr, prefix, suffix = '') {
+    const el = document.getElementById(`dailyNoteText_${dateStr}`);
+    if (!el) return;
+    const start = el.selectionStart || 0;
+    const end = el.selectionEnd || 0;
+    const text = el.value;
+    const selected = text.substring(start, end);
+    const replacement = prefix + selected + suffix;
+    el.value = text.substring(0, start) + replacement + text.substring(end);
+    el.focus();
+    el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    saveDailyNote(dateStr, el.value, true);
+}
+window.insertDailyNoteFormatting = insertDailyNoteFormatting;
 
-    let displayLines = (isExpanded || !isLong) ? rawLines : rawLines.slice(0, 2);
+// Parser Markdown elegante per la visualizzazione interattiva delle Note del Giorno
+function renderDailyNoteInteractiveHtml(dateStr, content) {
+    if (!content || !content.trim()) {
+        return `
+            <div class="py-8 px-4 text-center cursor-pointer group flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700/80 hover:border-amber-400 transition" onclick="setDailyNoteMode('${dateStr}', 'edit')">
+                <div class="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                    <i class="fas fa-pen-to-square text-sm"></i>
+                </div>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Nessuna nota per questo giorno</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Clicca per scrivere appunti, scalette o checklist</p>
+            </div>
+        `;
+    }
 
-    let linesHtml = displayLines.map((line, idx) => {
-        let trimmed = line.trim();
+    const lines = content.split('\n');
+    let html = '<div class="space-y-1.5 leading-relaxed">';
+    lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+            html += '<div class="h-2"></div>';
+            return;
+        }
+
+        // Intestazione ###
+        if (trimmed.startsWith('###')) {
+            const hText = escapeHtml(trimmed.replace(/^###\s*/, ''));
+            html += `<h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider pt-2 pb-0.5 border-b border-slate-200 dark:border-slate-700/60">${hText}</h4>`;
+            return;
+        }
+
         // Checklist: - [ ] o - [x]
         const chkMatch = trimmed.match(/^-\s*\[([ xX])\]\s*(.*)$/);
         if (chkMatch) {
-            const isChecked = chkMatch[1].toLowerCase() === 'x';
-            let contentText = escapeHtml(chkMatch[2]);
-            contentText = contentText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            contentText = contentText.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            return `<div class="flex items-center gap-1.5 my-0.5 leading-snug">
-                <input type="checkbox" class="task-checkbox task-checkbox-sm shrink-0 cursor-pointer" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleBlockNoteCheck('${block.id}', ${idx}, this.checked, event)">
-                <span class="${isChecked ? 'line-through opacity-50' : 'text-slate-700 dark:text-slate-300'} text-[10px] break-words flex-1">${contentText}</span>
-            </div>`;
+            const isDone = chkMatch[1].toLowerCase() === 'x';
+            let lineContent = escapeHtml(chkMatch[2]);
+            lineContent = lineContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900 dark:text-white">$1</strong>');
+            lineContent = lineContent.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+            html += `
+                <div class="flex items-start gap-2 py-0.5 group">
+                    <input type="checkbox" class="task-checkbox task-checkbox-sm mt-0.5 shrink-0 cursor-pointer ${isDone ? 'checked:!bg-emerald-500 checked:!border-emerald-500' : '!border-amber-400'}" ${isDone ? 'checked' : ''} onchange="toggleDailyNoteCheck('${dateStr}', ${idx}, this.checked, event)">
+                    <span class="text-xs leading-snug break-words flex-1 cursor-pointer select-none ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}" onclick="toggleDailyNoteCheck('${dateStr}', ${idx}, ${!isDone}, event)">${lineContent}</span>
+                </div>
+            `;
+            return;
         }
 
         // Elenco puntato: - o *
         const bulletMatch = trimmed.match(/^[-*]\s+(.*)$/);
         if (bulletMatch) {
-            let contentText = escapeHtml(bulletMatch[1]);
-            contentText = contentText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            contentText = contentText.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            return `<div class="flex items-start gap-1 my-0.5 text-[10px] text-slate-700 dark:text-slate-300 leading-snug">
-                <span class="text-slate-400 font-bold">•</span>
-                <span class="break-words flex-1">${contentText}</span>
-            </div>`;
+            let lineContent = escapeHtml(bulletMatch[1]);
+            lineContent = lineContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900 dark:text-white">$1</strong>');
+            lineContent = lineContent.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+            html += `
+                <div class="flex items-start gap-2 py-0.5 text-xs text-slate-700 dark:text-slate-200 leading-snug">
+                    <span class="text-amber-500 font-bold select-none">•</span>
+                    <span class="break-words flex-1">${lineContent}</span>
+                </div>
+            `;
+            return;
         }
 
         // Testo normale formattato
-        let formattedLine = escapeHtml(line);
-        formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        return `<div class="text-[10px] text-slate-600 dark:text-slate-300 leading-snug break-words">${formattedLine || '&nbsp;'}</div>`;
-    }).join('');
+        let normalText = escapeHtml(line);
+        normalText = normalText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900 dark:text-white">$1</strong>');
+        normalText = normalText.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+        html += `<p class="text-xs text-slate-700 dark:text-slate-300 break-words leading-relaxed">${normalText}</p>`;
+    });
+    html += '</div>';
+    return html;
+}
 
-    let toggleBtnHtml = '';
-    if (isLong) {
-        toggleBtnHtml = `
-            <button type="button" onclick="event.stopPropagation(); toggleBlockNotesExpand('${block.id}')" class="text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition flex items-center gap-1 mt-1.5 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 w-full justify-end">
-                <span>${isExpanded ? 'Riduci' : 'Note (' + rawLines.length + ' righe)'}</span>
-                <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[8px]"></i>
-            </button>
-        `;
-    }
+// Render del blocco note completo per una specifica data
+function renderDailyNotePadComponent(dateStr, isCompact = false) {
+    const rawNote = getDailyNote(dateStr);
+    const hasNote = !!rawNote.trim();
+    const mode = (state.ui.dailyNoteModes && state.ui.dailyNoteModes[dateStr]) || (hasNote ? 'view' : 'edit');
+    const displayDate = formatDisplayDate(dateStr);
 
     return `
-        <div class="mt-1.5 p-2 rounded-lg bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-left transition-all max-h-56 overflow-y-auto">
-            <div class="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                <i class="fas fa-align-left text-[8px]"></i>
-                <span>Note</span>
+        <div class="daily-notepad flex flex-col bg-amber-50/25 dark:bg-slate-900/40 border border-amber-200/60 dark:border-slate-800 rounded-2xl p-3.5 shadow-2xs">
+            <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-amber-200/50 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                        <i class="fas fa-book-open text-xs"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            Note del Giorno
+                        </h4>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">${displayDate}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    ${mode === 'edit' ? `
+                        <button onclick="setDailyNoteMode('${dateStr}', 'view')" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition flex items-center gap-1 active:scale-95" title="Visualizza anteprima formattata e caselle spuntabili">
+                            <i class="fas fa-check-double text-[10px]"></i> Anteprima
+                        </button>
+                    ` : `
+                        <button onclick="setDailyNoteMode('${dateStr}', 'edit')" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center gap-1 active:scale-95" title="Modifica testo">
+                            <i class="fas fa-pen text-[10px]"></i> Modifica
+                        </button>
+                    `}
+                </div>
             </div>
-            <div class="space-y-0.5">${linesHtml}</div>
-            ${toggleBtnHtml}
+
+            ${mode === 'edit' ? `
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between flex-wrap gap-1 bg-white/70 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="insertDailyNoteFormatting('${dateStr}', '- [ ] ')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-700 dark:text-slate-200 hover:text-amber-700 transition flex items-center gap-1" title="Aggiungi casella di spunta">
+                                <i class="far fa-check-square text-amber-500"></i> <span class="hidden sm:inline">Checklist</span>
+                            </button>
+                            <button type="button" onclick="insertDailyNoteFormatting('${dateStr}', '- ')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-700 dark:text-slate-200 hover:text-amber-700 transition flex items-center gap-1" title="Elenco puntato">
+                                <i class="fas fa-list-ul"></i>
+                            </button>
+                            <button type="button" onclick="insertDailyNoteFormatting('${dateStr}', '**', '**')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-700 dark:text-slate-200 hover:text-amber-700 transition" title="Grassetto">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" onclick="insertDailyNoteFormatting('${dateStr}', '*', '*')" class="px-2 py-1 text-[11px] font-bold italic rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-700 dark:text-slate-200 hover:text-amber-700 transition" title="Corsivo">
+                                <em>I</em>
+                            </button>
+                            <button type="button" onclick="insertDailyNoteFormatting('${dateStr}', '### ')" class="px-2 py-1 text-[11px] font-bold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-700 dark:text-slate-200 hover:text-amber-700 transition" title="Intestazione sezione">
+                                <strong>H</strong>
+                            </button>
+                        </div>
+                        <span id="dailyNoteBadge_${dateStr}" class="text-[10px] text-slate-400 font-semibold px-1">Salvato</span>
+                    </div>
+
+                    <textarea id="dailyNoteText_${dateStr}"
+                              oninput="saveDailyNote('${dateStr}', this.value)"
+                              class="w-full p-3 font-sans text-xs md:text-sm leading-relaxed rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none resize-y min-h-[160px] text-slate-800 dark:text-slate-100 transition placeholder:italic placeholder:text-slate-400"
+                              placeholder="Scrivi qui gli appunti del giorno, idee, promemoria o una checklist con - [ ] ...">${escapeHtml(rawNote)}</textarea>
+                </div>
+            ` : `
+                <div class="bg-white/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 min-h-[120px] max-h-[350px] overflow-y-auto cursor-pointer" onclick="if(event.target.tagName !== 'INPUT' && event.target.tagName !== 'BUTTON') setDailyNoteMode('${dateStr}', 'edit')" title="Clicca per modificare">
+                    ${renderDailyNoteInteractiveHtml(dateStr, rawNote)}
+                </div>
+            `}
         </div>
     `;
 }
-window.renderSimpleBlockNotesHtml = renderSimpleBlockNotesHtml;
+window.renderDailyNotePadComponent = renderDailyNotePadComponent;
 
 // Helper per inserimento rapido formattazione markdown nei campi note
 function insertNoteFormatting(textareaId, prefix, suffix = '') {
@@ -313,50 +453,6 @@ function initBlockResize(e, blockId) {
     window.addEventListener('mouseup', onMouseUp);
 }
 
-// Modale Note del Blocco (Spazio ampio per appunti)
-let currentBlockNotesId = null;
-
-function openBlockNotesModal(blockId) {
-    currentBlockNotesId = blockId;
-    const b = state.data.calendarBlocks.find(x => x.id === blockId);
-    if (!b) return;
-
-    const titleEl = document.getElementById('bnmTitle');
-    const subEl = document.getElementById('bnmSubtitle');
-    const areaEl = document.getElementById('bnmNotesArea');
-    const modal = document.getElementById('blockNotesModal');
-
-    if (titleEl) titleEl.innerHTML = '<i class="fas fa-sticky-note text-amber-500 mr-2.5"></i> Note: ' + b.title;
-    if (subEl) subEl.innerText = formatDisplayDate(b.date) + ' | ' + b.startTime + (b.endTime ? ' - ' + b.endTime : '');
-    if (areaEl) areaEl.value = b.notes || '';
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        setTimeout(() => areaEl && areaEl.focus(), 100);
-    }
-}
-
-function closeBlockNotesModal() {
-    currentBlockNotesId = null;
-    const modal = document.getElementById('blockNotesModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-
-function saveBlockNotesModal() {
-    if (!currentBlockNotesId) return;
-    const b = state.data.calendarBlocks.find(x => x.id === currentBlockNotesId);
-    if (b) {
-        const areaEl = document.getElementById('bnmNotesArea');
-        b.notes = areaEl ? areaEl.value.trim() : '';
-        AppData.triggerSave();
-        render();
-        showToast("Note del blocco salvate", "success");
-    }
-    closeBlockNotesModal();
-}
 
 // Navigazione settimane calendario
 function changeCalWeek(offsetDays) {
@@ -1088,10 +1184,7 @@ function duplicateBlock(id = null) {
                                 b.taskIds.forEach(tid => {
                                     const t = state.data.tasks.find(x => x.id === tid);
                                     if(t) {
-                                        let cbTClass = "border-slate-300 dark:border-slate-500";
-                                        if(t.priority === 3) cbTClass = "!border-red-400 checked:!bg-red-500 text-red-500";
-                                        else if(t.priority === 2) cbTClass = "!border-amber-400 checked:!bg-amber-500 text-amber-500";
-                                        else if(t.priority === 1) cbTClass = "!border-blue-400 checked:!bg-blue-500 text-blue-500";
+                                        let cbTClass = "task-checkbox-p" + (t.priority || 0);
                                         extraHtml += `<div class="text-[9px] flex items-center gap-1 font-medium" onclick="event.stopPropagation()">
                                             <input type="checkbox" class="task-checkbox min-w-[10px] min-h-[10px] w-2.5 h-2.5 ${cbTClass}" ${t.completed ? 'checked' : ''} onclick="toggleTask('${t.id}')">
                                             <span class="truncate ${t.completed?'line-through opacity-50':''}" onclick="toggleTask('${t.id}')">${t.title}</span>
@@ -1158,10 +1251,7 @@ function duplicateBlock(id = null) {
                                     b.taskIds.forEach(tid => {
                                         const t = state.data.tasks.find(x => x.id === tid);
                                         if(t) {
-                                            let cbTClass = "border-slate-300 dark:border-slate-500";
-                                            if(t.priority === 3) cbTClass = "!border-red-400 checked:!bg-red-500 text-red-500";
-                                            else if(t.priority === 2) cbTClass = "!border-amber-400 checked:!bg-amber-500 text-amber-500";
-                                            else if(t.priority === 1) cbTClass = "!border-blue-400 checked:!bg-blue-500 text-blue-500";
+                                            let cbTClass = "task-checkbox-p" + (t.priority || 0);
 
                                             extraHtml += `<div class="text-[11px] flex items-center gap-2 opacity-95 text-slate-700 dark:text-slate-200" onclick="event.stopPropagation()">
                                                 <input type="checkbox" class="task-checkbox min-w-[14px] min-h-[14px] w-3.5 h-3.5 ${cbTClass}" ${t.completed ? 'checked' : ''} onclick="toggleTask('${t.id}')">
@@ -1172,7 +1262,7 @@ function duplicateBlock(id = null) {
                                     extraHtml += `</div>`;
                                 }
                                 if(b.notes && b.notes.trim()) {
-                                    extraHtml += renderSimpleBlockNotesHtml(b);
+                                    extraHtml += `<div class="text-[10px] text-slate-600 dark:text-slate-400 opacity-90 mt-2 bg-slate-100/50 dark:bg-slate-800/30 p-1.5 rounded whitespace-pre-wrap leading-tight max-h-20 overflow-y-auto"><i class="fas fa-align-left mr-1.5 opacity-50"></i>${escapeHtml(b.notes)}</div>`;
                                 }
                             }
 
@@ -1228,11 +1318,52 @@ function duplicateBlock(id = null) {
                                     <i class="fas fa-plus-circle text-blue-500"></i> Aggiungi blocco
                                 </button>
                             `}
+
+                            ${(() => {
+                                const dayRawNote = getDailyNote(dateStr);
+                                const dayHasNote = !!dayRawNote.trim();
+                                const noteSummary = dayHasNote ? (dayRawNote.split('\n')[0].substring(0, 24) || 'Vedi note') : '+ Scrivi';
+                                return `
+                                    <div class="mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700/60 hidden md:block">
+                                        <button onclick="openDailyNotesForDate('${dateStr}')" class="w-full p-2.5 rounded-xl border ${dayHasNote ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300' : 'border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400'} hover:border-amber-400 transition flex items-center justify-between text-xs font-semibold group active:scale-98">
+                                            <span class="flex items-center gap-2">
+                                                <i class="fas fa-book-open ${dayHasNote ? 'text-amber-500' : 'text-slate-400 group-hover:text-amber-500'}"></i>
+                                                <span>Note del Giorno</span>
+                                            </span>
+                                            <span class="text-[10px] ${dayHasNote ? 'bg-amber-200/70 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 font-bold px-1.5 py-0.2 rounded-full' : 'text-slate-400'}">${noteSummary}</span>
+                                        </button>
+                                    </div>
+                                    <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 md:hidden">
+                                        ${renderDailyNotePadComponent(dateStr)}
+                                    </div>
+                                `;
+                            })()}
                         </div>
                     </div>`;
             };
 
-            let desktopColsHtml = `<div class="flex flex-row gap-5 md:gap-6 overflow-x-auto snap-x md:snap-none w-full h-[calc(100vh-250px)] md:h-[calc(100vh-160px)] px-4 md:px-0">`;
+            const activeCalDate = state.ui.calSelectedDate || daysArr[1] || realTodayStr;
+            const dailyNotesSidebarHtml = (state.ui.showDailyNotes !== false) ? `
+                <div id="dailyNotesPanel" class="hidden md:flex flex-col w-[360px] shrink-0 h-full bg-white dark:bg-darkpanel border border-slate-200 dark:border-darkborder rounded-2xl shadow-sm overflow-hidden p-4">
+                    <div class="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-200 dark:border-darkborder">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                                <i class="fas fa-book-open text-xs"></i>
+                            </div>
+                            <div class="truncate">
+                                <h3 class="font-bold text-xs text-slate-800 dark:text-white truncate">Blocco Note del Giorno</h3>
+                                <span class="text-[10px] text-slate-400 font-semibold truncate block">${formatDisplayDate(activeCalDate)}</span>
+                            </div>
+                        </div>
+                        <button onclick="toggleDailyNotesPanel()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Chiudi pannello note"><i class="fas fa-times text-xs"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto no-scrollbar">
+                        ${renderDailyNotePadComponent(activeCalDate)}
+                    </div>
+                </div>
+            ` : '';
+
+            let desktopColsHtml = `<div class="flex flex-row gap-5 md:gap-6 min-w-max h-full px-4 md:px-0">`;
             daysArr.forEach(d => {
                 desktopColsHtml += renderDayColumn(d, d === state.ui.calSelectedDate);
             });
@@ -1259,6 +1390,10 @@ function duplicateBlock(id = null) {
                                 <button onclick="toggleCalFilter('gcal')" class="px-2 py-1 rounded text-[10px] font-bold transition ${state.ui.calFilters.gcal ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm' : 'text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700'}"><i class="fab fa-google"></i> GCal</button>
                             </div>
                             <div class="w-px h-5 bg-slate-300 dark:bg-slate-600"></div>
+                            <button onclick="toggleDailyNotesPanel()" class="px-2.5 py-1 rounded text-[10px] font-bold transition flex items-center gap-1.5 ${state.ui.showDailyNotes !== false ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shadow-sm' : 'text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700'}" title="Mostra/Nascondi Note del Giorno">
+                                <i class="fas fa-book-open text-amber-500"></i> Note del Giorno
+                            </button>
+                            <div class="w-px h-5 bg-slate-300 dark:bg-slate-600"></div>
                             <div class="flex">
                                 <button onclick="state.ui.calViewMode='normal'; render();" class="px-3 py-1.5 text-xs font-bold rounded-md transition ${state.ui.calViewMode !== 'proportional' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}"><i class="fas fa-list mr-1"></i> Lista</button>
                                 <button onclick="state.ui.calViewMode='proportional'; render();" class="px-3 py-1.5 text-xs font-bold rounded-md transition ${state.ui.calViewMode === 'proportional' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}"><i class="fas fa-ruler-vertical mr-1"></i> Proporzionale</button>
@@ -1266,8 +1401,11 @@ function duplicateBlock(id = null) {
                         </div>
                     </div>
                     ${mobileTabsHtml}
-                    <div class="mt-4 md:mt-0 flex-1">
-                        ${desktopColsHtml}
+                    <div class="mt-4 md:mt-0 flex-1 flex flex-row gap-4 overflow-hidden h-[calc(100vh-250px)] md:h-[calc(100vh-160px)]">
+                        <div class="flex-1 overflow-x-auto snap-x md:snap-none h-full">
+                            ${desktopColsHtml}
+                        </div>
+                        ${dailyNotesSidebarHtml}
                     </div>
                 </div>
             `;

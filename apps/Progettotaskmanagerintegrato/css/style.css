@@ -55,48 +55,108 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
             -webkit-appearance: none !important;
             -moz-appearance: none !important;
             box-sizing: border-box !important;
-            width: 20px !important;
-            height: 20px !important;
-            min-width: 20px !important;
-            min-height: 20px !important;
-            max-width: 20px !important;
-            max-height: 20px !important;
+            width: 18px !important;
+            height: 18px !important;
+            min-width: 18px !important;
+            min-height: 18px !important;
+            max-width: 18px !important;
+            max-height: 18px !important;
             border-radius: 50% !important;
             aspect-ratio: 1 / 1 !important;
-            flex: 0 0 20px !important;
+            flex: 0 0 18px !important;
             flex-shrink: 0 !important;
             flex-grow: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
             padding: 0 !important;
             margin: 0 !important;
             line-height: 1 !important;
-            border: 2px solid #cbd5e1 !important;
+            border-width: 2px !important;
+            border-style: solid !important;
+            border-color: #cbd5e1;
             cursor: pointer !important;
             position: relative !important;
-            background: transparent !important;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            vertical-align: middle !important;
+            background-color: transparent !important;
+            transition: border-color 0.15s ease, background-color 0.15s ease !important;
+            outline: none !important;
         }
         input[type="checkbox"].task-checkbox.task-checkbox-sm,
         .task-checkbox.task-checkbox-sm {
-            width: 15px !important;
-            height: 15px !important;
-            min-width: 15px !important;
-            min-height: 15px !important;
-            max-width: 15px !important;
-            max-height: 15px !important;
-            flex: 0 0 15px !important;
+            width: 14px !important;
+            height: 14px !important;
+            min-width: 14px !important;
+            min-height: 14px !important;
+            max-width: 14px !important;
+            max-height: 14px !important;
+            flex: 0 0 14px !important;
             border-radius: 50% !important;
             border-width: 1.5px !important;
         }
-        .dark input[type="checkbox"].task-checkbox:not([class*="border-"]),
-        .dark .task-checkbox:not([class*="border-"]) { border-color: #64748b !important; }
+        /* Classi Priorità Checkbox (Garantiscono colori vividi e specificità inviolabile) */
+        input[type="checkbox"].task-checkbox.task-checkbox-p3,
+        .task-checkbox.task-checkbox-p3 {
+            border-color: #ef4444 !important;
+        }
+        input[type="checkbox"].task-checkbox.task-checkbox-p3:checked,
+        .task-checkbox.task-checkbox-p3:checked {
+            background-color: #ef4444 !important;
+            border-color: #ef4444 !important;
+        }
+
+        input[type="checkbox"].task-checkbox.task-checkbox-p2,
+        .task-checkbox.task-checkbox-p2 {
+            border-color: #f59e0b !important;
+        }
+        input[type="checkbox"].task-checkbox.task-checkbox-p2:checked,
+        .task-checkbox.task-checkbox-p2:checked {
+            background-color: #f59e0b !important;
+            border-color: #f59e0b !important;
+        }
+
+        input[type="checkbox"].task-checkbox.task-checkbox-p1,
+        .task-checkbox.task-checkbox-p1 {
+            border-color: #3b82f6 !important;
+        }
+        input[type="checkbox"].task-checkbox.task-checkbox-p1:checked,
+        .task-checkbox.task-checkbox-p1:checked {
+            background-color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+        }
+
+        input[type="checkbox"].task-checkbox.task-checkbox-p0,
+        .task-checkbox.task-checkbox-p0 {
+            border-color: #cbd5e1 !important;
+        }
+        .dark input[type="checkbox"].task-checkbox.task-checkbox-p0,
+        .dark .task-checkbox.task-checkbox-p0 {
+            border-color: #64748b !important;
+        }
+        input[type="checkbox"].task-checkbox.task-checkbox-p0:checked,
+        .task-checkbox.task-checkbox-p0:checked {
+            background-color: #94a3b8 !important;
+            border-color: #94a3b8 !important;
+        }
+
+        .dark input[type="checkbox"].task-checkbox:not([class*="-p"]):not([class*="border-"]),
+        .dark .task-checkbox:not([class*="-p"]):not([class*="border-"]) { border-color: #64748b !important; }
+        
         input[type="checkbox"].task-checkbox:checked,
-        .task-checkbox:checked { background-color: #f59e0b !important; border-color: #f59e0b !important; transform: scale(1.05) !important; }
+        .task-checkbox:checked { 
+            background-color: #f59e0b !important; 
+            border-color: #f59e0b !important; 
+        }
         input[type="checkbox"].task-checkbox:checked::after,
-        .task-checkbox:checked::after { content: '\2714' !important; position: absolute !important; color: white !important; font-size: 11px !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; font-weight: bold !important; line-height: 1 !important; }
+        .task-checkbox:checked::after { 
+            content: '\2714' !important; 
+            position: absolute !important; 
+            color: white !important; 
+            font-size: 10px !important; 
+            top: 50% !important; 
+            left: 50% !important; 
+            transform: translate(-50%, -50%) !important; 
+            font-weight: bold !important; 
+            line-height: 1 !important; 
+        }
         input[type="checkbox"].task-checkbox.task-checkbox-sm:checked::after,
         .task-checkbox.task-checkbox-sm:checked::after { font-size: 8px !important; }
         /* Indicatore visivo Subtasks */
@@ -677,13 +737,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
             }
 
             .task-checkbox {
-                width: 20px !important;
-                height: 20px !important;
-                min-width: 20px !important;
-                min-height: 20px !important;
-                max-width: 20px !important;
-                max-height: 20px !important;
-                flex: 0 0 20px !important;
+                width: 18px !important;
+                height: 18px !important;
+                min-width: 18px !important;
+                min-height: 18px !important;
+                max-width: 18px !important;
+                max-height: 18px !important;
+                flex: 0 0 18px !important;
                 border-radius: 50% !important;
                 aspect-ratio: 1 / 1 !important;
             }

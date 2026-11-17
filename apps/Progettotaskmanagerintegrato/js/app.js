@@ -290,7 +290,9 @@ function renderDashboard() {
     const tomorrowIso = getISODate(tomorrow);
 
     const uncompletedTasks = (state.data.tasks || []).filter(t => !t.completed);
-    const todayTasks = uncompletedTasks.filter(t => t.dueDate === todayIso && !(t.startDate && t.startDate > todayIso));
+    // In Scadenza Oggi: mostra tutte le task in scadenza oggi, indipendentemente dalla data di attivazione
+    const todayTasks = uncompletedTasks.filter(t => t.dueDate === todayIso);
+    // Massima Priorità (P3): esclude le task non ancora attivate (startDate futura)
     const highPriTasks = uncompletedTasks.filter(t => t.priority === 3 && !(t.startDate && t.startDate > todayIso));
 
     let focusTasksHtml = '';
@@ -323,10 +325,12 @@ function renderDashboard() {
                 }
             }
 
+            const prioClass = `task-checkbox-p${t.priority || 0}`;
+
             return `
                 <div class="flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-darkborder transition group">
                     <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox cursor-pointer shrink-0">
+                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox cursor-pointer shrink-0 ${prioClass}">
                         <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition" onclick="editTask('${t.id}')" title="${escapeNoteHtml(t.title)}">${escapeNoteHtml(t.title)}</span>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0 text-[10px]">
@@ -727,11 +731,7 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
             tasks.forEach(t => {
                 const ctx = getContextInfo(t.contextId);
                 
-                let cbClass = "";
-                if(t.priority === 3) cbClass = "!border-red-400 checked:!bg-red-500 checked:!border-red-500 text-red-500";
-                else if(t.priority === 2) cbClass = "!border-amber-400 checked:!bg-amber-500 checked:!border-amber-500 text-amber-500";
-                else if(t.priority === 1) cbClass = "!border-blue-400 checked:!bg-blue-500 checked:!border-blue-500 text-blue-500";
-                else cbClass = "text-slate-400 dark:text-slate-500";
+                let cbClass = `task-checkbox-p${t.priority || 0}`;
                 if(t.subtasks && t.subtasks.length > 0 && !t.completed) cbClass += " has-subtasks";
                 
                 const ctxBorder = ctx.color !== '#94a3b8' ? `border-left-color: ${ctx.color};` : `border-left-color: transparent;`;
@@ -1034,11 +1034,7 @@ function generateAdvancedTasksHtml() {
                             </div>
                         </div>`;
                 } else {
-                    let cbClass = "";
-                    if(t.priority === 3) cbClass = "!border-red-400 checked:!bg-red-500 checked:!border-red-500 text-red-500";
-                    else if(t.priority === 2) cbClass = "!border-amber-400 checked:!bg-amber-500 checked:!border-amber-500 text-amber-500";
-                    else if(t.priority === 1) cbClass = "!border-blue-400 checked:!bg-blue-500 checked:!border-blue-500 text-blue-500";
-                    else cbClass = "text-slate-400 dark:text-slate-500";
+                    let cbClass = `task-checkbox-p${t.priority || 0}`;
                     if(t.subtasks && t.subtasks.length > 0 && !t.completed) cbClass += " has-subtasks";
 
                     const hasSub = t.subtasks && t.subtasks.length > 0;
