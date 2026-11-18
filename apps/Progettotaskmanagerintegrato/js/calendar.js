@@ -1114,7 +1114,7 @@ function duplicateBlock(id = null) {
                                 }).join('')}
                                 ${dueTasksToday.map(t => `
                                     <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkpanel border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox min-w-[12px] min-h-[12px] w-3 h-3 shrink-0">
+                                        <input type="checkbox" onchange="toggleTask('${t.id}')" class="task-checkbox shrink-0 task-checkbox-p${t.priority || 0}">
                                         <span class="truncate cursor-pointer hover:text-blue-500 transition flex-1" onclick="editTask('${t.id}')">${escapeHtml(t.title)}</span>
                                         <span class="text-[9px] text-slate-400 font-normal shrink-0">Scadenza</span>
                                     </div>

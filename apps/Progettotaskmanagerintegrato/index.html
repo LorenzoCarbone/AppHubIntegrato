@@ -31,28 +31,25 @@
     <!-- Stili Custom Life Hub OS -->
     <link rel="stylesheet" href="css/style.css">
     <style>
-        /* Rinforzo per cerchio geometrico perfetto 1:1 assoluto */
+        /* Checkbox circolare calibrata: diametro 20px (1.25rem), cerchio geometrico perfetto, colori Tailwind 400/500 */
         input[type="checkbox"].task-checkbox,
         .task-checkbox {
             appearance: none !important;
             -webkit-appearance: none !important;
             -moz-appearance: none !important;
             box-sizing: border-box !important;
-            width: 18px !important;
-            height: 18px !important;
-            min-width: 18px !important;
-            min-height: 18px !important;
-            max-width: 18px !important;
-            max-height: 18px !important;
+            width: 20px !important;
+            height: 20px !important;
+            min-width: 20px !important;
+            min-height: 20px !important;
+            max-width: 20px !important;
+            max-height: 20px !important;
             border-radius: 50% !important;
-            aspect-ratio: 1 / 1 !important;
-            flex: 0 0 18px !important;
+            flex: 0 0 20px !important;
             flex-shrink: 0 !important;
             flex-grow: 0 !important;
-            display: inline-block !important;
-            vertical-align: middle !important;
+            display: block !important;
             padding: 0 !important;
-            margin: 0 !important;
             line-height: 1 !important;
             border-width: 2px !important;
             border-style: solid !important;
@@ -65,29 +62,29 @@
         }
         input[type="checkbox"].task-checkbox.task-checkbox-sm,
         .task-checkbox.task-checkbox-sm {
-            width: 14px !important;
-            height: 14px !important;
-            min-width: 14px !important;
-            min-height: 14px !important;
-            max-width: 14px !important;
-            max-height: 14px !important;
-            flex: 0 0 14px !important;
+            width: 15px !important;
+            height: 15px !important;
+            min-width: 15px !important;
+            min-height: 15px !important;
+            max-width: 15px !important;
+            max-height: 15px !important;
+            flex: 0 0 15px !important;
             border-radius: 50% !important;
             border-width: 1.5px !important;
         }
-        /* Classi Priorità Checkbox (Garantiscono colori vividi) */
+        /* Classi Priorità Checkbox (Colori originali Tailwind 400/500 armoniosi e calibrati) */
         input[type="checkbox"].task-checkbox.task-checkbox-p3,
-        .task-checkbox.task-checkbox-p3 { border-color: #ef4444 !important; }
+        .task-checkbox.task-checkbox-p3 { border-color: #f87171 !important; } /* red-400 */
         input[type="checkbox"].task-checkbox.task-checkbox-p3:checked,
         .task-checkbox.task-checkbox-p3:checked { background-color: #ef4444 !important; border-color: #ef4444 !important; }
 
         input[type="checkbox"].task-checkbox.task-checkbox-p2,
-        .task-checkbox.task-checkbox-p2 { border-color: #f59e0b !important; }
+        .task-checkbox.task-checkbox-p2 { border-color: #fbbf24 !important; } /* amber-400 */
         input[type="checkbox"].task-checkbox.task-checkbox-p2:checked,
         .task-checkbox.task-checkbox-p2:checked { background-color: #f59e0b !important; border-color: #f59e0b !important; }
 
         input[type="checkbox"].task-checkbox.task-checkbox-p1,
-        .task-checkbox.task-checkbox-p1 { border-color: #3b82f6 !important; }
+        .task-checkbox.task-checkbox-p1 { border-color: #60a5fa !important; } /* blue-400 */
         input[type="checkbox"].task-checkbox.task-checkbox-p1:checked,
         .task-checkbox.task-checkbox-p1:checked { background-color: #3b82f6 !important; border-color: #3b82f6 !important; }
 
@@ -96,7 +93,7 @@
         .dark input[type="checkbox"].task-checkbox.task-checkbox-p0,
         .dark .task-checkbox.task-checkbox-p0 { border-color: #64748b !important; }
         input[type="checkbox"].task-checkbox.task-checkbox-p0:checked,
-        .task-checkbox.task-checkbox-p0:checked { background-color: #94a3b8 !important; border-color: #94a3b8 !important; }
+        .task-checkbox.task-checkbox-p0:checked { background-color: #f59e0b !important; border-color: #f59e0b !important; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 flex flex-col relative pb-10">

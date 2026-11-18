@@ -732,7 +732,13 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                 const ctx = getContextInfo(t.contextId);
                 
                 let cbClass = `task-checkbox-p${t.priority || 0}`;
-                if(t.subtasks && t.subtasks.length > 0 && !t.completed) cbClass += " has-subtasks";
+                if(t.subtasks && t.subtasks.length > 0 && !t.completed) {
+                    if(t.priority === 3) cbClass += " text-red-400";
+                    else if(t.priority === 2) cbClass += " text-amber-400";
+                    else if(t.priority === 1) cbClass += " text-blue-400";
+                    else cbClass += " text-slate-400 dark:text-slate-500";
+                    cbClass += " has-subtasks";
+                }
                 
                 const ctxBorder = ctx.color !== '#94a3b8' ? `border-left-color: ${ctx.color};` : `border-left-color: transparent;`;
 
@@ -1035,7 +1041,13 @@ function generateAdvancedTasksHtml() {
                         </div>`;
                 } else {
                     let cbClass = `task-checkbox-p${t.priority || 0}`;
-                    if(t.subtasks && t.subtasks.length > 0 && !t.completed) cbClass += " has-subtasks";
+                    if(t.subtasks && t.subtasks.length > 0 && !t.completed) {
+                        if(t.priority === 3) cbClass += " text-red-400";
+                        else if(t.priority === 2) cbClass += " text-amber-400";
+                        else if(t.priority === 1) cbClass += " text-blue-400";
+                        else cbClass += " text-slate-400 dark:text-slate-500";
+                        cbClass += " has-subtasks";
+                    }
 
                     const hasSub = t.subtasks && t.subtasks.length > 0;
                     const doneSubCount = hasSub ? t.subtasks.filter(st => st.completed).length : 0;
