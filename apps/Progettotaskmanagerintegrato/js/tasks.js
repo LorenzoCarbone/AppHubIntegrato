@@ -570,10 +570,13 @@ function renderTaskBadges(t) {
     let recFreq = null;
     if (typeof t.recurrence === 'string' && t.recurrence !== 'none') {
         recFreq = t.recurrence;
-    } else if (t.recurrence && typeof t.recurrence === 'object' && t.recurrence.frequency && t.recurrence.frequency !== 'none') {
-        recFreq = t.recurrence.frequency;
+    } else if (t.recurrence && typeof t.recurrence === 'object') {
+        const candidate = t.recurrence.frequency || t.recurrence.type;
+        if (typeof candidate === 'string' && candidate !== 'none') {
+            recFreq = candidate;
+        }
     }
-    if (recFreq) {
+    if (recFreq && typeof recFreq === 'string') {
         const recLabels = { daily: 'Giornaliera', weekdays: 'Lun-Ven', weekly: 'Settimanale', monthly: 'Mensile', yearly: 'Annuale' };
         const recLabel = recLabels[recFreq] || recFreq;
         badges += `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Ricorrenza: ${recLabel}">

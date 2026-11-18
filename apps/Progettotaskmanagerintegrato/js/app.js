@@ -745,7 +745,7 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                 if (editingTaskId === t.id) {
                             let subHtml = `<div class="mt-2 space-y-1"><div class="text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-wider"><i class="fas fa-list-ul mr-1"></i> Subtasks</div>`;
                             (t.subtasks||[]).forEach(st => {
-                        subHtml += `<div draggable="true" ondragstart="onSubtaskDragStart(event, '${t.id}', '${st.id}')" ondragend="onSubtaskDragEnd(event)" ondragover="onSubtaskDragOver(event)" ondragleave="onSubtaskDragLeave(event)" ondrop="onSubtaskDrop(event, '${t.id}', '${st.id}')" class="flex items-center gap-2 p-1 rounded transition-colors"><i class="fas fa-grip-vertical subtask-drag-handle text-[10px] opacity-50 hover:opacity-100"></i><input type="checkbox" ${st.completed?'checked':''} onchange="toggleSubtask('${t.id}','${st.id}')" class="task-checkbox min-w-[14px] min-h-[14px] w-3.5 h-3.5 shrink-0"><input type="text" class="input-base text-xs py-1 flex-1 ${st.completed?'line-through opacity-50':''}" value="${st.title}" onchange="updateSubtask('${t.id}','${st.id}', this.value)"><button onclick="deleteSubtask('${t.id}','${st.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded"><i class="fas fa-times text-xs"></i></button></div>`;
+                        subHtml += `<div draggable="true" ondragstart="onSubtaskDragStart(event, '${t.id}', '${st.id}')" ondragend="onSubtaskDragEnd(event)" ondragover="onSubtaskDragOver(event)" ondragleave="onSubtaskDragLeave(event)" ondrop="onSubtaskDrop(event, '${t.id}', '${st.id}')" class="flex items-center gap-2 p-1 rounded transition-colors"><i class="fas fa-grip-vertical subtask-drag-handle text-[10px] opacity-50 hover:opacity-100"></i><input type="checkbox" ${st.completed?'checked':''} onchange="toggleSubtask('${t.id}','${st.id}')" class="task-checkbox task-checkbox-sm shrink-0"><input type="text" class="input-base text-xs py-1 flex-1 ${st.completed?'line-through opacity-50':''}" value="${st.title}" onchange="updateSubtask('${t.id}','${st.id}', this.value)"><button onclick="deleteSubtask('${t.id}','${st.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded"><i class="fas fa-times text-xs"></i></button></div>`;
                     });
                     subHtml += `<div class="flex items-center gap-2 mt-2 pl-4"><input type="text" id="newSt_${t.id}" class="input-base text-xs py-1 flex-1" placeholder="Aggiungi subtask..." onkeypress="if(event.key==='Enter') addSubtask('${t.id}')"><button onclick="addSubtask('${t.id}')" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-white px-2 py-1 rounded shadow-sm"><i class="fas fa-plus text-xs"></i></button></div></div>`;
 
@@ -829,7 +829,7 @@ function renderInlineTasks(contextId, showGlobal=false, showCompletedOption=true
                                         <input type="checkbox" ${st.completed ? 'checked' : ''} 
                                                onclick="event.stopPropagation()" 
                                                onchange="toggleSubtask('${t.id}', '${st.id}')" 
-                                               class="task-checkbox min-w-[13px] min-h-[13px] w-3.5 h-3.5 !border-slate-400 checked:!bg-blue-500 checked:!border-blue-500 shrink-0 cursor-pointer">
+                                               class="task-checkbox task-checkbox-sm !border-slate-400 checked:!bg-blue-500 checked:!border-blue-500 shrink-0 cursor-pointer">
                                         <span class="text-xs ${st.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'} break-words flex-1 select-none">
                                             ${st.title}
                                         </span>
@@ -999,7 +999,7 @@ function generateAdvancedTasksHtml() {
                 if (editingTaskId === t.id) {
                     let subHtml = `<div class="mt-2 space-y-1"><div class="text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-wider"><i class="fas fa-list-ul mr-1"></i> Subtasks</div>`;
                     (t.subtasks||[]).forEach(st => {
-                        subHtml += `<div class="flex items-center gap-2"><input type="checkbox" ${st.completed?'checked':''} onchange="toggleSubtask('${t.id}','${st.id}')" class="task-checkbox min-w-[14px] min-h-[14px] w-3.5 h-3.5"><input type="text" class="input-base text-xs py-1 flex-1 ${st.completed?'line-through opacity-50':''}" value="${st.title}" onchange="updateSubtask('${t.id}','${st.id}', this.value)"><button onclick="deleteSubtask('${t.id}','${st.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded"><i class="fas fa-times text-xs"></i></button></div>`;
+                        subHtml += `<div class="flex items-center gap-2"><input type="checkbox" ${st.completed?'checked':''} onchange="toggleSubtask('${t.id}','${st.id}')" class="task-checkbox task-checkbox-sm shrink-0"><input type="text" class="input-base text-xs py-1 flex-1 ${st.completed?'line-through opacity-50':''}" value="${st.title}" onchange="updateSubtask('${t.id}','${st.id}', this.value)"><button onclick="deleteSubtask('${t.id}','${st.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded"><i class="fas fa-times text-xs"></i></button></div>`;
                     });
                     subHtml += `<div class="flex items-center gap-2 mt-2"><input type="text" id="newSt_${t.id}" class="input-base text-xs py-1 flex-1" placeholder="Aggiungi subtask..." onkeypress="if(event.key==='Enter') addSubtask('${t.id}')"><button onclick="addSubtask('${t.id}')" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-white px-2 py-1 rounded shadow-sm"><i class="fas fa-plus text-xs"></i></button></div></div>`;
 
@@ -1102,7 +1102,7 @@ function generateAdvancedTasksHtml() {
                                         <input type="checkbox" ${st.completed ? 'checked' : ''} 
                                                onclick="event.stopPropagation()" 
                                                onchange="toggleSubtask('${t.id}', '${st.id}')" 
-                                               class="task-checkbox min-w-[13px] min-h-[13px] w-3.5 h-3.5 !border-slate-400 checked:!bg-blue-500 checked:!border-blue-500 shrink-0 cursor-pointer">
+                                               class="task-checkbox task-checkbox-sm !border-slate-400 checked:!bg-blue-500 checked:!border-blue-500 shrink-0 cursor-pointer">
                                         <span class="text-xs ${st.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'} break-words flex-1 select-none">
                                             ${st.title}
                                         </span>
